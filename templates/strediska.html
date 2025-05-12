@@ -1,0 +1,19 @@
+<!doctype html>
+<html lang="cs">
+<head>
+  <meta charset="utf-8">
+  <title>Moje střediska</title>
+</head>
+<body>
+  <h1>Moje střediska</h1>
+  <p>Přihlášen jako: {{ session.username }}</p>
+  <a href="/logout">Odhlásit se</a>
+  <ul>
+    {% for s in strediska %}
+      <li>{{ s.nazev_strediska }} — {{ s.adresa }}</li>
+    {% else %}
+      <li>Nemáte žádná střediska.</li>
+    {% endfor %}
+  </ul>
+</body>
+</html>
