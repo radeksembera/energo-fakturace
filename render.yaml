@@ -10,4 +10,4 @@ services:
           name: odberna-mista-db
           property: connectionString
     region: frankfurt
-    plan: free
+    plan: starter
