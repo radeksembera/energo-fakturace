@@ -1,0 +1,7 @@
+flask
+werkzeug
+psycopg2-binary
+weasyprint
+pandas
+openpyxl
+gunicorn
