@@ -3,7 +3,7 @@ services:
     name: energo-fakturace
     runtime: python
     buildCommand: pip install -r requirements.txt
-    startCommand: gunicorn app:app
+    startCommand: gunicorn main:app
     envVars:
       - key: DATABASE_URL
         fromDatabase:
