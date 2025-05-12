@@ -9,5 +9,3 @@ services:
         fromDatabase:
           name: odberna-mista-db
           property: connectionString
-    region: frankfurt
-    plan: starter
