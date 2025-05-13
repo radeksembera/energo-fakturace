@@ -75,6 +75,12 @@ def admin_users():
     users = User.query.order_by(User.id).all()
     return render_template("admin_users.html", users=users)
 
+@app.route("/generate_hash/<password>")
+def generate_hash(password):
+    from werkzeug.security import generate_password_hash
+    return generate_password_hash(password)
+
+
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 5000))
     app.run(host="0.0.0.0", port=port, debug=True)
