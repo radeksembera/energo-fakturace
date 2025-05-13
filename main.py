@@ -27,7 +27,14 @@ def login():
     if request.method == "POST":
         username = request.form["username"]
         password = request.form["password"]
-        user = User.query.filter_by(username=username).first()
+        user = db.session.query(User).filter(User.username == username).first()
+        print("Zadaný username:", username)
+        print("Nalezený uživatel:", user)
+        if user:
+            print("Hash z DB:", user.password_hash)
+            print("Výsledek kontrola hesla:", check_password_hash(user.password_hash, password))
+
+
 
         if user and check_password_hash(user.password_hash, password):
             session["user_id"] = user.id
