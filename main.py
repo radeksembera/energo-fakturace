@@ -29,13 +29,6 @@ def login():
         password = request.form["password"]
         user = User.query.filter_by(username=username).first()
 
-        print("DATABÁZE OBSAHUJE:")
-        for user in User.query.all():
-            print(user.username, user.password_hash)
-            print("Zadáno:", password)
-            print("check_password_hash:", check_password_hash(user.password_hash, password))
-
-
         if user and check_password_hash(user.password_hash, password):
             session["user_id"] = user.id
             session["username"] = user.username
@@ -74,11 +67,6 @@ def admin_users():
 
     users = User.query.order_by(User.id).all()
     return render_template("admin_users.html", users=users)
-
-@app.route("/generate_hash/<password>")
-def generate_hash(password):
-    from werkzeug.security import generate_password_hash
-    return generate_password_hash(password)
 
 
 if __name__ == "__main__":
