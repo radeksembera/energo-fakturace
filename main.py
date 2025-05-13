@@ -32,7 +32,8 @@ def login():
         print("DATABÁZE OBSAHUJE:")
         for user in User.query.all():
             print(user.username, user.password_hash)
-
+            print("Zadáno:", password)
+            print("check_password_hash:", check_password_hash(user.password_hash, password))
 
 
         if user and check_password_hash(user.password_hash, password):
