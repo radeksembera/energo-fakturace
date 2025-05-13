@@ -28,11 +28,20 @@ def login():
         username = request.form["username"]
         password = request.form["password"]
         user = User.query.filter_by(username=username).first()
+
+        print("DATABÁZE OBSAHUJE:")
+        for user in User.query.all():
+            print(user.username, user.password_hash)
+
+
+
         if user and check_password_hash(user.password_hash, password):
             session["user_id"] = user.id
             session["username"] = user.username
             return redirect("/strediska")
         return render_template("login.html", error="Neplatné přihlášení.")
+
+
     return render_template("login.html")
 
 @app.route("/logout")
