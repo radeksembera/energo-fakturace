@@ -28,13 +28,6 @@ def login():
         username = request.form["username"]
         password = request.form["password"]
         user = db.session.query(User).filter(User.username == username).first()
-        print("Zadaný username:", username)
-        print("Nalezený uživatel:", user)
-        if user:
-            print("Hash z DB:", user.password_hash)
-            print("Výsledek kontrola hesla:", check_password_hash(user.password_hash, password))
-
-
 
         if user and check_password_hash(user.password_hash, password):
             session["user_id"] = user.id
@@ -79,3 +72,8 @@ def admin_users():
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 5000))
     app.run(host="0.0.0.0", port=port, debug=True)
+
+@app.route("/generate_hash/<password>")
+def generate_hash(password):
+    from werkzeug.security import generate_password_hash
+    return generate_password_hash(password)
