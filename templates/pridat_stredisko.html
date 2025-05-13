@@ -1,0 +1,36 @@
+<!doctype html>
+<html lang="cs">
+<head>
+  <meta charset="utf-8">
+  <title>Přidat středisko</title>
+</head>
+<body>
+  <h1>Přidat nové středisko</h1>
+  <form method="post">
+    <label for="nazev">Název střediska:</label><br>
+    <input type="text" id="nazev" name="nazev" required><br>
+
+    <label for="adresa">Adresa:</label><br>
+    <input type="text" id="adresa" name="adresa"><br>
+
+    <label for="misto">Místo:</label><br>
+    <input type="text" id="misto" name="misto"><br>
+
+    <label for="stredisko">Kód střediska:</label><br>
+    <input type="text" id="stredisko" name="stredisko"><br>
+
+    <label for="stredisko_mail">E-mail střediska:</label><br>
+    <input type="email" id="stredisko_mail" name="stredisko_mail"><br>
+
+    <label for="distribuce">Distribuce:</label><br>
+    <input type="text" id="distribuce" name="distribuce"><br>
+
+    <label for="poznamka">Poznámka:</label><br>
+    <textarea id="poznamka" name="poznamka"></textarea><br><br>
+
+    <button type="submit">Uložit středisko</button>
+  </form>
+  <br>
+  <a href="/strediska">Zpět na přehled</a>
+</body>
+</html>

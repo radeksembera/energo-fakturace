@@ -50,6 +50,37 @@ def strediska():
     strediska = Stredisko.query.filter_by(user_id=session["user_id"]).all()
     return render_template("strediska.html", strediska=strediska)
 
+@app.route("/strediska/pridat", methods=["GET", "POST"])
+def pridat_stredisko():
+    if not session.get("user_id"):
+        return redirect("/login")
+
+    if request.method == "POST":
+        nazev = request.form["nazev"]
+        adresa = request.form["adresa"]
+        misto = request.form["misto"]
+        stredisko_kod = request.form["stredisko"]
+        email = request.form["stredisko_mail"]
+        distribuce = request.form["distribuce"]
+        poznamka = request.form["poznamka"]
+
+        nove_stredisko = Stredisko(
+            user_id=session["user_id"],
+            nazev_strediska=nazev,
+            adresa=adresa,
+            misto=misto,
+            stredisko=stredisko_kod,
+            stredisko_mail=email,
+            distribuce=distribuce,
+            poznamka=poznamka
+        )
+        db.session.add(nove_stredisko)
+        db.session.commit()
+        return redirect("/strediska")
+
+    return render_template("pridat_stredisko.html")
+
+
 @app.route("/admin/users", methods=["GET", "POST"])
 def admin_users():
     if not session.get("user_id"):
@@ -72,8 +103,3 @@ def admin_users():
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 5000))
     app.run(host="0.0.0.0", port=port, debug=True)
-
-@app.route("/generate_hash/<password>")
-def generate_hash(password):
-    from werkzeug.security import generate_password_hash
-    return generate_password_hash(password)
