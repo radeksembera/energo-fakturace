@@ -1,0 +1,565 @@
+{% extends "base.html" %}
+
+{% block title %}Fakturace - {{ stredisko.nazev_strediska }}{% endblock %}
+
+{% block breadcrumb %}
+<nav aria-label="breadcrumb">
+    <ol class="breadcrumb breadcrumb-custom">
+        <li class="breadcrumb-item">
+            <a href="{{ url_for('strediska') }}">
+                <i class="bi bi-house-door me-1"></i>
+                Střediska
+            </a>
+        </li>
+        <li class="breadcrumb-item">
+            <a href="{{ url_for('spravovat_stredisko', stredisko_id=stredisko.id) }}">
+                {{ stredisko.nazev_strediska }}
+            </a>
+        </li>
+        <li class="breadcrumb-item active">Fakturace</li>
+    </ol>
+</nav>
+{% endblock %}
+
+{% block content %}
+<!-- Hidden data for JavaScript -->
+<div id="page-data" style="display: none;"
+     data-stredisko-id="{{ stredisko.id }}"
+     {% if vybrane_obdobi %}
+     data-rok="{{ vybrane_obdobi.rok }}"
+     data-mesic="{{ vybrane_obdobi.mesic }}"
+     {% endif %}>
+</div>
+
+<div class="row">
+    <div class="col-12">
+        <!-- Page Header -->
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <div>
+                <h1 class="h2 mb-1">
+                    <i class="bi bi-receipt icon-danger me-2"></i>
+                    Fakturace
+                </h1>
+                <p class="text-muted mb-0">Generování a správa faktur pro {{ stredisko.nazev_strediska }}</p>
+            </div>
+            <div class="d-flex gap-2">
+                <a href="{{ url_for('spravovat_stredisko', stredisko_id=stredisko.id) }}" 
+                   class="btn btn-outline-primary-custom">
+                    <i class="bi bi-arrow-left me-2"></i>
+                    Zpět na středisko
+                </a>
+            </div>
+        </div>
+
+        <!-- Period Selection -->
+        <div class="card-custom mb-4">
+            <div class="card-header-custom">
+                <h5 class="card-title">
+                    <i class="bi bi-calendar-range icon-primary me-2"></i>
+                    Výběr období
+                </h5>
+            </div>
+            <div class="card-body p-4">
+                <form method="get" class="d-flex align-items-center gap-3 flex-wrap">
+                    <label for="obdobi_select" class="form-label-custom mb-0">
+                        <i class="bi bi-calendar me-2"></i>
+                        Fakturace pro období:
+                    </label>
+                    <select name="obdobi_id" id="obdobi_select" class="form-select form-control-custom" 
+                            style="width: auto;" onchange="this.form.submit()">
+                        {% for obdobi in vsechna_obdobi %}
+                        <option value="{{ obdobi.id }}" {% if vybrane_obdobi and obdobi.id == vybrane_obdobi.id %}selected{% endif %}>
+                            {{ obdobi.rok }}/{{ '%02d'|format(obdobi.mesic) }}
+                        </option>
+                        {% endfor %}
+                    </select>
+                    {% if vybrane_obdobi %}
+                    <div class="text-muted">
+                        <small>Aktuální období: <strong>{{ vybrane_obdobi.rok }}/{{ '%02d'|format(vybrane_obdobi.mesic) }}</strong></small>
+                    </div>
+                    {% else %}
+                    <div class="text-danger">
+                        <small><i class="bi bi-exclamation-triangle me-1"></i>Žádné období není vybráno nebo dostupné.</small>
+                    </div>
+                    {% endif %}
+                </form>
+            </div>
+        </div>
+
+        {% if vybrane_obdobi %}
+        <!-- Status subjektů -->
+        <div class="card-custom mb-4">
+            <div class="card-header-custom">
+                <h5 class="card-title">
+                    <i class="bi bi-people icon-warning me-2"></i>
+                    Stav subjektů fakturace
+                </h5>
+            </div>
+            <div class="card-body p-4">
+                <div class="row">
+                    <div class="col-md-4 mb-3">
+                        <div class="d-flex align-items-center p-3 border rounded">
+                            <div class="flex-shrink-0">
+                                {% if dodavatel and dodavatel.nazev_sro %}
+                                    <i class="bi bi-check-circle-fill icon-success" style="font-size: 1.5rem;"></i>
+                                {% else %}
+                                    <i class="bi bi-x-circle-fill icon-danger" style="font-size: 1.5rem;"></i>
+                                {% endif %}
+                            </div>
+                            <div class="flex-grow-1 ms-3">
+                                <h6 class="mb-1">Dodavatel</h6>
+                                <p class="mb-0 text-muted">
+                                    {% if dodavatel and dodavatel.nazev_sro %}
+                                        {{ dodavatel.nazev_sro }}
+                                    {% else %}
+                                        Nevyplněno
+                                    {% endif %}
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-4 mb-3">
+                        <div class="d-flex align-items-center p-3 border rounded">
+                            <div class="flex-shrink-0">
+                                {% if vystavovatel and vystavovatel.jmeno_vystavitele %}
+                                    <i class="bi bi-check-circle-fill icon-success" style="font-size: 1.5rem;"></i>
+                                {% else %}
+                                    <i class="bi bi-x-circle-fill icon-danger" style="font-size: 1.5rem;"></i>
+                                {% endif %}
+                            </div>
+                            <div class="flex-grow-1 ms-3">
+                                <h6 class="mb-1">Vystavovatel</h6>
+                                <p class="mb-0 text-muted">
+                                    {% if vystavovatel and vystavovatel.jmeno_vystavitele %}
+                                        {{ vystavovatel.jmeno_vystavitele }}
+                                    {% else %}
+                                        Nevyplněno
+                                    {% endif %}
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-4 mb-3">
+                        <div class="d-flex align-items-center p-3 border rounded">
+                            <div class="flex-shrink-0">
+                                {% if odberatel and odberatel.nazev_sro %}
+                                    <i class="bi bi-check-circle-fill icon-success" style="font-size: 1.5rem;"></i>
+                                {% else %}
+                                    <i class="bi bi-x-circle-fill icon-danger" style="font-size: 1.5rem;"></i>
+                                {% endif %}
+                            </div>
+                            <div class="flex-grow-1 ms-3">
+                                <h6 class="mb-1">Odběratel</h6>
+                                <p class="mb-0 text-muted">
+                                    {% if odberatel and odberatel.nazev_sro %}
+                                        {{ odberatel.nazev_sro }}
+                                    {% else %}
+                                        Nevyplněno
+                                    {% endif %}
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="text-center mt-3">
+                    <a href="{{ url_for('fakturace.subjekty_fakturace', stredisko_id=stredisko.id) }}" 
+                       class="btn btn-outline-warning">
+                        <i class="bi bi-people me-2"></i>
+                        Upravit subjekty fakturace
+                    </a>
+                </div>
+            </div>
+        </div>
+
+        <!-- Generování dokumentů -->
+        <div class="card-custom mb-4">
+            <div class="card-header-custom">
+                <h5 class="card-title">
+                    <i class="bi bi-file-earmark-text icon-primary me-2"></i>
+                    Generování dokumentů pro období {{ vybrane_obdobi.rok }}/{{ '%02d'|format(vybrane_obdobi.mesic) }}
+                </h5>
+            </div>
+            <div class="card-body p-4">
+                <!-- HTML dokumenty -->
+                <div class="mb-4">
+                    <h6 class="mb-3">
+                        <i class="bi bi-globe icon-info me-2"></i>
+                        HTML dokumenty
+                    </h6>
+                    <div class="row">
+                        <div class="col-md-6 col-lg-3 mb-3">
+                            <a href="{{ url_for('print.vygenerovat_zalohu_html', stredisko_id=stredisko.id, rok=vybrane_obdobi.rok, mesic=vybrane_obdobi.mesic) }}" 
+                               class="btn btn-outline-info w-100" target="_blank">
+                                <i class="bi bi-cash-coin me-2"></i>
+                                HTML záloha
+                            </a>
+                        </div>
+                        <div class="col-md-6 col-lg-3 mb-3">
+                            <a href="{{ url_for('print.vygenerovat_fakturu_html', stredisko_id=stredisko.id, rok=vybrane_obdobi.rok, mesic=vybrane_obdobi.mesic) }}" 
+                               class="btn btn-outline-info w-100" target="_blank">
+                                <i class="bi bi-receipt me-2"></i>
+                                HTML faktura
+                            </a>
+                        </div>
+                        <div class="col-md-6 col-lg-3 mb-3">
+                            <a href="{{ url_for('print.vygenerovat_prilohu1_html', stredisko_id=stredisko.id, rok=vybrane_obdobi.rok, mesic=vybrane_obdobi.mesic) }}" 
+                               class="btn btn-outline-info w-100" target="_blank">
+                                <i class="bi bi-clipboard-data me-2"></i>
+                                HTML příloha 1
+                            </a>
+                        </div>
+                        <div class="col-md-6 col-lg-3 mb-3">
+                            <a href="{{ url_for('print.vygenerovat_prilohu2_html', stredisko_id=stredisko.id, rok=vybrane_obdobi.rok, mesic=vybrane_obdobi.mesic) }}" 
+                               class="btn btn-outline-info w-100" target="_blank">
+                                <i class="bi bi-bar-chart me-2"></i>
+                                HTML příloha 2
+                            </a>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- PDF dokumenty -->
+                <div class="mb-4">
+                    <h6 class="mb-3">
+                        <i class="bi bi-file-earmark-pdf icon-danger me-2"></i>
+                        PDF dokumenty
+                    </h6>
+                    <div class="row">
+                        <div class="col-md-6 col-lg-3 mb-3">
+                            <a href="{{ url_for('print.vygenerovat_zalohu_pdf', stredisko_id=stredisko.id, rok=vybrane_obdobi.rok, mesic=vybrane_obdobi.mesic) }}" 
+                            class="btn btn-outline-danger w-100" target="_blank">
+                                <i class="bi bi-cash-coin me-2"></i>
+                                PDF záloha
+                            </a>
+                        </div>
+                        <div class="col-md-6 col-lg-3 mb-3">
+                            <a href="{{ url_for('print.vygenerovat_fakturu_pdf', stredisko_id=stredisko.id, rok=vybrane_obdobi.rok, mesic=vybrane_obdobi.mesic) }}" 
+                            class="btn btn-outline-danger w-100" target="_blank">
+                                <i class="bi bi-receipt me-2"></i>
+                                PDF faktura
+                            </a>
+                        </div>
+                        <div class="col-md-6 col-lg-3 mb-3">
+                            <a href="{{ url_for('print.vygenerovat_prilohu1_pdf', stredisko_id=stredisko.id, rok=vybrane_obdobi.rok, mesic=vybrane_obdobi.mesic) }}" 
+                            class="btn btn-outline-danger w-100" target="_blank">
+                                <i class="bi bi-clipboard-data me-2"></i>
+                                PDF příloha 1
+                            </a>
+                        </div>
+                        <div class="col-md-6 col-lg-3 mb-3">
+                            <a href="{{ url_for('print.vygenerovat_prilohu2_pdf', stredisko_id=stredisko.id, rok=vybrane_obdobi.rok, mesic=vybrane_obdobi.mesic) }}" 
+                            class="btn btn-outline-danger w-100" target="_blank">
+                                <i class="bi bi-bar-chart me-2"></i>
+                                PDF příloha 2
+                            </a>
+                        </div>
+                        <!-- ✅ NOVÉ TLAČÍTKO PRO KOMPLETNÍ PDF -->
+                        <div class="col-12 mt-2">
+                            <a href="{{ url_for('print.vygenerovat_kompletni_pdf', stredisko_id=stredisko.id, rok=vybrane_obdobi.rok, mesic=vybrane_obdobi.mesic) }}" 
+                            class="btn btn-danger w-100" target="_blank">
+                                <i class="bi bi-file-earmark-pdf-fill me-2"></i>
+                                <strong>PDF KOMPLETNÍ FAKTURA</strong> (faktura + příloha 1 + příloha 2)
+                            </a>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Hromadné akce -->
+                <div class="text-center pt-4 border-top">
+                    <h6 class="mb-3">Hromadné akce</h6>
+                    <div class="d-flex justify-content-center gap-3 flex-wrap">
+                        <button class="btn btn-success" onclick="generateAllHTML()">
+                            <i class="bi bi-globe me-2"></i>
+                            Generovat všechny HTML
+                        </button>
+                        <button class="btn btn-danger" onclick="generateAllPDF()">
+                            <i class="bi bi-file-earmark-pdf me-2"></i>
+                            Generovat všechny PDF
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Rychlé akce -->
+        <div class="card-custom">
+            <div class="card-header-custom">
+                <h5 class="card-title">
+                    <i class="bi bi-lightning icon-warning me-2"></i>
+                    Rychlé akce
+                </h5>
+            </div>
+            <div class="card-body p-4">
+                <div class="row">
+                    <div class="col-lg-3 col-md-6 mb-3">
+                        <a href="{{ url_for('odecty.odecty', stredisko_id=stredisko.id) }}" 
+                           class="text-decoration-none">
+                            <div class="d-flex align-items-center p-3 border rounded h-100 hover-shadow">
+                                <div class="flex-shrink-0">
+                                    <i class="bi bi-upload icon-success" style="font-size: 2rem;"></i>
+                                </div>
+                                <div class="flex-grow-1 ms-3">
+                                    <h6 class="mb-1">Import odečtů</h6>
+                                    <p class="mb-0 text-muted small">Nahrát odečty ze souboru</p>
+                                </div>
+                            </div>
+                        </a>
+                    </div>
+                    <div class="col-lg-3 col-md-6 mb-3">
+                        <a href="{{ url_for('fakturace.koncove_ceny', stredisko_id=stredisko.id) }}" 
+                           class="text-decoration-none">
+                            <div class="d-flex align-items-center p-3 border rounded h-100 hover-shadow">
+                                <div class="flex-shrink-0">
+                                    <i class="bi bi-calculator icon-danger" style="font-size: 2rem;"></i>
+                                </div>
+                                <div class="flex-grow-1 ms-3">
+                                    <h6 class="mb-1">Koncové ceny</h6>
+                                    <p class="mb-0 text-muted small">Vypočítat ceny</p>
+                                </div>
+                            </div>
+                        </a>
+                    </div>
+                    <div class="col-lg-3 col-md-6 mb-3">
+                        <a href="{{ url_for('fakturace.parametry_fakturace', stredisko_id=stredisko.id) }}" 
+                           class="text-decoration-none">
+                            <div class="d-flex align-items-center p-3 border rounded h-100 hover-shadow">
+                                <div class="flex-shrink-0">
+                                    <i class="bi bi-gear-fill icon-secondary" style="font-size: 2rem;"></i>
+                                </div>
+                                <div class="flex-grow-1 ms-3">
+                                    <h6 class="mb-1">Parametry fakturace</h6>
+                                    <p class="mb-0 text-muted small">Nastavit fakturu a zálohu</p>
+                                </div>
+                            </div>
+                        </a>
+                    </div>
+                    <div class="col-lg-3 col-md-6 mb-3">
+                        <a href="{{ url_for('odecty.kontrola_odectu', stredisko_id=stredisko.id) }}" 
+                           class="text-decoration-none">
+                            <div class="d-flex align-items-center p-3 border rounded h-100 hover-shadow">
+                                <div class="flex-shrink-0">
+                                    <i class="bi bi-search icon-info" style="font-size: 2rem;"></i>
+                                </div>
+                                <div class="flex-grow-1 ms-3">
+                                    <h6 class="mb-1">Kontrola odečtů</h6>
+                                    <p class="mb-0 text-muted small">Ověřit data</p>
+                                </div>
+                            </div>
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        {% else %}
+        <!-- Empty State -->
+        <div class="text-center py-5">
+            <div class="mb-4">
+                <i class="bi bi-calendar-x" style="font-size: 4rem; color: var(--text-muted);"></i>
+            </div>
+            <h3 class="h4 mb-3">Žádné období není vybráno</h3>
+            <p class="text-muted mb-4">
+                Vyberte období fakturace ze seznamu výše pro generování dokumentů.
+            </p>
+        </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_css %}
+<style>
+    .hover-shadow {
+        transition: all 0.2s ease;
+    }
+    
+    .hover-shadow:hover {
+        box-shadow: var(--shadow-lg);
+        transform: translateY(-2px);
+    }
+    
+    .icon-info {
+        color: #0ea5e9;
+    }
+    
+    .icon-secondary {
+        color: var(--secondary-color);
+    }
+    
+    .border {
+        border-color: var(--border-color) !important;
+    }
+    
+    .border:hover {
+        border-color: var(--primary-color) !important;
+    }
+    
+    /* Button improvements */
+    .btn {
+        transition: all 0.2s ease;
+    }
+    
+    .btn:hover {
+        transform: translateY(-1px);
+    }
+    
+    /* Card spacing */
+    .card-body {
+        padding: 2rem;
+    }
+    
+    @media (max-width: 768px) {
+        .card-body {
+            padding: 1rem;
+        }
+        
+        .d-flex.gap-3 {
+            flex-direction: column;
+        }
+        
+        .btn {
+            width: 100%;
+        }
+    }
+</style>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    // Bezpečné načtení dat z HTML data atributů
+    function getPageData() {
+        const pageDataElement = document.getElementById('page-data');
+        return {
+            strediskoId: pageDataElement.dataset.strediskoId,
+            rok: pageDataElement.dataset.rok || null,
+            mesic: pageDataElement.dataset.mesic || null
+        };
+    }
+
+    // Hromadné generování HTML dokumentů - BEZE ZMĚNY
+    function generateAllHTML() {
+        const pageData = getPageData();
+        const baseUrl = window.location.origin;
+        
+        if (!pageData.rok || !pageData.mesic) {
+            alert('Nejprve vyberte období');
+            return;
+        }
+        
+        const urls = [
+            `/faktury/${pageData.strediskoId}/${pageData.rok}-${pageData.mesic}/zalohova/html`,
+            `/faktury/${pageData.strediskoId}/${pageData.rok}-${pageData.mesic}/faktura/html`,
+            `/faktury/${pageData.strediskoId}/${pageData.rok}-${pageData.mesic}/priloha1/html`,
+            `/faktury/${pageData.strediskoId}/${pageData.rok}-${pageData.mesic}/priloha2/html`
+        ];
+        
+        showLoadingMessage('Generuji HTML dokumenty...');
+        
+        urls.forEach((url, index) => {
+            setTimeout(() => {
+                window.open(baseUrl + url, '_blank');
+            }, index * 500);
+        });
+        
+        setTimeout(() => {
+            hideLoadingMessage();
+        }, urls.length * 500 + 1000);
+    }
+    
+    // ✅ UPRAVENÁ FUNKCE - Hromadné generování PDF dokumentů
+    function generateAllPDF() {
+        const pageData = getPageData();
+        const baseUrl = window.location.origin;
+        
+        if (!pageData.rok || !pageData.mesic) {
+            alert('Nejprve vyberte období');
+            return;
+        }
+        
+        // Nabídni uživateli výběr
+        const choice = confirm(
+            'Chcete vygenerovat:\n\n' +
+            'OK = Kompletní PDF (faktura + přílohy v jednom souboru)\n' +
+            'Zrušit = Jednotlivé PDF soubory (faktura, příloha 1, příloha 2 zvlášť)'
+        );
+        
+        if (choice) {
+            // KOMPLETNÍ PDF
+            showLoadingMessage('Generuji kompletní PDF...');
+            const url = `${baseUrl}/faktury/${pageData.strediskoId}/${pageData.rok}-${pageData.mesic}/kompletni/pdf`;
+            window.open(url, '_blank');
+            
+            setTimeout(() => {
+                hideLoadingMessage();
+            }, 3000);
+        } else {
+            // JEDNOTLIVÉ PDF SOUBORY (původní funkcionalita)
+            const urls = [
+                `/faktury/${pageData.strediskoId}/${pageData.rok}-${pageData.mesic}/zalohova/pdf`,
+                `/faktury/${pageData.strediskoId}/${pageData.rok}-${pageData.mesic}/faktura/pdf`,
+                `/faktury/${pageData.strediskoId}/${pageData.rok}-${pageData.mesic}/priloha1/pdf`,
+                `/faktury/${pageData.strediskoId}/${pageData.rok}-${pageData.mesic}/priloha2/pdf`
+            ];
+            
+            showLoadingMessage('Generuji jednotlivé PDF dokumenty...');
+            
+            urls.forEach((url, index) => {
+                setTimeout(() => {
+                    window.open(baseUrl + url, '_blank');
+                }, index * 1000);
+            });
+            
+            setTimeout(() => {
+                hideLoadingMessage();
+            }, urls.length * 1000 + 2000);
+        }
+    }
+    
+    // ✅ NOVÁ FUNKCE - jen kompletní PDF (pro případné samostatné tlačítko)
+    function generateCompletePDF() {
+        const pageData = getPageData();
+        const baseUrl = window.location.origin;
+        
+        if (!pageData.rok || !pageData.mesic) {
+            alert('Nejprve vyberte období');
+            return;
+        }
+        
+        showLoadingMessage('Generuji kompletní PDF...');
+        const url = `${baseUrl}/faktury/${pageData.strediskoId}/${pageData.rok}-${pageData.mesic}/kompletni/pdf`;
+        window.open(url, '_blank');
+        
+        setTimeout(() => {
+            hideLoadingMessage();
+        }, 3000);
+    }
+    
+    // Loading message helpers - BEZE ZMĚNY
+    function showLoadingMessage(message) {
+        const existingOverlay = document.getElementById('loadingOverlay');
+        if (existingOverlay) {
+            existingOverlay.remove();
+        }
+        
+        const overlay = document.createElement('div');
+        overlay.id = 'loadingOverlay';
+        overlay.className = 'position-fixed top-50 start-50 translate-middle bg-white p-4 rounded shadow-lg text-center';
+        overlay.style.zIndex = '9999';
+        overlay.innerHTML = `
+            <div class="spinner-border text-primary mb-3" role="status">
+                <span class="visually-hidden">Loading...</span>
+            </div>
+            <h5>${message}</h5>
+            <p class="text-muted mb-0">Prosím čekejte...</p>
+        `;
+        document.body.appendChild(overlay);
+    }
+    
+    function hideLoadingMessage() {
+        const overlay = document.getElementById('loadingOverlay');
+        if (overlay) {
+            overlay.remove();
+        }
+    }
+</script>
+{% endblock %}

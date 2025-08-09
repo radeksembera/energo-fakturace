@@ -1,0 +1,351 @@
+{% extends "base.html" %}
+
+{% block title %}{{ stredisko.nazev_strediska }} - Správa střediska{% endblock %}
+
+{% block breadcrumb %}
+<nav aria-label="breadcrumb">
+    <ol class="breadcrumb breadcrumb-custom">
+        <li class="breadcrumb-item">
+            <a href="{{ url_for('strediska') }}">
+                <i class="bi bi-house-door me-1"></i>
+                Střediska
+            </a>
+        </li>
+        <li class="breadcrumb-item active">{{ stredisko.nazev_strediska }}</li>
+    </ol>
+</nav>
+{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-12">
+        <!-- Page Header -->
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <div>
+                <h1 class="h2 mb-1">{{ stredisko.nazev_strediska }}</h1>
+                <p class="text-muted mb-0">Správa a konfigurace střediska</p>
+            </div>
+            <div class="d-flex gap-2">
+                <a href="{{ url_for('strediska') }}" class="btn btn-outline-primary-custom">
+                    <i class="bi bi-arrow-left me-2"></i>
+                    Zpět na přehled
+                </a>
+            </div>
+        </div>
+
+        <!-- Informace o středisku -->
+        <div class="row mb-4">
+            <div class="col-12">
+                <div class="card-custom">
+                    <div class="card-header-custom">
+                        <h5 class="card-title">
+                            <i class="bi bi-info-circle icon-primary me-2"></i>
+                            Informace o středisku
+                        </h5>
+                    </div>
+                    <div class="card-body p-4">
+                        <form method="post" action="{{ url_for('upravit_stredisko', stredisko_id=stredisko.id) }}">
+                            <div class="row">
+                                <div class="col-md-6 mb-3">
+                                    <label for="nazev_strediska" class="form-label-custom">
+                                        <i class="bi bi-building me-2"></i>
+                                        Název střediska
+                                    </label>
+                                    <input type="text" 
+                                           class="form-control form-control-custom" 
+                                           id="nazev_strediska" 
+                                           name="nazev_strediska" 
+                                           value="{{ stredisko.nazev_strediska }}"
+                                           required>
+                                </div>
+                                <div class="col-md-6 mb-3">
+                                    <label for="stredisko_kod" class="form-label-custom">
+                                        <i class="bi bi-hash me-2"></i>
+                                        Kód střediska
+                                    </label>
+                                    <input type="text" 
+                                           class="form-control form-control-custom" 
+                                           id="stredisko_kod" 
+                                           name="stredisko_kod" 
+                                           value="{{ stredisko.stredisko }}">
+                                </div>
+                                <div class="col-md-6 mb-3">
+                                    <label for="adresa" class="form-label-custom">
+                                        <i class="bi bi-geo-alt me-2"></i>
+                                        Adresa
+                                    </label>
+                                    <input type="text" 
+                                           class="form-control form-control-custom" 
+                                           id="adresa" 
+                                           name="adresa" 
+                                           value="{{ stredisko.adresa or '' }}">
+                                </div>
+                                <div class="col-md-6 mb-3">
+                                    <label for="misto" class="form-label-custom">
+                                        <i class="bi bi-pin-map me-2"></i>
+                                        Místo
+                                    </label>
+                                    <input type="text" 
+                                           class="form-control form-control-custom" 
+                                           id="misto" 
+                                           name="misto" 
+                                           value="{{ stredisko.misto or '' }}">
+                                </div>
+                                <div class="col-md-6 mb-3">
+                                    <label for="stredisko_mail" class="form-label-custom">
+                                        <i class="bi bi-envelope me-2"></i>
+                                        Email
+                                    </label>
+                                    <input type="email" 
+                                           class="form-control form-control-custom" 
+                                           id="stredisko_mail" 
+                                           name="stredisko_mail" 
+                                           value="{{ stredisko.stredisko_mail or '' }}">
+                                </div>
+                                <div class="col-md-6 mb-3">
+                                    <label for="distribuce" class="form-label-custom">
+                                        <i class="bi bi-diagram-2 me-2"></i>
+                                        Distribuce
+                                    </label>
+                                    <select class="form-select form-control-custom" 
+                                            id="distribuce" 
+                                            name="distribuce">
+                                        <option value="">Vyberte distribuci</option>
+                                        <option value="ČEZ" {% if stredisko.distribuce == 'ČEZ' %}selected{% endif %}>ČEZ Distribuce</option>
+                                        <option value="EGD" {% if stredisko.distribuce == 'EGD' %}selected{% endif %}>EGD Distribuce</option>
+                                        <option value="PRE" {% if stredisko.distribuce == 'PRE' %}selected{% endif %}>PRE Distribuce</option>
+                                    </select>
+                                </div>
+                                <div class="col-12 mb-3">
+                                    <label for="poznamka" class="form-label-custom">
+                                        <i class="bi bi-chat-text me-2"></i>
+                                        Poznámka
+                                    </label>
+                                    <textarea class="form-control form-control-custom" 
+                                              id="poznamka" 
+                                              name="poznamka" 
+                                              rows="3">{{ stredisko.poznamka or '' }}</textarea>
+                                </div>
+                            </div>
+                            <div class="d-flex justify-content-end">
+                                <button type="submit" class="btn btn-primary-custom">
+                                    <i class="bi bi-save me-2"></i>
+                                    Uložit změny
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Hlavní menu -->
+        <div class="row">
+        <!-- Správa odběrných míst -->
+                    <div class="col-lg-6 mb-4">
+                        <div class="card-custom h-100">
+                            <div class="card-header-custom">
+                                <h5 class="card-title">
+                                    <i class="bi bi-gear icon-primary me-2"></i>
+                                    Správa odběrných míst
+                                </h5>
+                            </div>
+                            <div class="card-body p-4">
+                                <div class="list-group list-group-flush">
+                                    <a href="{{ url_for('prehled_odbernych_mist', stredisko_id=stredisko.id) }}" 
+                                    class="list-group-item list-group-item-action border-0 px-0 py-3">
+                                        <div class="d-flex align-items-center">
+                                            <div class="flex-shrink-0">
+                                                <i class="bi bi-lightning-charge icon-warning" style="font-size: 1.5rem;"></i>
+                                            </div>
+                                            <div class="flex-grow-1 ms-3">
+                                                <h6 class="mb-1">Odběrná místa</h6>
+                                                <p class="mb-0 text-muted small">Správa a přehled všech odběrných míst</p>
+                                            </div>
+                                            <div class="flex-shrink-0">
+                                                <i class="bi bi-chevron-right text-muted"></i>
+                                            </div>
+                                        </div>
+                                    </a>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+            <!-- Ceníky -->
+            <div class="col-lg-6 mb-4">
+                <div class="card-custom h-100">
+                    <div class="card-header-custom">
+                        <h5 class="card-title">
+                            <i class="bi bi-currency-euro icon-success me-2"></i>
+                            Ceníky
+                        </h5>
+                    </div>
+                    <div class="card-body p-4">
+                        <div class="list-group list-group-flush">
+                            <a href="{{ url_for('ceny_distribuce', stredisko_id=stredisko.id) }}" 
+                               class="list-group-item list-group-item-action border-0 px-0 py-3">
+                                <div class="d-flex align-items-center">
+                                    <div class="flex-shrink-0">
+                                        <i class="bi bi-bar-chart icon-primary" style="font-size: 1.5rem;"></i>
+                                    </div>
+                                    <div class="flex-grow-1 ms-3">
+                                        <h6 class="mb-1">Ceny distribuce</h6>
+                                        <p class="mb-0 text-muted small">Správa cen za distribuci elektřiny</p>
+                                    </div>
+                                    <div class="flex-shrink-0">
+                                        <i class="bi bi-chevron-right text-muted"></i>
+                                    </div>
+                                </div>
+                            </a>
+                            <a href="{{ url_for('ceny_dodavatele', stredisko_id=stredisko.id) }}" 
+                               class="list-group-item list-group-item-action border-0 px-0 py-3">
+                                <div class="d-flex align-items-center">
+                                    <div class="flex-shrink-0">
+                                        <i class="bi bi-cash-coin icon-success" style="font-size: 1.5rem;"></i>
+                                    </div>
+                                    <div class="flex-grow-1 ms-3">
+                                        <h6 class="mb-1">Ceny dodavatele</h6>
+                                        <p class="mb-0 text-muted small">Správa cen za dodávku elektřiny</p>
+                                    </div>
+                                    <div class="flex-shrink-0">
+                                        <i class="bi bi-chevron-right text-muted"></i>
+                                    </div>
+                                </div>
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Fakturace -->
+            <div class="col-12 mb-4">
+                <div class="card-custom">
+                    <div class="card-header-custom">
+                        <h5 class="card-title">
+                            <i class="bi bi-receipt icon-danger me-2"></i>
+                            Fakturace
+                        </h5>
+                    </div>
+                    <div class="card-body p-4">
+                        <div class="row">
+                            <div class="col-lg-4 mb-3">
+                                <a href="{{ url_for('fakturace.fakturace', stredisko_id=stredisko.id) }}" 
+                                   class="text-decoration-none">
+                                    <div class="d-flex align-items-center p-3 border rounded-3 h-100 hover-shadow">
+                                        <div class="flex-shrink-0">
+                                            <i class="bi bi-file-earmark-text icon-primary" style="font-size: 2rem;"></i>
+                                        </div>
+                                        <div class="flex-grow-1 ms-3">
+                                            <h6 class="mb-1">Hlavní přehled</h6>
+                                            <p class="mb-0 text-muted small">Celkový přehled fakturace</p>
+                                        </div>
+                                    </div>
+                                </a>
+                            </div>
+                            <div class="col-lg-4 mb-3">
+                                <a href="{{ url_for('fakturace.subjekty_fakturace', stredisko_id=stredisko.id) }}" 
+                                   class="text-decoration-none">
+                                    <div class="d-flex align-items-center p-3 border rounded-3 h-100 hover-shadow">
+                                        <div class="flex-shrink-0">
+                                            <i class="bi bi-people icon-warning" style="font-size: 2rem;"></i>
+                                        </div>
+                                        <div class="flex-grow-1 ms-3">
+                                            <h6 class="mb-1">Subjekty fakturace</h6>
+                                            <p class="mb-0 text-muted small">Dodavatel, odběratel, vystavovatel</p>
+                                        </div>
+                                    </div>
+                                </a>
+                            </div>
+                            <div class="col-lg-4 mb-3">
+                                <a href="{{ url_for('odecty.odecty', stredisko_id=stredisko.id) }}" 
+                                   class="text-decoration-none">
+                                    <div class="d-flex align-items-center p-3 border rounded-3 h-100 hover-shadow">
+                                        <div class="flex-shrink-0">
+                                            <i class="bi bi-upload icon-success" style="font-size: 2rem;"></i>
+                                        </div>
+                                        <div class="flex-grow-1 ms-3">
+                                            <h6 class="mb-1">Import odečtů</h6>
+                                            <p class="mb-0 text-muted small">Import a správa odečtů</p>
+                                        </div>
+                                    </div>
+                                </a>
+                            </div>
+                            <div class="col-lg-4 mb-3">
+                                <a href="{{ url_for('odecty.kontrola_odectu', stredisko_id=stredisko.id) }}" 
+                                   class="text-decoration-none">
+                                    <div class="d-flex align-items-center p-3 border rounded-3 h-100 hover-shadow">
+                                        <div class="flex-shrink-0">
+                                            <i class="bi bi-search icon-info" style="font-size: 2rem;"></i>
+                                        </div>
+                                        <div class="flex-grow-1 ms-3">
+                                            <h6 class="mb-1">Kontrola odečtů</h6>
+                                            <p class="mb-0 text-muted small">Kontrola a ověření odečtů</p>
+                                        </div>
+                                    </div>
+                                </a>
+                            </div>
+                            <div class="col-lg-4 mb-3">
+                                <a href="{{ url_for('fakturace.koncove_ceny', stredisko_id=stredisko.id) }}" 
+                                   class="text-decoration-none">
+                                    <div class="d-flex align-items-center p-3 border rounded-3 h-100 hover-shadow">
+                                        <div class="flex-shrink-0">
+                                            <i class="bi bi-calculator icon-danger" style="font-size: 2rem;"></i>
+                                        </div>
+                                        <div class="flex-grow-1 ms-3">
+                                            <h6 class="mb-1">Koncové ceny</h6>
+                                            <p class="mb-0 text-muted small">Výpočet koncových cen</p>
+                                        </div>
+                                    </div>
+                                </a>
+                            </div>
+                            <div class="col-lg-4 mb-3">
+                                <a href="{{ url_for('fakturace.parametry_fakturace', stredisko_id=stredisko.id) }}" 
+                                   class="text-decoration-none">
+                                    <div class="d-flex align-items-center p-3 border rounded-3 h-100 hover-shadow">
+                                        <div class="flex-shrink-0">
+                                            <i class="bi bi-gear-fill icon-secondary" style="font-size: 2rem;"></i>
+                                        </div>
+                                        <div class="flex-grow-1 ms-3">
+                                            <h6 class="mb-1">Parametry fakturace</h6>
+                                            <p class="mb-0 text-muted small">Nastavení faktur a záloh</p>
+                                        </div>
+                                    </div>
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_css %}
+<style>
+    .hover-shadow {
+        transition: all 0.2s ease;
+    }
+    
+    .hover-shadow:hover {
+        box-shadow: var(--shadow-lg);
+        transform: translateY(-2px);
+    }
+    
+    .icon-info {
+        color: #0ea5e9;
+    }
+    
+    .icon-secondary {
+        color: var(--secondary-color);
+    }
+</style>
+{% endblock %}="flex-shrink-0">
+                                        <i class="bi bi-lightning-charge icon-warning" style="font-size: 1.5rem;"></i>
+                                    </div>
+                                    <div class="flex-grow-1 ms-3">
+                                        <h6 class="mb-1">Odběrná místa</h6>
+                                        <p class="mb-0 text-muted small">Správa a přehled všech odběrných míst</p>
+                                    </div>
+                                    <div class

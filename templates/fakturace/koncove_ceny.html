@@ -1,0 +1,374 @@
+{% extends "base.html" %}
+
+{% block title %}Koncové ceny - {{ stredisko.nazev_strediska }}{% endblock %}
+
+{% block breadcrumb %}
+<nav aria-label="breadcrumb">
+    <ol class="breadcrumb breadcrumb-custom">
+        <li class="breadcrumb-item">
+            <a href="{{ url_for('strediska') }}">
+                <i class="bi bi-house-door me-1"></i>
+                Střediska
+            </a>
+        </li>
+        <li class="breadcrumb-item">
+            <a href="{{ url_for('spravovat_stredisko', stredisko_id=stredisko.id) }}">
+                {{ stredisko.nazev_strediska }}
+            </a>
+        </li>
+        <li class="breadcrumb-item">
+            <a href="{{ url_for('fakturace.fakturace', stredisko_id=stredisko.id) }}">
+                Fakturace
+            </a>
+        </li>
+        <li class="breadcrumb-item active">Koncové ceny</li>
+    </ol>
+</nav>
+{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-12">
+        <!-- Page Header -->
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <div>
+                <h1 class="h2 mb-1">
+                    <i class="bi bi-calculator icon-danger me-2"></i>
+                    Koncové ceny
+                </h1>
+                <p class="text-muted mb-0">Výpočet koncových cen pro {{ stredisko.nazev_strediska }}</p>
+            </div>
+            <div class="d-flex gap-2">
+                <a href="{{ url_for('fakturace.fakturace', stredisko_id=stredisko.id) }}" 
+                   class="btn btn-outline-primary-custom">
+                    <i class="bi bi-arrow-left me-2"></i>
+                    Zpět na fakturaci
+                </a>
+            </div>
+        </div>
+
+        <!-- Period Selection -->
+        <div class="card-custom mb-4">
+            <div class="card-header-custom">
+                <h5 class="card-title">
+                    <i class="bi bi-calendar-range icon-primary me-2"></i>
+                    Výběr období
+                </h5>
+            </div>
+            <div class="card-body p-4">
+                <form method="get" class="d-flex align-items-center gap-3 flex-wrap">
+                    <label for="obdobi_select" class="form-label-custom mb-0">
+                        <i class="bi bi-calendar me-2"></i>
+                        Koncové ceny pro období:
+                    </label>
+                    <select name="obdobi_id" id="obdobi_select" class="form-select form-control-custom" 
+                            style="width: auto;" onchange="this.form.submit()">
+                        {% for obdobi in vsechna_obdobi %}
+                        <option value="{{ obdobi.id }}" {% if vybrane_obdobi and obdobi.id == vybrane_obdobi.id %}selected{% endif %}>
+                            {{ obdobi.rok }}/{{ '%02d'|format(obdobi.mesic) }}
+                        </option>
+                        {% endfor %}
+                    </select>
+                    {% if vybrane_obdobi %}
+                    <div class="text-muted">
+                        <small>Zobrazené období: <strong>{{ vybrane_obdobi.rok }}/{{ '%02d'|format(vybrane_obdobi.mesic) }}</strong></small>
+                    </div>
+                    {% else %}
+                    <div class="text-danger">
+                        <small><i class="bi bi-exclamation-triangle me-1"></i>Žádné období není vybráno nebo dostupné.</small>
+                    </div>
+                    {% endif %}
+                </form>
+            </div>
+        </div>
+
+        <!-- Actions Section -->
+        <div class="card-custom mb-4">
+            <div class="card-header-custom">
+                <h5 class="card-title">
+                    <i class="bi bi-gear icon-primary me-2"></i>
+                    Akce s koncovými cenami
+                </h5>
+            </div>
+            <div class="card-body p-4">
+                <div class="row align-items-center">
+                    <div class="col-md-8">
+                        <h6 class="mb-2">Správa výpočtů</h6>
+                        <p class="text-muted mb-3">
+                            Přepočítání automaticky vyhledá odpovídající ceny pro každé odběrné místo podle jeho sazby a jističe.
+                        </p>
+                    </div>
+                    <div class="col-md-4 text-md-end">
+                        <div class="d-flex flex-column gap-2">
+                            <a href="{{ url_for('fakturace.prepocitat_koncove_ceny', stredisko_id=stredisko.id) }}" 
+                               class="btn btn-success">
+                                <i class="bi bi-arrow-repeat me-2"></i>
+                                Přepočítat koncové ceny
+                            </a>
+                            {% if vypocty %}
+                            <a href="{{ url_for('fakturace.smazat_vypocty', stredisko_id=stredisko.id) }}" 
+                               onclick="return confirm('Opravdu chcete smazat všechny výpočty?')"
+                               class="btn btn-outline-danger">
+                                <i class="bi bi-trash me-2"></i>
+                                Smazat všechny výpočty
+                            </a>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Results Section -->
+        {% if vypocty %}
+        <div class="card-custom mb-4">
+            <div class="card-header-custom">
+                <h5 class="card-title">
+                    <i class="bi bi-table icon-primary me-2"></i>
+                    Koncové ceny pro odběrná místa ({{ vypocty|length }} míst)
+                </h5>
+            </div>
+            <div class="card-body p-0">
+                <div class="table-responsive">
+                    <table class="table table-sm mb-0" style="font-size: 0.8rem;">
+                        <!-- ✅ VYLEPŠENÉ ZÁHLAVÍ - světle šedé místo tmavého -->
+                        <thead style="background: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%);">
+                            <tr>
+                                <th rowspan="2" class="text-center align-middle" style="color: #1e293b; font-weight: 600; border: 1px solid #cbd5e1;">OM</th>
+                                <th rowspan="2" class="text-center align-middle" style="color: #1e293b; font-weight: 600; border: 1px solid #cbd5e1;">Název</th>
+                                <th rowspan="2" class="text-center align-middle" style="color: #1e293b; font-weight: 600; border: 1px solid #cbd5e1;">Sazba</th>
+                                <th rowspan="2" class="text-center align-middle" style="color: #1e293b; font-weight: 600; border: 1px solid #cbd5e1;">Jistič</th>
+                                <th rowspan="2" class="text-center align-middle" style="color: #1e293b; font-weight: 600; border: 1px solid #cbd5e1;">Poměr období<br>fakturace</th>
+                                <th colspan="8" class="text-center" style="background-color: #e3f2fd; color: #1e293b; font-weight: 600; border: 1px solid #cbd5e1;">Distribuce (Kč/měsíc nebo Kč/MWh)</th>
+                                <th colspan="3" class="text-center" style="background-color: #fff3e0; color: #1e293b; font-weight: 600; border: 1px solid #cbd5e1;">Dodavatel (Kč/měsíc nebo Kč/MWh)</th>
+                                <th colspan="3" class="text-center" style="background-color: #e8f5e8; color: #1e293b; font-weight: 600; border: 1px solid #cbd5e1;">Celkem</th>
+                            </tr>
+                            <tr>
+                                <!-- Distribuce -->
+                                <th class="text-center" style="background-color: #e3f2fd; color: #1e293b; font-weight: 600; border: 1px solid #cbd5e1;">Jistič</th>
+                                <th class="text-center" style="background-color: #e3f2fd; color: #1e293b; font-weight: 600; border: 1px solid #cbd5e1;">Distr. VT</th>
+                                <th class="text-center" style="background-color: #e3f2fd; color: #1e293b; font-weight: 600; border: 1px solid #cbd5e1;">Distr. NT</th>
+                                <th class="text-center" style="background-color: #e3f2fd; color: #1e293b; font-weight: 600; border: 1px solid #cbd5e1;">Syst. služby</th>
+                                <th class="text-center" style="background-color: #e3f2fd; color: #1e293b; font-weight: 600; border: 1px solid #cbd5e1;">POZE jistič</th>
+                                <th class="text-center" style="background-color: #e3f2fd; color: #1e293b; font-weight: 600; border: 1px solid #cbd5e1;">POZE spot.</th>
+                                <th class="text-center" style="background-color: #e3f2fd; color: #1e293b; font-weight: 600; border: 1px solid #cbd5e1;">Nesíť. infr.</th>
+                                <th class="text-center" style="background-color: #e3f2fd; color: #1e293b; font-weight: 600; border: 1px solid #cbd5e1;">Daň elektř.</th>
+                                <!-- Dodavatel -->
+                                <th class="text-center" style="background-color: #fff3e0; color: #1e293b; font-weight: 600; border: 1px solid #cbd5e1;">Elektř. VT</th>
+                                <th class="text-center" style="background-color: #fff3e0; color: #1e293b; font-weight: 600; border: 1px solid #cbd5e1;">Elektř. NT</th>
+                                <th class="text-center" style="background-color: #fff3e0; color: #1e293b; font-weight: 600; border: 1px solid #cbd5e1;">Měs. plat</th>
+                                <!-- Celkem -->
+                                <th class="text-center" style="background-color: #e8f5e8; color: #1e293b; font-weight: 600; border: 1px solid #cbd5e1;">Bez DPH</th>
+                                <th class="text-center" style="background-color: #e8f5e8; color: #1e293b; font-weight: 600; border: 1px solid #cbd5e1;">DPH</th>
+                                <th class="text-center" style="background-color: #e8f5e8; color: #1e293b; font-weight: 600; border: 1px solid #cbd5e1;">S DPH</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for vypocet in vypocty %}
+                            <tr>
+                                <!-- Info o OM -->
+                                <td class="text-center" style="background-color: #f5f5f5;">
+                                    <div class="d-flex align-items-center justify-content-center">
+                                        <i class="bi bi-lightning-charge icon-warning me-1"></i>
+                                        <strong>{{ vypocet.odberne_misto.cislo_om }}</strong>
+                                    </div>
+                                </td>
+                                <td style="background-color: #f5f5f5;">{{ vypocet.odberne_misto.nazev_om }}</td>
+                                <td class="text-center" style="background-color: #f5f5f5;">
+                                    <span class="badge bg-primary">{{ vypocet.odberne_misto.distribucni_sazba_om }}</span>
+                                </td>
+                                <td class="text-center" style="background-color: #f5f5f5;">{{ vypocet.odberne_misto.hodnota_jistice_om }}</td>
+                                <td class="text-center" style="background-color: #f5f5f5;">
+                                    {% if vypocet.delka_obdobi_fakturace %}
+                                        {{ "%.3f"|format(vypocet.delka_obdobi_fakturace) }}
+                                    {% else %}
+                                        -
+                                    {% endif %}
+                                </td>
+                                
+                                <!-- Distribuce -->
+                                <td class="text-end" style="background-color: #f3f9ff;">{{ "%.2f"|format(vypocet.platba_za_jistic or 0) }}</td>
+                                <td class="text-end" style="background-color: #f3f9ff;">{{ "%.2f"|format(vypocet.platba_za_distribuci_vt or 0) }}</td>
+                                <td class="text-end" style="background-color: #f3f9ff;">{{ "%.2f"|format(vypocet.platba_za_distribuci_nt or 0) }}</td>
+                                <td class="text-end" style="background-color: #f3f9ff;">{{ "%.2f"|format(vypocet.systemove_sluzby or 0) }}</td>
+                                <td class="text-end" style="background-color: #f3f9ff;">{{ "%.2f"|format(vypocet.poze_dle_jistice or 0) }}</td>
+                                <td class="text-end" style="background-color: #f3f9ff;">{{ "%.2f"|format(vypocet.poze_dle_spotreby or 0) }}</td>
+                                <td class="text-end" style="background-color: #f3f9ff;">{{ "%.2f"|format(vypocet.nesitova_infrastruktura or 0) }}</td>
+                                <td class="text-end" style="background-color: #f3f9ff;">{{ "%.2f"|format(vypocet.dan_z_elektriny or 0) }}</td>
+                                
+                                <!-- Dodavatel -->
+                                <td class="text-end" style="background-color: #fffaf0;">{{ "%.2f"|format(vypocet.platba_za_elektrinu_vt or 0) }}</td>
+                                <td class="text-end" style="background-color: #fffaf0;">{{ "%.2f"|format(vypocet.platba_za_elektrinu_nt or 0) }}</td>
+                                <td class="text-end" style="background-color: #fffaf0;">{{ "%.2f"|format(vypocet.mesicni_plat or 0) }}</td>
+                                
+                                <!-- Celkem -->
+                                <td class="text-end fw-bold" style="background-color: #f8fff8;">{{ "%.2f"|format(vypocet.zaklad_bez_dph or 0) }}</td>
+                                <td class="text-end fw-bold" style="background-color: #f8fff8;">{{ "%.2f"|format(vypocet.castka_dph or 0) }}</td>
+                                <td class="text-end fw-bold" style="background-color: #f8fff8;">{{ "%.2f"|format(vypocet.celkem_vc_dph or 0) }}</td>
+                            </tr>
+                            {% endfor %}
+                            
+                            <!-- ✅ SUMA ŘÁDEK -->
+                            <tr style="background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%); font-weight: 600;">
+                                <td class="text-center fw-bold" colspan="5" style="border: 1px solid #d97706;">
+                                    <i class="bi bi-calculator me-2"></i>
+                                    CELKEM ZA VŠECHNA MÍSTA
+                                </td>
+                                <!-- Distribuce sumy -->
+                                <td class="text-end fw-bold" style="border: 1px solid #d97706;">{{ "%.2f"|format(vypocty|safe_sum('platba_za_jistic')) }}</td>
+                                <td class="text-end fw-bold" style="border: 1px solid #d97706;">{{ "%.2f"|format(vypocty|safe_sum('platba_za_distribuci_vt')) }}</td>
+                                <td class="text-end fw-bold" style="border: 1px solid #d97706;">{{ "%.2f"|format(vypocty|safe_sum('platba_za_distribuci_nt')) }}</td>
+                                <td class="text-end fw-bold" style="border: 1px solid #d97706;">{{ "%.2f"|format(vypocty|safe_sum('systemove_sluzby')) }}</td>
+                                <td class="text-end fw-bold" style="border: 1px solid #d97706;">{{ "%.2f"|format(vypocty|safe_sum('poze_dle_jistice')) }}</td>
+                                <td class="text-end fw-bold" style="border: 1px solid #d97706;">{{ "%.2f"|format(vypocty|safe_sum('poze_dle_spotreby')) }}</td>
+                                <td class="text-end fw-bold" style="border: 1px solid #d97706;">{{ "%.2f"|format(vypocty|safe_sum('nesitova_infrastruktura')) }}</td>
+                                <td class="text-end fw-bold" style="border: 1px solid #d97706;">{{ "%.2f"|format(vypocty|safe_sum('dan_z_elektriny')) }}</td>
+                                <!-- Dodavatel sumy -->
+                                <td class="text-end fw-bold" style="border: 1px solid #d97706;">{{ "%.2f"|format(vypocty|safe_sum('platba_za_elektrinu_vt')) }}</td>
+                                <td class="text-end fw-bold" style="border: 1px solid #d97706;">{{ "%.2f"|format(vypocty|safe_sum('platba_za_elektrinu_nt')) }}</td>
+                                <td class="text-end fw-bold" style="border: 1px solid #d97706;">{{ "%.2f"|format(vypocty|safe_sum('mesicni_plat')) }}</td>
+                                <!-- Celkem sumy -->
+                                <td class="text-end fw-bold" style="border: 1px solid #d97706; font-size: 1rem;">{{ "%.2f"|format(vypocty|safe_sum('zaklad_bez_dph')) }}</td>
+                                <td class="text-end fw-bold" style="border: 1px solid #d97706; font-size: 1rem;">{{ "%.2f"|format(vypocty|safe_sum('castka_dph')) }}</td>
+                                <td class="text-end fw-bold" style="border: 1px solid #d97706; font-size: 1rem;">{{ "%.2f"|format(vypocty|safe_sum('celkem_vc_dph')) }}</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+            <div class="card-footer">
+                <div class="alert alert-success-custom alert-custom mb-0">
+                    <i class="bi bi-check-circle-fill me-2"></i>
+                    Koncové ceny jsou vypočítané a připravené pro fakturaci.
+                </div>
+            </div>
+        </div>
+        {% else %}
+        <!-- Requirements Check & Empty State -->
+        <div class="card-custom">
+            <div class="card-header-custom">
+                <h5 class="card-title">
+                    <i class="bi bi-exclamation-triangle icon-warning me-2"></i>
+                    Žádné koncové ceny
+                </h5>
+            </div>
+            <div class="card-body p-4">
+                <p class="mb-4">Pro toto středisko zatím nejsou vypočítané koncové ceny.</p>
+                
+                <h6 class="mb-3">Pro výpočet koncových cen potřebujete:</h6>
+                <div class="row">
+                    <div class="col-md-4 mb-3">
+                        <div class="d-flex align-items-center p-3 border rounded">
+                            <div class="flex-shrink-0">
+                                <i class="bi bi-check-circle-fill icon-success" style="font-size: 1.5rem;"></i>
+                            </div>
+                            <div class="flex-grow-1 ms-3">
+                                <h6 class="mb-1">Odběrná místa</h6>
+                                <p class="mb-0 text-muted">{{ odberna_mista|length }} míst je k dispozici</p>
+                                <a href="{{ url_for('prehled_odbernych_mist', stredisko_id=stredisko.id) }}" class="btn btn-sm btn-outline-primary mt-2">Spravovat</a>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-4 mb-3">
+                        <div class="d-flex align-items-center p-3 border rounded">
+                            <div class="flex-shrink-0">
+                                {% if ma_ceny_distribuce %}
+                                    <i class="bi bi-check-circle-fill icon-success" style="font-size: 1.5rem;"></i>
+                                {% else %}
+                                    <i class="bi bi-x-circle-fill icon-danger" style="font-size: 1.5rem;"></i>
+                                {% endif %}
+                            </div>
+                            <div class="flex-grow-1 ms-3">
+                                <h6 class="mb-1">Ceny distribuce</h6>
+                                <p class="mb-0 text-muted">{{ pocet_cen_distribuce }} záznamů</p>
+                                <a href="{{ url_for('ceny_distribuce', stredisko_id=stredisko.id) }}" class="btn btn-sm {% if ma_ceny_distribuce %}btn-outline-primary{% else %}btn-outline-danger{% endif %} mt-2">
+                                    {% if ma_ceny_distribuce %}Spravovat{% else %}Nastavit{% endif %}
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-4 mb-3">
+                        <div class="d-flex align-items-center p-3 border rounded">
+                            <div class="flex-shrink-0">
+                                {% if ma_ceny_dodavatele %}
+                                    <i class="bi bi-check-circle-fill icon-success" style="font-size: 1.5rem;"></i>
+                                {% else %}
+                                    <i class="bi bi-x-circle-fill icon-danger" style="font-size: 1.5rem;"></i>
+                                {% endif %}
+                            </div>
+                            <div class="flex-grow-1 ms-3">
+                                <h6 class="mb-1">Ceny dodavatele</h6>
+                                <p class="mb-0 text-muted">{{ pocet_cen_dodavatele }} záznamů</p>
+                                <a href="{{ url_for('ceny_dodavatele', stredisko_id=stredisko.id) }}" class="btn btn-sm {% if ma_ceny_dodavatele %}btn-outline-primary{% else %}btn-outline-danger{% endif %} mt-2">
+                                    {% if ma_ceny_dodavatele %}Spravovat{% else %}Nastavit{% endif %}
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                {% if ma_ceny_distribuce and ma_ceny_dodavatele and odberna_mista %}
+                <div class="alert alert-success-custom alert-custom mt-4">
+                    <i class="bi bi-check-circle-fill me-2"></i>
+                    <strong>Vše je připraveno!</strong> Klikněte na "Přepočítat koncové ceny" výše.
+                </div>
+                {% else %}
+                <div class="alert alert-warning-custom alert-custom mt-4">
+                    <i class="bi bi-exclamation-triangle-fill me-2"></i>
+                    <strong>Nejprve doplňte chybějící data</strong> pomocí tlačítek výše.
+                </div>
+                {% endif %}
+            </div>
+        </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_css %}
+<style>
+    /* Custom table styling for complex layout */
+    .table th {
+        font-size: 0.75rem;
+        white-space: nowrap;
+        vertical-align: middle;
+        padding: 0.5rem 0.25rem;
+    }
+    
+    .table td {
+        font-size: 0.75rem;
+        vertical-align: middle;
+        padding: 0.4rem 0.25rem;
+    }
+    
+    .fw-bold {
+        font-weight: 600;
+    }
+    
+    /* Badge styling */
+    .badge {
+        font-size: 0.7rem;
+        padding: 0.25rem 0.5rem;
+    }
+    
+    /* Responsive table adjustments */
+    @media (max-width: 1200px) {
+        .table {
+            font-size: 0.7rem;
+        }
+        .table th, .table td {
+            padding: 0.3rem 0.2rem;
+        }
+    }
+    
+    /* Card requirements styling */
+    .border {
+        border-color: var(--border-color) !important;
+    }
+    
+    .border:hover {
+        box-shadow: var(--shadow);
+        transition: all 0.2s ease;
+    }
+</style>
+{% endblock %}

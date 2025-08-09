@@ -1,0 +1,360 @@
+{% extends "base.html" %}
+
+{% block title %}Správa uživatelů{% endblock %}
+
+{% block breadcrumb %}
+<nav aria-label="breadcrumb">
+    <ol class="breadcrumb breadcrumb-custom">
+        <li class="breadcrumb-item">
+            <a href="{{ url_for('strediska') }}">
+                <i class="bi bi-house-door me-1"></i>
+                Střediska
+            </a>
+        </li>
+        <li class="breadcrumb-item active">Správa uživatelů</li>
+    </ol>
+</nav>
+{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-12">
+        <!-- Page Header -->
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <div>
+                <h1 class="h2 mb-1">
+                    <i class="bi bi-people icon-primary me-2"></i>
+                    Správa uživatelů
+                </h1>
+                <p class="text-muted mb-0">Přehled všech uživatelů v systému</p>
+            </div>
+            <div class="d-flex gap-2">
+                <button class="btn btn-success" onclick="showCreateUserModal()">
+                    <i class="bi bi-person-plus me-2"></i>
+                    Přidat uživatele
+                </button>
+                <a href="{{ url_for('strediska') }}" class="btn btn-outline-primary-custom">
+                    <i class="bi bi-arrow-left me-2"></i>
+                    Zpět na střediska
+                </a>
+            </div>
+        </div>
+
+        <!-- Statistics Cards -->
+        <div class="row mb-4">
+            <div class="col-md-3">
+                <div class="stats-card">
+                    <div class="stats-value">{{ users|length }}</div>
+                    <div class="stats-label">Celkem uživatelů</div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="stats-card" style="border-left-color: var(--success-color);">
+                    <div class="stats-value" style="color: var(--success-color);">
+                        {{ users|selectattr('is_active')|list|length }}
+                    </div>
+                    <div class="stats-label">Aktivních</div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="stats-card" style="border-left-color: var(--warning-color);">
+                    <div class="stats-value" style="color: var(--warning-color);">
+                        {{ users|selectattr('is_admin')|list|length }}
+                    </div>
+                    <div class="stats-label">Administrátorů</div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="stats-card" style="border-left-color: #ef4444;">
+                    <div class="stats-value" style="color: #ef4444;">
+                        {{ users|rejectattr('is_active')|list|length }}
+                    </div>
+                    <div class="stats-label">Neaktivních</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Users Table -->
+        <div class="card-custom">
+            <div class="card-header-custom">
+                <h5 class="card-title">
+                    <i class="bi bi-table icon-primary me-2"></i>
+                    Uživatelé systému ({{ users|length }})
+                </h5>
+            </div>
+            <div class="card-body p-0">
+                <div class="table-responsive">
+                    <table class="table table-custom mb-0">
+                        <thead>
+                            <tr>
+                                <th class="ps-4">Uživatel</th>
+                                <th>Email</th>
+                                <th class="text-center">Střediska</th>
+                                <th class="text-center">Vytvořen</th>
+                                <th class="text-center">Poslední přihlášení</th>
+                                <th class="text-center">Status</th>
+                                <th class="pe-4 text-center">Akce</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for user in users %}
+                            <tr>
+                                <td class="ps-4">
+                                    <div class="d-flex align-items-center">
+                                        {% if user.is_admin %}
+                                            <i class="bi bi-shield-fill-check icon-warning me-2"></i>
+                                        {% else %}
+                                            <i class="bi bi-person-circle icon-primary me-2"></i>
+                                        {% endif %}
+                                        <div>
+                                            <strong>{{ user.email }}</strong>
+                                            <br><small class="text-muted">ID: {{ user.id }}</small>
+                                        </div>
+                                    </div>
+                                </td>
+                                <td>
+                                    <span class="text-primary">{{ user.email }}</span>
+                                </td>
+                                <td class="text-center">
+                                    <span class="badge bg-info">
+                                        {{ user.strediska|length if user.strediska else 0 }}
+                                    </span>
+                                </td>
+                                <td class="text-center">
+                                    {% if user.created_at %}
+                                        <small>{{ user.created_at.strftime('%d.%m.%Y') }}</small>
+                                    {% else %}
+                                        <small class="text-muted">Neznámé</small>
+                                    {% endif %}
+                                </td>
+                                <td class="text-center">
+                                    {% if user.last_login %}
+                                        <small>{{ user.last_login.strftime('%d.%m.%Y %H:%M') }}</small>
+                                    {% else %}
+                                        <small class="text-muted">Nikdy</small>
+                                    {% endif %}
+                                </td>
+                                <td class="text-center">
+                                    <!-- ✅ OPRAVENO: používá user.is_active místo email kontroly -->
+                                    {% if user.is_active %}
+                                        <span class="badge bg-success">Aktivní</span>
+                                    {% else %}
+                                        <span class="badge bg-danger">Neaktivní</span>
+                                    {% endif %}
+                                    
+                                    {% if user.is_admin %}
+                                        <span class="badge bg-warning">Admin</span>
+                                    {% endif %}
+                                </td>
+                                <td class="pe-4 text-center">
+                                    <div class="btn-group btn-group-sm">
+                                        {% if not user.is_admin %}
+                                            <button class="btn btn-outline-primary btn-edit-user" 
+                                                    data-user-id="{{ user.id }}" 
+                                                    data-email="{{ user.email }}"
+                                                    data-is-active="{{ user.is_active|lower }}"
+                                                    title="Editovat uživatele">
+                                                <i class="bi bi-pencil"></i>
+                                            </button>
+                                            <button class="btn btn-outline-warning btn-reset-password" 
+                                                    data-user-id="{{ user.id }}" 
+                                                    data-email="{{ user.email }}"
+                                                    title="Reset hesla">
+                                                <i class="bi bi-key"></i>
+                                            </button>
+                                            <button class="btn btn-outline-success btn-manage-strediska" 
+                                                    data-user-id="{{ user.id }}" 
+                                                    data-email="{{ user.email }}"
+                                                    title="Správa středisek">
+                                                <i class="bi bi-building"></i>
+                                            </button>
+                                        {% else %}
+                                            <span class="text-muted small">Administrátor</span>
+                                        {% endif %}
+                                    </div>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal pro vytvoření uživatele -->
+<div class="modal fade" id="createUserModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">
+                    <i class="bi bi-person-plus me-2"></i>
+                    Přidat nového uživatele
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <form method="post" id="createUserForm">
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label for="new_email" class="form-label-custom">
+                            <i class="bi bi-envelope me-2"></i>
+                            Email
+                        </label>
+                        <input type="email" class="form-control form-control-custom" 
+                               id="new_email" name="email" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="new_password" class="form-label-custom">
+                            <i class="bi bi-key me-2"></i>
+                            Heslo
+                        </label>
+                        <input type="password" class="form-control form-control-custom" 
+                               id="new_password" name="password" required>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Zrušit</button>
+                    <button type="submit" class="btn btn-primary-custom">
+                        <i class="bi bi-save me-2"></i>
+                        Vytvořit uživatele
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Modal pro editaci uživatele -->
+<div class="modal fade" id="editUserModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">
+                    <i class="bi bi-pencil me-2"></i>
+                    Editovat uživatele
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <form method="post" id="editUserForm">
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label for="edit_email" class="form-label-custom">
+                            <i class="bi bi-envelope me-2"></i>
+                            Email
+                        </label>
+                        <input type="email" class="form-control form-control-custom" 
+                               id="edit_email" name="email" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="edit_password" class="form-label-custom">
+                            <i class="bi bi-key me-2"></i>
+                            Nové heslo (volitelné)
+                        </label>
+                        <input type="password" class="form-control form-control-custom" 
+                               id="edit_password" name="password">
+                        <div class="form-text">Ponechte prázdné pro zachování současného hesla</div>
+                    </div>
+                    
+                    <!-- ✅ PŘIDÁNO: Checkbox pro aktivaci/deaktivaci -->
+                    <div class="mb-3">
+                        <div class="form-check form-switch">
+                            <input class="form-check-input" 
+                                   type="checkbox" 
+                                   id="edit_is_active" 
+                                   name="is_active">
+                            <label class="form-check-label" for="edit_is_active">
+                                <i class="bi bi-power me-2"></i>
+                                <strong>Aktivní uživatel</strong>
+                            </label>
+                        </div>
+                        <div class="form-text">
+                            Deaktivovaní uživatelé se nemohou přihlásit do systému
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Zrušit</button>
+                    <button type="submit" class="btn btn-primary-custom">
+                        <i class="bi bi-save me-2"></i>
+                        Uložit změny
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    // Event listenery místo inline onClick
+    document.addEventListener('DOMContentLoaded', function() {
+        // Edit user buttons
+        document.querySelectorAll('.btn-edit-user').forEach(button => {
+            button.addEventListener('click', function() {
+                const userId = this.dataset.userId;
+                const email = this.dataset.email;
+                const isActive = this.dataset.isActive === 'true';
+                showEditUserModal(userId, email, isActive);
+            });
+        });
+
+        // Reset password buttons
+        document.querySelectorAll('.btn-reset-password').forEach(button => {
+            button.addEventListener('click', function() {
+                const userId = this.dataset.userId;
+                const email = this.dataset.email;
+                resetPassword(userId, email);
+            });
+        });
+
+        // Manage strediska buttons
+        document.querySelectorAll('.btn-manage-strediska').forEach(button => {
+            button.addEventListener('click', function() {
+                const userId = this.dataset.userId;
+                const email = this.dataset.email;
+                manageStrediska(userId, email);
+            });
+        });
+    });
+
+    function showCreateUserModal() {
+        document.getElementById('createUserForm').action = '{{ url_for("admin_users") }}';
+        new bootstrap.Modal(document.getElementById('createUserModal')).show();
+    }
+
+    function showEditUserModal(userId, email, isActive) {
+        document.getElementById('edit_email').value = email;
+        document.getElementById('edit_password').value = '';
+        document.getElementById('edit_is_active').checked = isActive;
+        document.getElementById('editUserForm').action = '/admin/users/' + userId + '/edit';
+        new bootstrap.Modal(document.getElementById('editUserModal')).show();
+    }
+
+    function resetPassword(userId, email) {
+        if (confirm('Opravdu chcete resetovat heslo pro uživatele ' + email + '?\nBude vygenerováno náhodné heslo.')) {
+            fetch('/admin/users/' + userId + '/reset-password', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                }
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    alert('Nové heslo pro ' + email + ': ' + data.new_password + '\n\nUložte si ho!');
+                    location.reload();
+                } else {
+                    alert('Chyba: ' + data.message);
+                }
+            });
+        }
+    }
+
+    function manageStrediska(userId, email) {
+        alert('Správa středisek pro uživatele ' + email + ' bude implementována v příští verzi.');
+        // Zde později přidáme modal pro správu středisek
+    }
+</script>
+{% endblock %}

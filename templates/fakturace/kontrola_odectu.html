@@ -1,0 +1,368 @@
+{% extends "base.html" %}
+
+{% block title %}Kontrola odečtů - {{ stredisko.nazev_strediska }}{% endblock %}
+
+{% block breadcrumb %}
+<nav aria-label="breadcrumb">
+    <ol class="breadcrumb breadcrumb-custom">
+        <li class="breadcrumb-item">
+            <a href="{{ url_for('strediska') }}">
+                <i class="bi bi-house-door me-1"></i>
+                Střediska
+            </a>
+        </li>
+        <li class="breadcrumb-item">
+            <a href="{{ url_for('spravovat_stredisko', stredisko_id=stredisko.id) }}">
+                {{ stredisko.nazev_strediska }}
+            </a>
+        </li>
+        <li class="breadcrumb-item">
+            <a href="{{ url_for('fakturace.fakturace', stredisko_id=stredisko.id) }}">
+                Fakturace
+            </a>
+        </li>
+        <li class="breadcrumb-item active">Kontrola odečtů</li>
+    </ol>
+</nav>
+{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-12">
+        <!-- Page Header -->
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <div>
+                <h1 class="h2 mb-1">
+                    <i class="bi bi-search icon-info me-2"></i>
+                    Kontrola odečtů
+                </h1>
+                <p class="text-muted mb-0">Kontrola a ověření zpracovaných odečtů pro {{ stredisko.nazev_strediska }}</p>
+            </div>
+            <div class="d-flex gap-2">
+                <a href="{{ url_for('odecty.odecty', stredisko_id=stredisko.id) }}" 
+                   class="btn btn-outline-primary-custom">
+                    <i class="bi bi-upload me-2"></i>
+                    Import odečtů
+                </a>
+                <a href="{{ url_for('fakturace.fakturace', stredisko_id=stredisko.id) }}" 
+                   class="btn btn-outline-primary-custom">
+                    <i class="bi bi-arrow-left me-2"></i>
+                    Zpět na fakturaci
+                </a>
+            </div>
+        </div>
+
+        <!-- Period Selection -->
+        <div class="card-custom mb-4">
+            <div class="card-header-custom">
+                <h5 class="card-title">
+                    <i class="bi bi-calendar-range icon-primary me-2"></i>
+                    Výběr období
+                </h5>
+            </div>
+            <div class="card-body p-4">
+                <form method="get" class="d-flex align-items-center gap-3 flex-wrap">
+                    <label for="obdobi_select" class="form-label-custom mb-0">
+                        <i class="bi bi-calendar me-2"></i>
+                        Kontrola odečtů pro období:
+                    </label>
+                    <select name="obdobi_id" id="obdobi_select" class="form-select form-control-custom" 
+                            style="width: auto;" onchange="this.form.submit()">
+                        {% for obdobi in vsechna_obdobi %}
+                        <option value="{{ obdobi.id }}" {% if vybrane_obdobi and obdobi.id == vybrane_obdobi.id %}selected{% endif %}>
+                            {{ obdobi.rok }}/{{ '%02d'|format(obdobi.mesic) }}
+                        </option>
+                        {% endfor %}
+                    </select>
+                    {% if vybrane_obdobi %}
+                    <div class="text-muted">
+                        <small>Zobrazené období: <strong>{{ vybrane_obdobi.rok }}/{{ '%02d'|format(vybrane_obdobi.mesic) }}</strong></small>
+                    </div>
+                    {% else %}
+                    <div class="text-danger">
+                        <small><i class="bi bi-exclamation-triangle me-1"></i>Žádné období není vybráno nebo dostupné.</small>
+                    </div>
+                    {% endif %}
+                </form>
+            </div>
+        </div>
+
+        {% if vybrane_obdobi %}
+        <!-- Statistics Cards -->
+        {% if odecty %}
+        <div class="row mb-4">
+            <!-- Celkem odečtů -->
+            <div class="col-md-3">
+                <div class="stats-card">
+                    <div class="stats-value">{{ odecty|length }}</div>
+                    <div class="stats-label">Celkem odečtů</div>
+                </div>
+            </div>
+            
+            <!-- Suma VT -->
+            <div class="col-md-3">
+                <div class="stats-card" style="border-left-color: var(--success-color);">
+                    {% set suma_vt = namespace(value=0) %}
+                    {% for odecet in odecty %}
+                        {% if odecet.spotreba_vt is not none %}
+                            {% set suma_vt.value = suma_vt.value + (odecet.spotreba_vt|float) %}
+                        {% endif %}
+                    {% endfor %}
+                    <div class="stats-value" style="color: var(--success-color);">{{ suma_vt.value|round(0)|int }}</div>
+                    <div class="stats-label">Spotřeba VT (kWh)</div>
+                </div>
+            </div>
+            
+            <!-- Suma NT -->
+            <div class="col-md-3">
+                <div class="stats-card" style="border-left-color: #0ea5e9;">
+                    {% set suma_nt = namespace(value=0) %}
+                    {% for odecet in odecty %}
+                        {% if odecet.spotreba_nt is not none %}
+                            {% set suma_nt.value = suma_nt.value + (odecet.spotreba_nt|float) %}
+                        {% endif %}
+                    {% endfor %}
+                    <div class="stats-value" style="color: #0ea5e9;">{{ suma_nt.value|round(0)|int }}</div>
+                    <div class="stats-label">Spotřeba NT (kWh)</div>
+                </div>
+            </div>
+            
+            <!-- Celková spotřeba -->
+            <div class="col-md-3">
+                <div class="stats-card" style="border-left-color: var(--warning-color);">
+                    <div class="stats-value" style="color: var(--warning-color);">{{ (suma_vt.value + suma_nt.value)|round(0)|int }}</div>
+                    <div class="stats-label">Celková spotřeba (kWh)</div>
+                </div>
+            </div>
+        </div>
+        {% endif %}
+
+        <!-- Data Table -->
+        {% if odecty %}
+        <div class="card-custom">
+            <div class="card-header-custom">
+                <h5 class="card-title">
+                    <i class="bi bi-table icon-primary me-2"></i>
+                    Zpracované odečty pro {{ vybrane_obdobi.rok }}/{{ '%02d'|format(vybrane_obdobi.mesic) }} ({{ odecty|length }} odečtů)
+                </h5>
+            </div>
+            <div class="card-body p-0">
+                <div class="table-responsive">
+                    <table class="table table-custom mb-0">
+                        <thead>
+                            <tr>
+                                <th class="ps-4">Označení OM</th>
+                                <th>Období měření</th>
+                                <th class="text-end">Počátek VT</th>
+                                <th class="text-end">Odečet VT</th>
+                                <th class="text-end">Spotřeba VT<br><small class="text-muted">(kWh)</small></th>
+                                <th class="text-end">Počátek NT</th>
+                                <th class="text-end">Odečet NT</th>
+                                <th class="text-end">Spotřeba NT<br><small class="text-muted">(kWh)</small></th>
+                                <th class="text-end">Dofakturace</th>
+                                <th class="text-end">Bonus</th>
+                                <th class="pe-4">Příznak</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for odecet in odecty %}
+                            <tr>
+                                <td class="ps-4">
+                                    <div class="d-flex align-items-center">
+                                        <i class="bi bi-lightning-charge icon-warning me-2"></i>
+                                        <strong>{{ odecet.oznaceni }}</strong>
+                                    </div>
+                                </td>
+                                <td>
+                                    {% if odecet.zacatek_periody_mereni and odecet.konec_periody_mereni %}
+                                    <div class="d-flex flex-column">
+                                        <span class="fw-medium">{{ odecet.zacatek_periody_mereni.strftime('%d.%m.%Y') }}</span>
+                                        <small class="text-muted">{{ odecet.konec_periody_mereni.strftime('%d.%m.%Y') }}</small>
+                                    </div>
+                                    {% else %}
+                                    <span class="text-muted">-</span>
+                                    {% endif %}
+                                </td>
+                                <!-- VT hodnoty -->
+                                <td class="text-end">
+                                    {% if odecet.pocatecni_hodnota_vt is not none %}
+                                        <span class="fw-medium">{{ (odecet.pocatecni_hodnota_vt|float)|round(0)|int }}</span>
+                                    {% else %}
+                                        <span class="text-muted">-</span>
+                                    {% endif %}
+                                </td>
+                                <td class="text-end">
+                                    {% if odecet.hodnota_odectu_vt is not none %}
+                                        <span class="fw-medium">{{ (odecet.hodnota_odectu_vt|float)|round(0)|int }}</span>
+                                    {% else %}
+                                        <span class="text-muted">-</span>
+                                    {% endif %}
+                                </td>
+                                <td class="text-end">
+                                    {% if odecet.spotreba_vt is not none %}
+                                        <span class="fw-medium text-success">{{ (odecet.spotreba_vt|float)|round(0)|int }}</span>
+                                    {% else %}
+                                        <span class="text-muted">-</span>
+                                    {% endif %}
+                                </td>
+                                <!-- NT hodnoty -->
+                                <td class="text-end">
+                                    {% if odecet.pocatecni_hodnota_nt is not none %}
+                                        <span class="fw-medium">{{ (odecet.pocatecni_hodnota_nt|float)|round(0)|int }}</span>
+                                    {% else %}
+                                        <span class="text-muted">-</span>
+                                    {% endif %}
+                                </td>
+                                <td class="text-end">
+                                    {% if odecet.hodnota_odectu_nt is not none %}
+                                        <span class="fw-medium">{{ (odecet.hodnota_odectu_nt|float)|round(0)|int }}</span>
+                                    {% else %}
+                                        <span class="text-muted">-</span>
+                                    {% endif %}
+                                </td>
+                                <td class="text-end">
+                                    {% if odecet.spotreba_nt is not none %}
+                                        <span class="fw-medium text-info">{{ (odecet.spotreba_nt|float)|round(0)|int }}</span>
+                                    {% else %}
+                                        <span class="text-muted">-</span>
+                                    {% endif %}
+                                </td>
+                                <!-- Dofakturace a bonus -->
+                                <td class="text-end">
+                                    {% if odecet.dofakturace is not none %}
+                                        {% if odecet.dofakturace|float > 0 %}
+                                            <span class="fw-medium text-danger">{{ (odecet.dofakturace|float)|round(2) }} Kč</span>
+                                        {% else %}
+                                            <span class="fw-medium">{{ (odecet.dofakturace|float)|round(2) }} Kč</span>
+                                        {% endif %}
+                                    {% else %}
+                                        <span class="text-muted">-</span>
+                                    {% endif %}
+                                </td>
+                                <td class="text-end">
+                                    {% if odecet.slevovy_bonus is not none %}
+                                        <span class="fw-medium text-success">{{ (odecet.slevovy_bonus|float)|round(2) }} Kč</span>
+                                    {% else %}
+                                        <span class="text-muted">-</span>
+                                    {% endif %}
+                                </td>
+                                <td class="pe-4">
+                                    {% if odecet.priznak %}
+                                        <span class="badge bg-info">{{ odecet.priznak }}</span>
+                                    {% else %}
+                                        <span class="text-muted">-</span>
+                                    {% endif %}
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+        {% else %}
+        <!-- Empty State -->
+        <div class="text-center py-5">
+            <div class="mb-4">
+                <i class="bi bi-search" style="font-size: 4rem; color: var(--text-muted);"></i>
+            </div>
+            <h3 class="h4 mb-3">Žádné odečty pro kontrolu</h3>
+            <p class="text-muted mb-4">
+                Pro období {{ vybrane_obdobi.rok }}/{{ '%02d'|format(vybrane_obdobi.mesic) }} nejsou k dispozici žádné zpracované odečty.<br>
+                Nejprve importujte a potvrďte odečty v sekci Import odečtů.
+            </p>
+            <div class="d-flex justify-content-center gap-3">
+                <a href="{{ url_for('odecty.odecty', stredisko_id=stredisko.id) }}" 
+                   class="btn btn-primary-custom">
+                    <i class="bi bi-upload me-2"></i>
+                    Přejít na import odečtů
+                </a>
+            </div>
+        </div>
+        {% endif %}
+
+        {% else %}
+        <!-- No Period Selected -->
+        <div class="text-center py-5">
+            <div class="mb-4">
+                <i class="bi bi-calendar-x" style="font-size: 4rem; color: var(--text-muted);"></i>
+            </div>
+            <h3 class="h4 mb-3">Žádné období není vybráno</h3>
+            <p class="text-muted mb-4">
+                Vyberte období ze seznamu výše pro zobrazení odečtů ke kontrole.
+            </p>
+        </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_css %}
+<style>
+    .icon-info {
+        color: #0ea5e9;
+    }
+    
+    .table th {
+        font-size: 0.8125rem;
+        white-space: nowrap;
+    }
+    
+    .table td {
+        font-size: 0.875rem;
+        vertical-align: middle;
+    }
+    
+    .badge {
+        font-size: 0.75rem;
+        padding: 0.375rem 0.75rem;
+    }
+    
+    .fw-medium {
+        font-weight: 500;
+    }
+    
+    /* Colored values */
+    .text-success {
+        color: var(--success-color) !important;
+    }
+    
+    .text-info {
+        color: #0ea5e9 !important;
+    }
+    
+    .text-danger {
+        color: var(--danger-color) !important;
+    }
+    
+    /* Stats cards responsive */
+    @media (max-width: 768px) {
+        .stats-card {
+            margin-bottom: 1rem;
+        }
+    }
+</style>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        // Auto-submit form when period changes
+        const obdobiSelect = document.getElementById('obdobi_select');
+        if (obdobiSelect) {
+            obdobiSelect.addEventListener('change', function() {
+                this.form.submit();
+            });
+        }
+        
+        // Format numbers with spaces as thousand separators
+        const numberCells = document.querySelectorAll('[data-format="number"]');
+        numberCells.forEach(cell => {
+            const value = parseFloat(cell.textContent);
+            if (!isNaN(value)) {
+                cell.textContent = value.toLocaleString('cs-CZ');
+            }
+        });
+    });
+</script>
+{% endblock %}

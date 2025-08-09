@@ -1,0 +1,476 @@
+{% extends "base.html" %}
+
+{% block title %}Parametry fakturace - {{ stredisko.nazev_strediska }}{% endblock %}
+
+{% block breadcrumb %}
+<nav aria-label="breadcrumb">
+    <ol class="breadcrumb breadcrumb-custom">
+        <li class="breadcrumb-item">
+            <a href="{{ url_for('strediska') }}">
+                <i class="bi bi-house-door me-1"></i>
+                Střediska
+            </a>
+        </li>
+        <li class="breadcrumb-item">
+            <a href="{{ url_for('spravovat_stredisko', stredisko_id=stredisko.id) }}">
+                {{ stredisko.nazev_strediska }}
+            </a>
+        </li>
+        <li class="breadcrumb-item">
+            <a href="{{ url_for('fakturace.fakturace', stredisko_id=stredisko.id) }}">
+                Fakturace
+            </a>
+        </li>
+        <li class="breadcrumb-item active">Parametry fakturace</li>
+    </ol>
+</nav>
+{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-12">
+        <!-- Page Header -->
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <div>
+                <h1 class="h2 mb-1">
+                    <i class="bi bi-gear-fill icon-secondary me-2"></i>
+                    Parametry fakturace
+                </h1>
+                <p class="text-muted mb-0">Nastavení faktur a záloh pro {{ stredisko.nazev_strediska }}</p>
+            </div>
+            <div class="d-flex gap-2">
+                <a href="{{ url_for('fakturace.fakturace', stredisko_id=stredisko.id) }}" 
+                   class="btn btn-outline-primary-custom">
+                    <i class="bi bi-arrow-left me-2"></i>
+                    Zpět na fakturaci
+                </a>
+            </div>
+        </div>
+
+        <!-- Period Selection -->
+        <div class="card-custom mb-4">
+            <div class="card-header-custom">
+                <h5 class="card-title">
+                    <i class="bi bi-calendar-range icon-primary me-2"></i>
+                    Výběr období
+                </h5>
+            </div>
+            <div class="card-body p-4">
+                <form method="get" class="d-flex align-items-center gap-3 flex-wrap">
+                    <label for="obdobi_select" class="form-label-custom mb-0">
+                        <i class="bi bi-calendar me-2"></i>
+                        Parametry pro období:
+                    </label>
+                    <select name="obdobi_id" id="obdobi_select" class="form-select form-control-custom" 
+                            style="width: auto;" onchange="this.form.submit()">
+                        {% for obdobi in vsechna_obdobi %}
+                        <option value="{{ obdobi.id }}" {% if vybrane_obdobi and obdobi.id == vybrane_obdobi.id %}selected{% endif %}>
+                            {{ obdobi.rok }}/{{ '%02d'|format(obdobi.mesic) }}
+                        </option>
+                        {% endfor %}
+                    </select>
+                    {% if vybrane_obdobi %}
+                    <div class="text-muted">
+                        <small>Zobrazené období: <strong>{{ vybrane_obdobi.rok }}/{{ '%02d'|format(vybrane_obdobi.mesic) }}</strong></small>
+                    </div>
+                    {% else %}
+                    <div class="text-danger">
+                        <small><i class="bi bi-exclamation-triangle me-1"></i>Žádné období není vybráno nebo dostupné.</small>
+                    </div>
+                    {% endif %}
+                </form>
+            </div>
+        </div>
+
+        {% if vybrane_obdobi %}
+        <!-- Faktura -->
+        <div class="card-custom mb-4">
+            <div class="card-header-custom">
+                <h5 class="card-title">
+                    <i class="bi bi-file-earmark-text icon-primary me-2"></i>
+                    Faktura
+                </h5>
+            </div>
+            <div class="card-body p-4">
+                <form method="post" action="{{ url_for('fakturace.ulozit_fakturu', stredisko_id=stredisko.id, obdobi_id=vybrane_obdobi.id) }}">
+                    <div class="row">
+                        <!-- První řádek -->
+                        <div class="col-md-6 mb-3">
+                            <label for="cislo_faktury" class="form-label-custom">
+                                <i class="bi bi-receipt me-2"></i>
+                                Číslo faktury
+                            </label>
+                            <input type="text" 
+                                   class="form-control form-control-custom" 
+                                   id="cislo_faktury" 
+                                   name="cislo_faktury" 
+                                   value="{{ fak.cislo_faktury if fak else '' }}"
+                                   placeholder="Např. 2025001">
+                        </div>
+                        <div class="col-md-3 mb-3">
+                            <label for="konst_symbol_f" class="form-label-custom">
+                                <i class="bi bi-hash me-2"></i>
+                                Konstantní symbol
+                            </label>
+                            <input type="number" 
+                                   class="form-control form-control-custom" 
+                                   id="konst_symbol_f" 
+                                   name="konst_symbol_f" 
+                                   value="{{ fak.konstantni_symbol if fak else '' }}"
+                                   placeholder="0558">
+                        </div>
+                        <div class="col-md-3 mb-3">
+                            <label for="vs_f" class="form-label-custom">
+                                <i class="bi bi-barcode me-2"></i>
+                                Variabilní symbol
+                            </label>
+                            <input type="number" 
+                                   class="form-control form-control-custom" 
+                                   id="vs_f" 
+                                   name="vs_f" 
+                                   value="{{ fak.variabilni_symbol if fak else '' }}"
+                                   placeholder="202501001">
+                        </div>
+
+                        <!-- Druhý řádek - data -->
+                        <div class="col-md-4 mb-3">
+                            <label for="splatnost_f" class="form-label-custom">
+                                <i class="bi bi-calendar-check me-2"></i>
+                                Datum splatnosti
+                            </label>
+                            <input type="date" 
+                                   class="form-control form-control-custom" 
+                                   id="splatnost_f" 
+                                   name="splatnost_f" 
+                                   value="{{ fak.datum_splatnosti if fak else '' }}">
+                        </div>
+                        <div class="col-md-4 mb-3">
+                            <label for="vystaveni_f" class="form-label-custom">
+                                <i class="bi bi-calendar-plus me-2"></i>
+                                Datum vystavení
+                            </label>
+                            <input type="date" 
+                                   class="form-control form-control-custom" 
+                                   id="vystaveni_f" 
+                                   name="vystaveni_f" 
+                                   value="{{ fak.datum_vystaveni if fak else '' }}">
+                        </div>
+                        <div class="col-md-4 mb-3">
+                            <label for="zdanitelne_plneni" class="form-label-custom">
+                                <i class="bi bi-calendar-event me-2"></i>
+                                Zdanitelné plnění
+                            </label>
+                            <input type="date" 
+                                   class="form-control form-control-custom" 
+                                   id="zdanitelne_plneni" 
+                                   name="zdanitelne_plneni" 
+                                   value="{{ fak.datum_zdanitelneho_plneni if fak else '' }}">
+                        </div>
+
+                        <!-- Třetí řádek - období fakturace -->
+                        <div class="col-md-6 mb-3">
+                            <label for="od_date" class="form-label-custom">
+                                <i class="bi bi-calendar-range me-2"></i>
+                                Fakturace od
+                            </label>
+                            <input type="date" 
+                                   class="form-control form-control-custom" 
+                                   id="od_date" 
+                                   name="od_date" 
+                                   value="{{ fak.fakturace_od if fak else '' }}">
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label for="do_date" class="form-label-custom">
+                                <i class="bi bi-calendar-range me-2"></i>
+                                Fakturace do
+                            </label>
+                            <input type="date" 
+                                   class="form-control form-control-custom" 
+                                   id="do_date" 
+                                   name="do_date" 
+                                   value="{{ fak.fakturace_do if fak else '' }}">
+                        </div>
+
+                        <!-- Čtvrtý řádek -->
+                        <div class="col-md-6 mb-3">
+                            <label for="forma_uhrady_f" class="form-label-custom">
+                                <i class="bi bi-credit-card me-2"></i>
+                                Forma úhrady
+                            </label>
+                            <input type="text" 
+                                   class="form-control form-control-custom" 
+                                   id="forma_uhrady_f" 
+                                   name="forma_uhrady_f" 
+                                   value="{{ fak.forma_uhrady if fak else 'bankovní převod' }}"
+                                   placeholder="bankovní převod">
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label for="dph" class="form-label-custom">
+                                <i class="bi bi-percent me-2"></i>
+                                Sazba DPH (%)
+                            </label>
+                            <div class="input-group">
+                                <input type="number" 
+                                       step="0.01" 
+                                       class="form-control form-control-custom" 
+                                       id="dph" 
+                                       name="dph" 
+                                       value="{{ fak.sazba_dph if fak else '21' }}"
+                                       placeholder="21">
+                                <span class="input-group-text">%</span>
+                            </div>
+                        </div>
+
+                        <!-- Popis dodávky -->
+                        <div class="col-12 mb-3">
+                            <label for="popis" class="form-label-custom">
+                                <i class="bi bi-file-text me-2"></i>
+                                Popis dodávky
+                            </label>
+                            <input type="text" 
+                                   class="form-control form-control-custom" 
+                                   id="popis" 
+                                   name="popis" 
+                                   value="{{ fak.popis_dodavky if fak else 'Dodávka elektrické energie' }}"
+                                   placeholder="Dodávka elektrické energie">
+                        </div>
+                    </div>
+                    <div class="d-flex justify-content-end">
+                        <button type="submit" class="btn btn-primary-custom">
+                            <i class="bi bi-save me-2"></i>
+                            Uložit fakturu
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <!-- Zálohová faktura -->
+        <div class="card-custom mb-4">
+            <div class="card-header-custom">
+                <h5 class="card-title">
+                    <i class="bi bi-cash-coin icon-success me-2"></i>
+                    Zálohová faktura
+                </h5>
+            </div>
+            <div class="card-body p-4">
+                <form method="post" action="{{ url_for('fakturace.ulozit_zalohu', stredisko_id=stredisko.id, obdobi_id=vybrane_obdobi.id) }}">
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label for="cislo_zalohy" class="form-label-custom">
+                                <i class="bi bi-receipt me-2"></i>
+                                Číslo zálohové faktury
+                            </label>
+                            <input type="text" 
+                                   class="form-control form-control-custom" 
+                                   id="cislo_zalohy" 
+                                   name="cislo_zalohy" 
+                                   value="{{ zal.cislo_zalohove_faktury if zal else '' }}"
+                                   placeholder="Např. 2025001Z">
+                        </div>
+                        <div class="col-md-3 mb-3">
+                            <label for="konst_symbol" class="form-label-custom">
+                                <i class="bi bi-hash me-2"></i>
+                                Konstantní symbol
+                            </label>
+                            <input type="number" 
+                                   class="form-control form-control-custom" 
+                                   id="konst_symbol" 
+                                   name="konst_symbol" 
+                                   value="{{ zal.konstantni_symbol if zal else '' }}"
+                                   placeholder="0558">
+                        </div>
+                        <div class="col-md-3 mb-3">
+                            <label for="vs" class="form-label-custom">
+                                <i class="bi bi-barcode me-2"></i>
+                                Variabilní symbol
+                            </label>
+                            <input type="number" 
+                                   class="form-control form-control-custom" 
+                                   id="vs" 
+                                   name="vs" 
+                                   value="{{ zal.variabilni_symbol if zal else '' }}"
+                                   placeholder="202501001">
+                        </div>
+                        <div class="col-md-4 mb-3">
+                            <label for="splatnost" class="form-label-custom">
+                                <i class="bi bi-calendar-check me-2"></i>
+                                Datum splatnosti
+                            </label>
+                            <input type="date" 
+                                   class="form-control form-control-custom" 
+                                   id="splatnost" 
+                                   name="splatnost" 
+                                   value="{{ zal.datum_splatnosti if zal else '' }}">
+                        </div>
+                        <div class="col-md-4 mb-3">
+                            <label for="vystaveni" class="form-label-custom">
+                                <i class="bi bi-calendar-plus me-2"></i>
+                                Datum vystavení
+                            </label>
+                            <input type="date" 
+                                   class="form-control form-control-custom" 
+                                   id="vystaveni" 
+                                   name="vystaveni" 
+                                   value="{{ zal.datum_vystaveni if zal else '' }}">
+                        </div>
+                        <div class="col-md-4 mb-3">
+                            <label for="forma_uhrady" class="form-label-custom">
+                                <i class="bi bi-credit-card me-2"></i>
+                                Forma úhrady
+                            </label>
+                            <input type="text" 
+                                   class="form-control form-control-custom" 
+                                   id="forma_uhrady" 
+                                   name="forma_uhrady" 
+                                   value="{{ zal.forma_uhrady if zal else 'bankovní převod' }}"
+                                   placeholder="bankovní převod">
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label for="castka_zalohy" class="form-label-custom">
+                                <i class="bi bi-currency-exchange me-2"></i>
+                                Výše zálohy (Kč)
+                            </label>
+                            <div class="input-group">
+                                <input type="number" 
+                                       step="0.01" 
+                                       class="form-control form-control-custom" 
+                                       id="castka_zalohy" 
+                                       name="castka_zalohy" 
+                                       value="{{ zal.zaloha if zal else '' }}"
+                                       placeholder="0.00">
+                                <span class="input-group-text">Kč</span>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="d-flex justify-content-end">
+                        <button type="submit" class="btn btn-success">
+                            <i class="bi bi-save me-2"></i>
+                            Uložit zálohovou fakturu
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        {% else %}
+        <!-- Empty State -->
+        <div class="text-center py-5">
+            <div class="mb-4">
+                <i class="bi bi-calendar-x" style="font-size: 4rem; color: var(--text-muted);"></i>
+            </div>
+            <h3 class="h4 mb-3">Žádné období není vybráno</h3>
+            <p class="text-muted mb-4">
+                Vyberte období fakturace ze seznamu výše pro nastavení parametrů.
+            </p>
+        </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_css %}
+<style>
+    .icon-secondary {
+        color: var(--secondary-color);
+    }
+    
+    .input-group-text {
+        background-color: var(--background-secondary);
+        border: 1px solid var(--border-color);
+        color: var(--text-primary);
+    }
+    
+    .form-control-custom:focus + .input-group-text {
+        border-color: var(--primary-color);
+    }
+    
+    /* Form styling improvements */
+    .form-label-custom {
+        font-weight: 500;
+        margin-bottom: 0.5rem;
+    }
+    
+    .form-control-custom::placeholder {
+        color: var(--text-muted);
+        opacity: 0.7;
+    }
+    
+    /* Button styling */
+    .btn {
+        padding: 0.75rem 1.5rem;
+        font-weight: 500;
+    }
+    
+    /* Card spacing */
+    .card-body {
+        padding: 2rem;
+    }
+    
+    @media (max-width: 768px) {
+        .card-body {
+            padding: 1rem;
+        }
+        
+        .btn {
+            width: 100%;
+        }
+    }
+</style>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        // Auto-focus na první prázdné pole při načtení
+        const firstEmptyInput = document.querySelector('input[value=""]');
+        if (firstEmptyInput) {
+            firstEmptyInput.focus();
+        }
+        
+        // Validace formulářů
+        const forms = document.querySelectorAll('form');
+        forms.forEach(form => {
+            form.addEventListener('submit', function(e) {
+                const submitBtn = this.querySelector('button[type="submit"]');
+                
+                // Loading state
+                submitBtn.disabled = true;
+                const originalText = submitBtn.innerHTML;
+                submitBtn.innerHTML = '<i class="bi bi-arrow-clockwise spinner-custom me-2"></i>Ukládám...';
+                
+                // Re-enable after 5 seconds as fallback
+                setTimeout(() => {
+                    submitBtn.disabled = false;
+                    submitBtn.innerHTML = originalText;
+                }, 5000);
+            });
+        });
+        
+        // Auto-calculate datum splatnosti (30 dní od vystavení)
+        const datumVystaveni = document.getElementById('vystaveni_f');
+        const datumSplatnosti = document.getElementById('splatnost_f');
+        
+        if (datumVystaveni && datumSplatnosti) {
+            datumVystaveni.addEventListener('change', function() {
+                if (this.value && !datumSplatnosti.value) {
+                    const vystaveni = new Date(this.value);
+                    vystaveni.setDate(vystaveni.getDate() + 30);
+                    datumSplatnosti.value = vystaveni.toISOString().split('T')[0];
+                }
+            });
+        }
+        
+        // Auto-calculate zdanitelné plnění (stejné jako vystavení)
+        const zdanPlneni = document.getElementById('zdanitelne_plneni');
+        
+        if (datumVystaveni && zdanPlneni) {
+            datumVystaveni.addEventListener('change', function() {
+                if (this.value && !zdanPlneni.value) {
+                    zdanPlneni.value = this.value;
+                }
+            });
+        }
+    });
+</script>
+{% endblock %}

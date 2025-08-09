@@ -1,0 +1,533 @@
+{% extends "base.html" %}
+
+{% block title %}Odběrná místa - {{ stredisko.nazev_strediska }}{% endblock %}
+
+{% block breadcrumb %}
+<nav aria-label="breadcrumb">
+    <ol class="breadcrumb breadcrumb-custom">
+        <li class="breadcrumb-item">
+            <a href="{{ url_for('strediska') }}">
+                <i class="bi bi-house-door me-1"></i>
+                Střediska
+            </a>
+        </li>
+        <li class="breadcrumb-item">
+            <a href="{{ url_for('spravovat_stredisko', stredisko_id=stredisko.id) }}">
+                {{ stredisko.nazev_strediska }}
+            </a>
+        </li>
+        <li class="breadcrumb-item active">Odběrná místa</li>
+    </ol>
+</nav>
+{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-12">
+        <!-- Page Header -->
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <div>
+                <h1 class="h2 mb-1">
+                    <i class="bi bi-lightning-charge icon-warning me-2"></i>
+                    Odběrná místa
+                </h1>
+                <p class="text-muted mb-0">Správa a přehled odběrných míst pro {{ stredisko.nazev_strediska }}</p>
+            </div>
+            <div class="d-flex gap-2">
+                <a href="{{ url_for('spravovat_stredisko', stredisko_id=stredisko.id) }}" 
+                   class="btn btn-outline-primary-custom">
+                    <i class="bi bi-arrow-left me-2"></i>
+                    Zpět na středisko
+                </a>
+            </div>
+        </div>
+
+        <!-- Statistics Cards -->
+        {% if odberna_mista %}
+        <div class="row mb-4">
+            <div class="col-md-3">
+                <div class="stats-card">
+                    <div class="stats-value">{{ odberna_mista|length }}</div>
+                    <div class="stats-label">Celkem odběrných míst</div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="stats-card" style="border-left-color: var(--success-color);">
+                    <!-- Bezpečný výpočet pomocí loop -->
+                    {% set c01d_count = namespace(value=0) %}
+                    {% for om in odberna_mista %}
+                        {% if om.distribucni_sazba_om and om.distribucni_sazba_om == 'C01d' %}
+                            {% set c01d_count.value = c01d_count.value + 1 %}
+                        {% endif %}
+                    {% endfor %}
+                    <div class="stats-value" style="color: var(--success-color);">{{ c01d_count.value }}</div>
+                    <div class="stats-label">Sazba C01d</div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="stats-card" style="border-left-color: #0ea5e9;">
+                    <!-- Bezpečný výpočet pomocí loop -->
+                    {% set c02d_count = namespace(value=0) %}
+                    {% for om in odberna_mista %}
+                        {% if om.distribucni_sazba_om and om.distribucni_sazba_om == 'C02d' %}
+                            {% set c02d_count.value = c02d_count.value + 1 %}
+                        {% endif %}
+                    {% endfor %}
+                    <div class="stats-value" style="color: #0ea5e9;">{{ c02d_count.value }}</div>
+                    <div class="stats-label">Sazba C02d</div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="stats-card" style="border-left-color: var(--warning-color);">
+                    <!-- Bezpečný výpočet pomocí loop -->
+                    {% set trojfazova_count = namespace(value=0) %}
+                    {% for om in odberna_mista %}
+                        {% if om.kategorie_jistice_om and '3x' in om.kategorie_jistice_om %}
+                            {% set trojfazova_count.value = trojfazova_count.value + 1 %}
+                        {% endif %}
+                    {% endfor %}
+                    <div class="stats-value" style="color: var(--warning-color);">{{ trojfazova_count.value }}</div>
+                    <div class="stats-label">Třífázová</div>
+                </div>
+            </div>
+        </div>
+        {% endif %}
+
+        <!-- Actions Section -->
+        <div class="card-custom mb-4">
+            <div class="card-header-custom">
+                <h5 class="card-title">
+                    <i class="bi bi-gear icon-primary me-2"></i>
+                    Správa odběrných míst
+                </h5>
+            </div>
+            <div class="card-body p-4">
+                <div class="row align-items-center">
+                    <div class="col-md-8">
+                        <h6 class="mb-2">Import odběrných míst</h6>
+                        <p class="text-muted mb-3">
+                            Nahrajte Excel soubor s odběrnými místy. Duplicitní místa budou přeskočena.
+                        </p>
+                    </div>
+                    <div class="col-md-4 text-md-end">
+                        <div class="d-flex flex-column gap-2">
+                            <a href="https://flowenergy.cz/wp-content/uploads/2025/06/odberna_mista_import.xlsx" 
+                               target="_blank" 
+                               class="btn btn-outline-primary-custom">
+                                <i class="bi bi-download me-2"></i>
+                                Stáhnout vzor
+                            </a>
+                            <button onclick="triggerUpload()" class="btn btn-success">
+                                <i class="bi bi-upload me-2"></i>
+                                Nahrát odběrná místa
+                            </button>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Hidden Upload Form -->
+                <form id="uploadForm" 
+                      action="{{ url_for('nahrat_odberna_mista', stredisko_id=stredisko.id) }}" 
+                      method="post" 
+                      enctype="multipart/form-data" 
+                      style="display: none;">
+                    <input type="file" id="xlsxUpload" name="xlsx_file" accept=".xlsx,.xls" 
+                           onchange="document.getElementById('uploadForm').submit();">
+                </form>
+            </div>
+        </div>
+
+        <!-- Add New Place Form -->
+        <div class="card-custom mb-4">
+            <div class="card-header-custom">
+                <h5 class="card-title">
+                    <i class="bi bi-plus-circle icon-success me-2"></i>
+                    Přidat nové odběrné místo
+                </h5>
+            </div>
+            <div class="card-body p-4">
+                <form method="post">
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label for="cislo_om" class="form-label-custom">
+                                <i class="bi bi-hash me-2"></i>
+                                Číslo odběrného místa
+                            </label>
+                            <input type="text" 
+                                   class="form-control form-control-custom" 
+                                   id="cislo_om" 
+                                   name="cislo_om" 
+                                   required
+                                   placeholder="0014002">
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label for="ean_om" class="form-label-custom">
+                                <i class="bi bi-upc me-2"></i>
+                                EAN kód
+                            </label>
+                            <input type="text" 
+                                   class="form-control form-control-custom" 
+                                   id="ean_om" 
+                                   name="ean_om"
+                                   placeholder="859123456789012345">
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label for="nazev_om" class="form-label-custom">
+                                <i class="bi bi-tag me-2"></i>
+                                Název odběrného místa
+                            </label>
+                            <input type="text" 
+                                   class="form-control form-control-custom" 
+                                   id="nazev_om" 
+                                   name="nazev_om"
+                                   placeholder="Budova A - přízemí">
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label for="distribucni_sazba_om" class="form-label-custom">
+                                <i class="bi bi-bar-chart me-2"></i>
+                                Distribuční sazba
+                            </label>
+                            <select class="form-select form-control-custom" 
+                                    id="distribucni_sazba_om" 
+                                    name="distribucni_sazba_om">
+                                <option value="">Vyberte sazbu</option>
+                                <option value="C01d">C01d</option>
+                                <option value="C02d">C02d</option>
+                                <option value="C03d">C03d</option>
+                                <option value="C25d">C25d</option>
+                                <option value="C26d">C26d</option>
+                                <option value="C27d">C27d</option>
+                                <option value="C35d">C35d</option>
+                                <option value="C45d">C45d</option>
+                                <option value="C46d">C46d</option>
+                                <option value="C56d">C56d</option>
+                                <option value="C62d">C62d</option>
+                                <option value="D01d">D01d</option>
+                                <option value="D02d">D02d</option>
+                                <option value="D25d">D25d</option>
+                                <option value="D26d">D26d</option>
+                                <option value="D27d">D27d</option>
+                                <option value="D35d">D35d</option>
+                                <option value="D45d">D45d</option>
+                                <option value="D56d">D56d</option>
+                                <option value="D57d">D57d</option>
+                                <option value="D61d">D61d</option>
+                            </select>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label for="kategorie_jistice_om" class="form-label-custom">
+                                <i class="bi bi-lightning me-2"></i>
+                                Kategorie jističe
+                            </label>
+                            <select class="form-select form-control-custom" 
+                                    id="kategorie_jistice_om" 
+                                    name="kategorie_jistice_om">
+                                <option value="">Vyberte kategorii</option>
+                                <option value="do 3x10A a do 1x25A včetně">do 3x10A a do 1x25A včetně</option>
+                                <option value="nad 3x10A do 3x16A včetně">nad 3x10A do 3x16A včetně</option>
+                                <option value="nad 3x16A do 3x20A včetně">nad 3x16A do 3x20A včetně</option>
+                                <option value="nad 3x20A do 3x25A včetně">nad 3x20A do 3x25A včetně</option>
+                                <option value="nad 3x25A do 3x32A včetně">nad 3x25A do 3x32A včetně</option>
+                                <option value="nad 3x32A do 3x40A včetně">nad 3x32A do 3x40A včetně</option>
+                                <option value="nad 3x40A do 3x50A včetně">nad 3x40A do 3x50A včetně</option>
+                                <option value="nad 3x50A do 3x63A včetně">nad 3x50A do 3x63A včetně</option>
+                                <option value="nad 3x63A do 3x80A včetně">nad 3x63A do 3x80A včetně</option>
+                                <option value="nad 3x80A do 3x100A včetně">nad 3x80A do 3x100A včetně</option>
+                                <option value="nad 3x100A do 3x125A včetně">nad 3x100A do 3x125A včetně</option>
+                                <option value="nad 3x125A do 3x160A včetně">nad 3x125A do 3x160A včetně</option>
+                                <option value="nad 3x160A za každou 1A">nad 3x160A za každou 1A</option>
+                                <option value="nad 1x25A za každou 1A">nad 1x25A za každou 1A</option>
+                                <option value="nad 3x63A za každou 1A">nad 3x63A za každou 1A</option>
+                            </select>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label for="hodnota_jistice_om" class="form-label-custom">
+                                <i class="bi bi-speedometer me-2"></i>
+                                Hodnota jističe (A)
+                            </label>
+                            <input type="number" 
+                                   class="form-control form-control-custom" 
+                                   id="hodnota_jistice_om" 
+                                   name="hodnota_jistice_om"
+                                   placeholder="25">
+                        </div>
+                        <div class="col-12 mb-3">
+                            <label for="poznamka_om" class="form-label-custom">
+                                <i class="bi bi-chat-left-text me-2"></i>
+                                Poznámka
+                            </label>
+                            <textarea class="form-control form-control-custom" 
+                                      id="poznamka_om" 
+                                      name="poznamka_om"
+                                      rows="3"
+                                      placeholder="Volitelná poznámka k odběrnému místu"></textarea>
+                        </div>
+                    </div>
+                    <div class="d-flex justify-content-end">
+                        <button type="submit" class="btn btn-primary-custom">
+                            <i class="bi bi-plus-circle me-2"></i>
+                            Přidat odběrné místo
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <!-- Data Table -->
+        {% if odberna_mista %}
+        <div class="card-custom">
+            <div class="card-header-custom">
+                <h5 class="card-title">
+                    <i class="bi bi-table icon-primary me-2"></i>
+                    Odběrná místa ({{ odberna_mista|length }} míst)
+                </h5>
+            </div>
+            <div class="card-body p-0">
+                <div class="table-responsive">
+                    <table class="table table-custom mb-0">
+                        <thead>
+                            <tr>
+                                <th class="ps-4">Číslo OM</th>
+                                <th>EAN</th>
+                                <th>Název</th>
+                                <th>Distribuční sazba</th>
+                                <th>Kategorie jističe</th>
+                                <th>Hodnota jističe</th>
+                                <th>Poznámka</th>
+                                <th class="pe-4">Akce</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for om in odberna_mista %}
+                            <tr>
+                                <td class="ps-4">
+                                    <div class="d-flex align-items-center">
+                                        <i class="bi bi-lightning-charge icon-warning me-2"></i>
+                                        <strong>{{ om.cislo_om }}</strong>
+                                    </div>
+                                </td>
+                                <td>
+                                    <a href="#" class="editable" 
+                                       data-name="ean_om" 
+                                       data-value="{{ om.ean_om or '' }}" 
+                                       data-pk="{{ om.id }}"
+                                       data-url="{{ url_for('upravit_odberne_misto', stredisko_id=stredisko.id) }}">
+                                        <code class="bg-light px-2 py-1 rounded">{{ om.ean_om or 'Klikněte pro úpravu' }}</code>
+                                    </a>
+                                </td>
+                                <td>
+                                    <a href="#" class="editable" 
+                                       data-name="nazev_om" 
+                                       data-value="{{ om.nazev_om or '' }}" 
+                                       data-pk="{{ om.id }}"
+                                       data-url="{{ url_for('upravit_odberne_misto', stredisko_id=stredisko.id) }}">
+                                        {{ om.nazev_om or 'Klikněte pro úpravu' }}
+                                    </a>
+                                </td>
+                                <td>
+                                    <a href="#" class="editable" 
+                                       data-name="distribucni_sazba_om" 
+                                       data-value="{{ om.distribucni_sazba_om or '' }}" 
+                                       data-pk="{{ om.id }}"
+                                       data-type="select"
+                                       data-source='[{"value":"","text":"Vyberte sazbu"},{"value":"C01d","text":"C01d"},{"value":"C02d","text":"C02d"},{"value":"C03d","text":"C03d"},{"value":"C25d","text":"C25d"},{"value":"C26d","text":"C26d"},{"value":"C27d","text":"C27d"},{"value":"C35d","text":"C35d"},{"value":"C45d","text":"C45d"},{"value":"C46d","text":"C46d"},{"value":"C56d","text":"C56d"},{"value":"C62d","text":"C62d"},{"value":"D01d","text":"D01d"},{"value":"D02d","text":"D02d"},{"value":"D25d","text":"D25d"},{"value":"D26d","text":"D26d"},{"value":"D27d","text":"D27d"},{"value":"D35d","text":"D35d"},{"value":"D45d","text":"D45d"},{"value":"D56d","text":"D56d"},{"value":"D57d","text":"D57d"},{"value":"D61d","text":"D61d"}]'
+                                       data-url="{{ url_for('upravit_odberne_misto', stredisko_id=stredisko.id) }}">
+                                        {{ om.distribucni_sazba_om or 'Klikněte pro úpravu' }}
+                                    </a>
+                                </td>
+                                <td>
+                                    <a href="#" class="editable" 
+                                       data-name="kategorie_jistice_om" 
+                                       data-value="{{ om.kategorie_jistice_om or '' }}" 
+                                       data-pk="{{ om.id }}"
+                                       data-type="select"
+                                       data-source='[{"value":"","text":"Vyberte kategorii"},{"value":"do 3x10A a do 1x25A včetně","text":"do 3x10A a do 1x25A včetně"},{"value":"nad 3x10A do 3x16A včetně","text":"nad 3x10A do 3x16A včetně"},{"value":"nad 3x16A do 3x20A včetně","text":"nad 3x16A do 3x20A včetně"},{"value":"nad 3x20A do 3x25A včetně","text":"nad 3x20A do 3x25A včetně"},{"value":"nad 3x25A do 3x32A včetně","text":"nad 3x25A do 3x32A včetně"},{"value":"nad 3x32A do 3x40A včetně","text":"nad 3x32A do 3x40A včetně"},{"value":"nad 3x40A do 3x50A včetně","text":"nad 3x40A do 3x50A včetně"},{"value":"nad 3x50A do 3x63A včetně","text":"nad 3x50A do 3x63A včetně"},{"value":"nad 3x63A do 3x80A včetně","text":"nad 3x63A do 3x80A včetně"},{"value":"nad 3x80A do 3x100A včetně","text":"nad 3x80A do 3x100A včetně"},{"value":"nad 3x100A do 3x125A včetně","text":"nad 3x100A do 3x125A včetně"},{"value":"nad 3x125A do 3x160A včetně","text":"nad 3x125A do 3x160A včetně"},{"value":"nad 3x160A za každou 1A","text":"nad 3x160A za každou 1A"},{"value":"nad 1x25A za každou 1A","text":"nad 1x25A za každou 1A"},{"value":"nad 3x63A za každou 1A","text":"nad 3x63A za každou 1A"}]'
+                                       data-url="{{ url_for('upravit_odberne_misto', stredisko_id=stredisko.id) }}">
+                                        {{ om.kategorie_jistice_om or 'Klikněte pro úpravu' }}
+                                    </a>
+                                </td>
+                                <td>
+                                    <a href="#" class="editable" 
+                                       data-name="hodnota_jistice_om" 
+                                       data-value="{{ om.hodnota_jistice_om or '' }}" 
+                                       data-pk="{{ om.id }}"
+                                       data-url="{{ url_for('upravit_odberne_misto', stredisko_id=stredisko.id) }}">
+                                        {{ om.hodnota_jistice_om or '0' }}
+                                    </a>
+                                </td>
+                                <td>
+                                    <a href="#" class="editable" 
+                                       data-name="poznamka_om" 
+                                       data-value="{{ om.poznamka_om or '' }}" 
+                                       data-pk="{{ om.id }}"
+                                       data-url="{{ url_for('upravit_odberne_misto', stredisko_id=stredisko.id) }}">
+                                        {{ om.poznamka_om or 'Bez poznámky' }}
+                                    </a>
+                                </td>
+                                <td class="pe-4">
+                                    <button class="btn btn-sm btn-outline-danger" 
+                                            data-om-id="{{ om.id }}"
+                                            data-om-cislo="{{ om.cislo_om }}"
+                                            onclick="deleteOM(this)">
+                                        <i class="bi bi-trash"></i>
+                                    </button>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+        {% else %}
+        <!-- Empty State -->
+        <div class="text-center py-5">
+            <div class="mb-4">
+                <i class="bi bi-lightning-charge" style="font-size: 4rem; color: var(--text-muted);"></i>
+            </div>
+            <h3 class="h4 mb-3">Žádná odběrná místa</h3>
+            <p class="text-muted mb-4">
+                Zatím nejsou definována žádná odběrná místa pro toto středisko.<br>
+                Začněte přidáním prvního odběrného místa pomocí formuláře výše.
+            </p>
+        </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_css %}
+<!-- X-editable CSS -->
+<link href="https://cdnjs.cloudflare.com/ajax/libs/x-editable/1.5.1/bootstrap3-editable/css/bootstrap-editable.css" rel="stylesheet">
+
+<style>
+    .editable {
+        color: var(--primary-color);
+        cursor: pointer;
+        border-bottom: 1px dashed var(--primary-color);
+        text-decoration: none;
+    }
+    
+    .editable:hover {
+        background-color: var(--background-secondary);
+        text-decoration: none;
+    }
+    
+    .table th {
+        font-size: 0.8125rem;
+        white-space: nowrap;
+    }
+    
+    .table td {
+        font-size: 0.875rem;
+        vertical-align: middle;
+    }
+    
+    .badge {
+        font-size: 0.75rem;
+        padding: 0.375rem 0.75rem;
+    }
+    
+    code {
+        font-size: 0.8125rem;
+    }
+    
+    .fw-medium {
+        font-weight: 500;
+    }
+</style>
+{% endblock %}
+
+{% block extra_js %}
+<!-- X-editable JS -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.6.0/jquery.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/x-editable/1.5.1/bootstrap3-editable/js/bootstrap-editable.min.js"></script>
+
+<script>
+    function triggerUpload() {
+        document.getElementById("xlsxUpload").click();
+    }
+    
+    // Initialize X-editable
+    $(document).ready(function() {
+        $.fn.editable.defaults.mode = 'inline';
+        $.fn.editable.defaults.emptytext = 'Klikněte pro úpravu';
+        
+        $('.editable').editable({
+            type: 'text',
+            title: 'Upravit hodnotu',
+            placeholder: 'Zadejte hodnotu...',
+            emptyclass: 'text-muted',
+            showbuttons: 'bottom',
+            onblur: 'ignore',
+            
+            success: function(response, newValue) {
+                try {
+                    const result = typeof response === 'string' ? JSON.parse(response) : response;
+                    if (result.status === 'success') {
+                        showAlert('success', '✅ ' + result.message);
+                        return {newValue: newValue};
+                    } else {
+                        showAlert('danger', '❌ ' + result.message);
+                        return result.message;
+                    }
+                } catch (e) {
+                    showAlert('danger', '❌ Chyba při zpracování odpovědi');
+                    return 'Chyba při zpracování';
+                }
+            },
+            
+            error: function(xhr, status, error) {
+                const message = xhr.responseJSON?.message || 'Chyba při ukládání';
+                showAlert('danger', '❌ ' + message);
+                return message;
+            }
+        });
+    });
+    
+    function deleteOM(button) {
+        const omId = button.getAttribute('data-om-id');
+        const cisloOM = button.getAttribute('data-om-cislo');
+        
+        if (confirm(`Opravdu chcete smazat odběrné místo ${cisloOM}?`)) {
+            if (confirm('Všechny související výpočty budou také smazány. Pokračovat?')) {
+                fetch('{{ url_for("smazat_odberne_misto", stredisko_id=stredisko.id) }}', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/x-www-form-urlencoded',
+                    },
+                    body: `om_id=${omId}`
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.status === 'success') {
+                        showAlert('success', '✅ ' + data.message);
+                        setTimeout(() => location.reload(), 1500);
+                    } else {
+                        showAlert('danger', '❌ ' + data.message);
+                    }
+                })
+                .catch(error => {
+                    showAlert('danger', '❌ Chyba při mazání');
+                });
+            }
+        }
+    }
+    
+    function showAlert(type, message) {
+        $('.alert').remove();
+        
+        const alertHtml = `
+            <div class="alert alert-${type} alert-dismissible fade show">
+                ${message}
+                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+            </div>
+        `;
+        $('body').prepend(alertHtml);
+        
+        setTimeout(function() {
+            $('.alert').fadeOut();
+        }, 5000);
+    }
+</script>
+{% endblock %}

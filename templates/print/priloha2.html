@@ -1,0 +1,442 @@
+<!DOCTYPE html>
+<html lang="cs">
+<head>
+    <!-- ✅ OPRAVA: Přidáno správné kódování UTF-8 -->
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Příloha 2 - Rozpis položek za odběrná místa</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            font-size: 11px;
+            line-height: 1.3;
+            margin: 0;
+            padding: 15px;
+            color: #333;
+        }
+        
+        .header {
+            text-align: center;
+            border-bottom: 2px solid #333;
+            padding-bottom: 10px;
+            margin-bottom: 20px;
+        }
+        
+        .header h1 {
+            margin: 0;
+            font-size: 14px;
+            font-weight: bold;
+        }
+        
+        .company-info {
+            font-size: 10px;
+            margin-top: 5px;
+        }
+        
+        .om-container {
+            margin-bottom: 25px;
+            page-break-inside: avoid;
+        }
+        
+        .om-header {
+            background-color: #f5f5f5;
+            padding: 8px;
+            border: 1px solid #ccc;
+            margin-bottom: 5px;
+        }
+        
+        .om-header h3 {
+            margin: 0 0 5px 0;
+            font-size: 12px;
+            color: #000;
+        }
+        
+        .om-details {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+            font-size: 10px;
+        }
+        
+        .om-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 5px;
+            font-size: 10px;
+        }
+        
+        .om-table th {
+            background-color: #e8e8e8;
+            border: 1px solid #999;
+            padding: 4px;
+            text-align: center;
+            font-weight: bold;
+        }
+        
+        .om-table td {
+            border: 1px solid #ccc;
+            padding: 3px 5px;
+            text-align: right;
+        }
+        
+        .om-table td:first-child {
+            text-align: left;
+            font-weight: normal;
+        }
+        
+        .section-header {
+            background-color: #f0f0f0;
+            font-weight: bold;
+            text-align: left;
+        }
+        
+        .total-row {
+            background-color: #e8e8e8;
+            font-weight: bold;
+        }
+        
+        .number {
+            text-align: right;
+        }
+        
+        .page-break {
+            page-break-after: always;
+        }
+
+        /* ✅ NOVÉ STYLY PRO DŮLEŽITÉ INFORMACE */
+        .important-info {
+            page-break-before: always;
+            margin-top: 30px;
+            font-size: 10px;
+            line-height: 1.4;
+        }
+
+        .important-info h2 {
+            font-size: 14px;
+            font-weight: bold;
+            margin-bottom: 15px;
+            text-align: center;
+            border-bottom: 2px solid #333;
+            padding-bottom: 5px;
+        }
+
+        .important-info h3 {
+            font-size: 12px;
+            font-weight: bold;
+            margin: 15px 0 8px 0;
+            color: #333;
+        }
+
+        .important-info p {
+            margin-bottom: 10px;
+            text-align: justify;
+        }
+
+        .energy-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 10px 0;
+            font-size: 9px;
+        }
+
+        .energy-table th,
+        .energy-table td {
+            border: 1px solid #ccc;
+            padding: 4px 6px;
+            text-align: left;
+        }
+
+        .energy-table th {
+            background-color: #f0f0f0;
+            font-weight: bold;
+        }
+
+        .energy-table td:last-child {
+            text-align: right;
+        }
+
+        .contact-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 10px 0;
+            font-size: 9px;
+        }
+
+        .contact-table th,
+        .contact-table td {
+            border: 1px solid #ccc;
+            padding: 4px 6px;
+            text-align: left;
+        }
+
+        .contact-table th {
+            background-color: #f0f0f0;
+            font-weight: bold;
+            width: 35%;
+        }
+
+        .highlighted-field {
+            background-color: #fff3cd;
+            font-weight: bold;
+            color: #856404;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>Číslo {{ faktura.cislo_faktury if faktura else '270325022' }}</h1>
+        <div class="company-info">
+            {{ dodavatel.nazev_sro if dodavatel else 'Your energy, s.r.o.' }}, 
+            {{ dodavatel.adresa_radek_1 if dodavatel else 'Italská 2584/69' }} 
+            {{ dodavatel.adresa_radek_2 if dodavatel else '120 00 Praha 2 - Vinohrady' }}, 
+            DIČ{{ dodavatel.dic_sro if dodavatel else 'CZ24833851' }}{{ dodavatel.ico_sro if dodavatel else 'CZ24833851' }} 
+            IČO {{ dodavatel.ico_sro if dodavatel else '24833851' }}
+        </div>
+        <p style="margin: 10px 0 0 0; font-weight: bold;">Příloha 2 - Rozpis položek za odběrná místa</p>
+    </div>
+
+    {% for data in vypocty_data %}
+    <div class="om-container">
+        <div class="om-header">
+            <h3>Odběrné místo: {{ data.om.cislo_om }} {{ data.om.nazev_om }}</h3>
+            <div class="om-details">
+                <div>
+                    <strong>{{ stredisko.adresa }}</strong><br>
+                    <!-- ✅ OPRAVA: Správné kódování českých znaků -->
+                    <strong>Distribuční sazba:</strong> {{ data.om.distribucni_sazba_om }}<br>
+                    <strong>Kategorie hlavního jističe:</strong> {{ data.om.kategorie_jistice_om }}<br>
+                    <strong>Hodnota hlavního jističe [A]:</strong> {{ data.om.hodnota_jistice_om }}
+                </div>
+                <div>
+                    <!-- ✅ OPRAVA: Správné kódování období fakturace -->
+                    <strong>Období fakturace:</strong> 
+                    {{ faktura.fakturace_od.strftime('%d.%m.%Y') if faktura and faktura.fakturace_od else '01.06.2025' }} 
+                    {{ faktura.fakturace_do.strftime('%d.%m.%Y') if faktura and faktura.fakturace_do else '30.06.2025' }}<br>
+                    <strong>EAN</strong>
+                </div>
+            </div>
+        </div>
+
+        <table class="om-table">
+            <thead>
+                <tr>
+                    <th style="width: 50%;">Název položky</th>
+                    <th style="width: 15%;">Množství</th>
+                    <th style="width: 10%;">MJ</th>
+                    <th style="width: 15%;">Jednotková cena</th>
+                    <th style="width: 15%;">Celková cena</th>
+                </tr>
+            </thead>
+            <tbody>
+                <!-- Dodávka elektřiny -->
+                <tr class="section-header">
+                    <td colspan="5"><strong>Dodávka elektřiny</strong></td>
+                </tr>
+                <tr>
+                    <td>Stálý plat (dodavatel)</td>
+                    <td class="number">1</td>
+                    <td>1</td>
+                    <td class="number">190</td>
+                    <td class="number">{{ "%.2f"|format(data.vypocet.mesicni_plat or 0) }}</td>
+                </tr>
+                <tr>
+                    <td>Plat za elektřinu ve VT</td>
+                    <td class="number">{{ "%.4f"|format((data.odecet.spotreba_vt or 0) / 1000) if data.odecet else '0.0000' }}</td>
+                    <td>MWh</td>
+                    <td class="number">3009</td>
+                    <td class="number">{{ "%.2f"|format(data.vypocet.platba_za_elektrinu_vt or 0) }}</td>
+                </tr>
+                <tr>
+                    <td>Plat za elektřinu ve NT</td>
+                    <td class="number">{{ "%.4f"|format((data.odecet.spotreba_nt or 0) / 1000) if data.odecet else '0' }}</td>
+                    <td>MWh</td>
+                    <td class="number">3009</td>
+                    <td class="number">{{ "%.2f"|format(data.vypocet.platba_za_elektrinu_nt or 0) }}</td>
+                </tr>
+
+                <!-- Distribuční služby -->
+                <tr class="section-header">
+                    <td colspan="5"><strong>Distribuční služby</strong></td>
+                </tr>
+                <tr>
+                    <td>Měsíční plat</td>
+                    <td class="number">1</td>
+                    <td>1</td>
+                    <td class="number">575</td>
+                    <td class="number">{{ "%.2f"|format(data.vypocet.platba_za_jistic or 0) }}</td>
+                </tr>
+                <tr>
+                    <td>Plat za elektřinu ve VT</td>
+                    <td class="number">{{ "%.4f"|format((data.odecet.spotreba_vt or 0) / 1000) if data.odecet else '0.0000' }}</td>
+                    <td>MWh</td>
+                    <td class="number">2460,33</td>
+                    <td class="number">{{ "%.2f"|format(data.vypocet.platba_za_distribuci_vt or 0) }}</td>
+                </tr>
+                <tr>
+                    <td>Plat za elektřinu ve NT</td>
+                    <td class="number">{{ "%.4f"|format((data.odecet.spotreba_nt or 0) / 1000) if data.odecet else '0' }}</td>
+                    <td>MWh</td>
+                    <td class="number">2460,33</td>
+                    <td class="number">{{ "%.2f"|format(data.vypocet.platba_za_distribuci_nt or 0) }}</td>
+                </tr>
+                <tr>
+                    <td>Cena za systémové služby</td>
+                    <td class="number">{{ "%.4f"|format(((data.odecet.spotreba_vt or 0) + (data.odecet.spotreba_nt or 0)) / 1000) if data.odecet else '0.0000' }}</td>
+                    <td>MWh</td>
+                    <td class="number">170,92</td>
+                    <td class="number">{{ "%.2f"|format(data.vypocet.systemove_sluzby or 0) }}</td>
+                </tr>
+                <tr>
+                    <td>Podpora elekt. z podporovaných zdrojů energie</td>
+                    <td class="number">{{ "%.4f"|format(((data.odecet.spotreba_vt or 0) + (data.odecet.spotreba_nt or 0)) / 1000) if data.odecet else '0.0000' }}</td>
+                    <td>MWh</td>
+                    <td class="number">495</td>
+                    <td class="number">{{ "%.2f"|format(data.poze_minimum) }}</td>
+                </tr>
+                <tr>
+                    <td>Poplatek za nesíťovou infrastrukturu</td>
+                    <td class="number">1</td>
+                    <td>1</td>
+                    <td class="number">10,84</td>
+                    <td class="number">{{ "%.2f"|format(data.vypocet.nesitova_infrastruktura or 0) }}</td>
+                </tr>
+
+                <!-- Ostatní -->
+                <tr class="section-header">
+                    <td colspan="5"><strong>Ostatní</strong></td>
+                </tr>
+                <tr>
+                    <td>Daň</td>
+                    <td class="number">{{ "%.4f"|format(((data.odecet.spotreba_vt or 0) + (data.odecet.spotreba_nt or 0)) / 1000) if data.odecet else '0.0000' }}</td>
+                    <td>MWh</td>
+                    <td class="number">28,3</td>
+                    <td class="number">{{ "%.2f"|format(data.vypocet.dan_z_elektriny or 0) }}</td>
+                </tr>
+                <tr>
+                    <td>Dofakturace / Bonus</td>
+                    <td class="number">1</td>
+                    <td>1</td>
+                    <td class="number">0</td>
+                    <td class="number">0,00</td>
+                </tr>
+
+                <!-- Celkem -->
+                <tr class="total-row">
+                    <td colspan="4"><strong>Celkem</strong></td>
+                    <td class="number"><strong>{{ "%.2f"|format(data.celkem_om) }}</strong></td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+    {% endfor %}
+
+    <!-- ✅ NOVÁ SEKCE - DŮLEŽITÉ INFORMACE -->
+    <div class="important-info">
+        <h2>Další důležité informace</h2>
+
+        <h3>Podíl jednotlivých zdrojů nebo původu energie na celkové směsi paliv dodavatele v roce 2024:</h3>
+        
+        <table class="energy-table">
+            <thead>
+                <tr>
+                    <th>Původ elektřiny</th>
+                    <th>% podíl</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td>Uhelné elektrárny (uhlí)</td>
+                    <td>44,69</td>
+                </tr>
+                <tr>
+                    <td>Jaderné elektrárny (jádro)</td>
+                    <td>42,82</td>
+                </tr>
+                <tr>
+                    <td>Podíl elektřiny vyrobené ze zemního plynu</td>
+                    <td>5,79</td>
+                </tr>
+                <tr>
+                    <td>Obnovitelné zdroje energie (OZE)</td>
+                    <td>6,4</td>
+                </tr>
+                <tr>
+                    <td>Druhotné zdroje</td>
+                    <td>0,16</td>
+                </tr>
+                <tr>
+                    <td>Ostatní zdroje</td>
+                    <td>0,14</td>
+                </tr>
+                <tr style="font-weight: bold;">
+                    <td><strong>celkem</strong></td>
+                    <td><strong>100</strong></td>
+                </tr>
+            </tbody>
+        </table>
+
+        <h3>Informace o dopadech výroby elektřiny na životní prostředí</h3>
+        <p>Informace o dopadech výroby elektřiny na životní prostředí jsou dostupné na internetových stránkách Ministerstva životního prostředí www.mzp.cz.</p>
+
+        <h3>Reklamace, řešení sporů</h3>
+        <p>Zákazník může k vyúčtování dodávek elektřiny a souvisejících služeb uplatnit reklamaci na adrese 
+        <span class="highlighted-field">{{ vystavovatel.email_vystavitele if vystavovatel else 'email@email.cz' }}</span> 
+        nebo na adrese 
+        <span class="highlighted-field">{{ dodavatel.nazev_sro if dodavatel else 's.r.o.' }}, {{ dodavatel.adresa_radek_1 if dodavatel else 'Ulice 1234/12' }} {{ dodavatel.adresa_radek_2 if dodavatel else '100 00 Praha 1' }}</span>, 
+        ve lhůtě do 30 dnů ode dne doručení. V případě vzniku sporu mezi zákazníkem a dodavatelem může zákazník podat návrh na rozhodnutí tohoto sporu podle § 17 odst. 7 energetického zákona, přitom musí postupovat podle správního řádu.</p>
+
+        <h3>Změna dodavatele</h3>
+        <p>Zákazníci a spotřebitelé mají právo zvolit si a bezplatně změnit svého dodavatele. Každý zákazník se podpisem smlouvy zavázal dodržet její podmínky. Pokud je smlouva uzavřena na dobu určitou, je zákazník povinen tento závazek dodržet. Při ukončení smluvního vztahu je tedy nutné postupovat dle smlouvy, dodatku a všeobecných obchodních podmínek, které jsou nedílnou součástí každé smlouvy. Před změnou dodavatele je vhodné si zjistit, zda je změna dodavatele výhodná, a to nejen srovnáním ceny, ale i Obchodních podmínek dodavatele. Pro nezávislé porovnání cenových nabídek dodavatelů můžete využít například kalkulačku Energetického regulačního úřadu, kterou naleznete na adrese www.eru.cz</p>
+
+        <h3>Důležité kontaktní údaje</h3>
+        
+        <h4 style="font-size: 11px; margin: 15px 0 5px 0;"><strong>Energetický regulační úřad</strong></h4>
+        <table class="contact-table">
+            <tr>
+                <th>adresa sídla</th>
+                <td>Masarykovo náměstí 5, 586 01 Jihlava</td>
+            </tr>
+            <tr>
+                <th>telefonní číslo</th>
+                <td>564 578 666 - ústředna</td>
+            </tr>
+            <tr>
+                <th>adresa webových stránek</th>
+                <td>www.eru.cz</td>
+            </tr>
+            <tr>
+                <th>adresa elektronické podatelny</th>
+                <td>podatelna@eru.cz</td>
+            </tr>
+        </table>
+
+        <h4 style="font-size: 11px; margin: 15px 0 5px 0;"><strong>Ministerstvo průmyslu a obchodu</strong></h4>
+        <table class="contact-table">
+            <tr>
+                <th>adresa sídla</th>
+                <td>Na Františku 32, 110 15 Praha 1</td>
+            </tr>
+            <tr>
+                <th>telefonní číslo</th>
+                <td>224 851 111</td>
+            </tr>
+            <tr>
+                <th>adresa webových stránek</th>
+                <td>www.mpo.cz</td>
+            </tr>
+            <tr>
+                <th>adresa elektronické podatelny</th>
+                <td>posta@mpo.cz</td>
+            </tr>
+        </table>
+    </div>
+
+    <!-- ✅ PŘIDÁNO: Zpět odkaz stejně jako u ostatních templates -->
+    <div style="margin-top: 20px; text-align: center;">
+        <a href="{{ url_for('fakturace.fakturace', stredisko_id=stredisko.id, obdobi_id=obdobi.id) }}" 
+           style="padding: 8px 15px; background-color: #6c757d; color: white; text-decoration: none; border-radius: 3px;">
+           ← Zpět na fakturaci (zachová období {{ obdobi.rok }}/{{ '%02d'|format(obdobi.mesic) }})
+        </a>
+    </div>
+</body>
+</html>

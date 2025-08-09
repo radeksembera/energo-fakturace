@@ -1,0 +1,192 @@
+{% extends "base.html" %}
+
+{% block title %}Přehled středisek - Fakturační systém{% endblock %}
+
+{% block breadcrumb %}
+<nav aria-label="breadcrumb">
+    <ol class="breadcrumb breadcrumb-custom">
+        <li class="breadcrumb-item active">
+            <i class="bi bi-house-door me-1"></i>
+            Přehled středisek
+        </li>
+    </ol>
+</nav>
+{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-12">
+        <!-- Page Header -->
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <div>
+                <h1 class="h2 mb-1">Moje střediska</h1>
+                <p class="text-muted mb-0">Správa a přehled všech vašich středisek</p>
+            </div>
+            <a href="{{ url_for('pridat_stredisko') }}" class="btn btn-primary-custom">
+                <i class="bi bi-plus-circle me-2"></i>
+                Přidat středisko
+            </a>
+        </div>
+
+        <!-- Stats Cards -->
+        {% if strediska %}
+        <div class="row mb-4">
+            <div class="col-md-3">
+                <div class="stats-card">
+                    <div class="stats-value">{{ strediska|length }}</div>
+                    <div class="stats-label">Celkem středisek</div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="stats-card">
+                    <div class="stats-value">{{ strediska|selectattr('distribuce', 'equalto', 'ČEZ')|list|length }}</div>
+                    <div class="stats-label">ČEZ distribuce</div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="stats-card">
+                    <div class="stats-value">{{ strediska|selectattr('distribuce', 'equalto', 'EGD')|list|length }}</div>
+                    <div class="stats-label">EGD distribuce</div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="stats-card">
+                    <div class="stats-value">{{ strediska|selectattr('distribuce', 'equalto', 'PRE')|list|length }}</div>
+                    <div class="stats-label">PRE distribuce</div>
+                </div>
+            </div>
+        </div>
+        {% endif %}
+
+        <!-- Střediska Cards -->
+        {% if strediska %}
+        <div class="row">
+            {% for s in strediska %}
+            <div class="col-lg-6 col-xl-4 mb-4">
+                <div class="card-custom h-100">
+                    <div class="card-header-custom">
+                        <div class="d-flex justify-content-between align-items-start">
+                            <h5 class="card-title mb-0">
+                                <i class="bi bi-building icon-primary me-2"></i>
+                                {{ s.nazev_strediska }}
+                            </h5>
+                            <span class="badge bg-primary-custom">ID: {{ s.id }}</span>
+                        </div>
+                    </div>
+                    <div class="card-body p-4">
+                        <div class="mb-3">
+                            <div class="row">
+                                <div class="col-sm-6 mb-2">
+                                    <small class="text-muted d-block">Kód střediska</small>
+                                    <strong>{{ s.stredisko }}</strong>
+                                </div>
+                                <div class="col-sm-6 mb-2">
+                                    <small class="text-muted d-block">Distribuce</small>
+                                    {% if s.distribuce == 'ČEZ' %}
+                                        <span class="badge bg-success">{{ s.distribuce }}</span>
+                                    {% elif s.distribuce == 'EGD' %}
+                                        <span class="badge bg-warning">{{ s.distribuce }}</span>
+                                    {% elif s.distribuce == 'PRE' %}
+                                        <span class="badge bg-info">{{ s.distribuce }}</span>
+                                    {% else %}
+                                        <span class="badge bg-secondary">{{ s.distribuce }}</span>
+                                    {% endif %}
+                                </div>
+                            </div>
+                        </div>
+                        
+                        {% if s.adresa %}
+                        <div class="mb-3">
+                            <small class="text-muted d-block">Adresa</small>
+                            <div class="text-sm">{{ s.adresa }}{% if s.misto %}, {{ s.misto }}{% endif %}</div>
+                        </div>
+                        {% endif %}
+                        
+                        {% if s.stredisko_mail %}
+                        <div class="mb-3">
+                            <small class="text-muted d-block">Email</small>
+                            <a href="mailto:{{ s.stredisko_mail }}" class="text-primary-custom text-decoration-none">
+                                <i class="bi bi-envelope me-1"></i>{{ s.stredisko_mail }}
+                            </a>
+                        </div>
+                        {% endif %}
+                        
+                        {% if s.poznamka %}
+                        <div class="mb-3">
+                            <small class="text-muted d-block">Poznámka</small>
+                            <div class="text-sm">{{ s.poznamka }}</div>
+                        </div>
+                        {% endif %}
+                    </div>
+                    <div class="card-footer bg-transparent border-0 p-4 pt-0">
+                        <a href="{{ url_for('spravovat_stredisko', stredisko_id=s.id) }}" 
+                           class="btn btn-primary-custom w-100">
+                            <i class="bi bi-gear me-2"></i>
+                            Spravovat středisko
+                        </a>
+                    </div>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+        {% else %}
+        <!-- Empty State -->
+        <div class="text-center py-5">
+            <div class="mb-4">
+                <i class="bi bi-building" style="font-size: 4rem; color: var(--text-muted);"></i>
+            </div>
+            <h3 class="h4 mb-3">Nemáte žádná střediska</h3>
+            <p class="text-muted mb-4">Začněte vytvořením vašeho prvního střediska pro fakturaci.</p>
+            <a href="{{ url_for('pridat_stredisko') }}" class="btn btn-primary-custom btn-lg">
+                <i class="bi bi-plus-circle me-2"></i>
+                Přidat první středisko
+            </a>
+        </div>
+        {% endif %}
+
+        <!-- User Info -->
+        {% if strediska %}
+        <div class="card-custom mt-4">
+            <div class="card-body p-3">
+                <div class="d-flex justify-content-between align-items-center">
+                    <div class="d-flex align-items-center">
+                        <i class="bi bi-person-circle icon-primary me-2"></i>
+                        <span class="text-muted">Přihlášen jako: <strong>{{ session.email }}</strong></span>
+                    </div>
+                    <a href="/logout" class="btn btn-outline-secondary btn-sm">
+                        <i class="bi bi-box-arrow-right me-2"></i>
+                        Odhlásit se
+                    </a>
+                </div>
+            </div>
+        </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_css %}
+<style>
+    .text-sm {
+        font-size: 0.875rem;
+    }
+
+    .card-footer {
+        background-color: transparent !important;
+    }
+
+    .badge {
+        font-size: 0.75rem;
+        padding: 0.375rem 0.75rem;
+    }
+
+    .card-custom {
+        transition: all 0.2s ease;
+    }
+
+    .card-custom:hover {
+        transform: translateY(-2px);
+        box-shadow: var(--shadow-lg);
+    }
+</style>
+{% endblock %}

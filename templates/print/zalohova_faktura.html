@@ -1,0 +1,228 @@
+<!DOCTYPE html>
+<html lang="cs">
+<head>
+    <meta charset="UTF-8">
+    <title>Zálohová faktura {{ zaloha.cislo_zalohove_faktury if zaloha else 'XXXX' }}</title>
+    <style>
+        @page { margin: 2cm; }
+        body { font-family: Arial, sans-serif; font-size: 12px; line-height: 1.3; margin: 0; }
+        
+        /* Hlavička s černým rámečkem */
+        .header-box { 
+            border: 2px solid black; 
+            padding: 8px; 
+            margin-bottom: 20px; 
+            display: flex; 
+            justify-content: space-between; 
+            align-items: center; 
+        }
+        .header-title { font-size: 16px; font-weight: bold; }
+        .header-number { font-size: 16px; font-weight: bold; }
+        
+        /* Layout pro dodavatele a odběratele */
+        .main-content { display: flex; justify-content: space-between; margin-bottom: 20px; }
+        .company-info { width: 48%; }
+        .customer-info { width: 48%; }
+        
+        /* Box pro odběratele */
+        .customer-box { 
+            border: 2px solid black; 
+            padding: 10px; 
+            margin-top: 20px;
+        }
+        .customer-title { font-weight: bold; margin-bottom: 8px; }
+        
+        /* Tabulka podmínek */
+        .conditions-section { margin: 20px 0; }
+        .conditions-title { font-weight: bold; text-align: center; margin-bottom: 10px; }
+        .conditions-table { width: 100%; border-collapse: collapse; }
+        .conditions-table td { padding: 8px; border: none; }
+        
+        /* Fakturujeme sekce */
+        .invoice-section { margin: 20px 0; }
+        .invoice-table { width: 100%; border-collapse: collapse; margin: 15px 0; }
+        .invoice-table th, .invoice-table td { 
+            border: 1px solid black; 
+            padding: 8px; 
+            text-align: right; 
+        }
+        .invoice-table th { background-color: #f0f0f0; font-weight: bold; }
+        .invoice-table .description { text-align: left; }
+        
+        /* DPH sekce */
+        .dph-section { margin: 20px 0; }
+        .dph-note { font-style: italic; margin-bottom: 10px; }
+        .dph-table { border-collapse: collapse; margin: 10px 0; }
+        .dph-table td { padding: 5px 10px; }
+        
+        /* Celková částka */
+        .total-amount { 
+            text-align: center; 
+            font-size: 14px; 
+            font-weight: bold; 
+            margin: 20px 0; 
+            padding: 10px; 
+            border: 2px solid black; 
+        }
+        
+        /* Footer */
+        .footer { 
+            margin-top: 30px; 
+            font-size: 10px; 
+            border-top: 1px solid #ccc; 
+            padding-top: 15px; 
+        }
+        .footer-company { margin-bottom: 5px; }
+        .footer-details { margin-bottom: 10px; }
+        .footer-contact { margin-bottom: 10px; }
+        .footer-page { font-weight: bold; }
+        
+        .right-align { text-align: right; }
+    </style>
+</head>
+<body>
+    <!-- HLAVIČKA S ČERNÝM RÁMEČKEM -->
+    <div class="header-box">
+        <div class="header-title">ZÁLOHOVÁ FAKTURA - VÝZVA K PLATBĚ</div>
+        <div class="header-number">{{ zaloha.cislo_zalohove_faktury if zaloha else '' }}</div>
+    </div>
+
+    <!-- HLAVNÍ OBSAH -->
+    <div class="main-content">
+        <!-- LEVÁ STRANA - DODAVATEL -->
+        <div class="company-info">
+            <div style="font-weight: bold; margin-bottom: 5px;">
+                {{ dodavatel.nazev_sro if dodavatel else 'Your energy, s.r.o.' }}
+            </div>
+            <div>{{ dodavatel.adresa_radek_1 if dodavatel else 'Italská 2584/69' }}</div>
+            <div>{{ dodavatel.adresa_radek_2 if dodavatel else '120 00 Praha 2 - Vinohrady' }}</div>
+            <div style="margin-top: 15px;">
+                <div><strong>IČO:</strong> {{ dodavatel.ico_sro if dodavatel else '24833851' }}</div>
+                <div><strong>DIČ:</strong> {{ dodavatel.dic_sro if dodavatel else 'CZ24833851' }}</div>
+            </div>
+            <div style="margin-top: 15px;">
+                <div><strong>Banka:</strong> {{ dodavatel.banka if dodavatel else 'Bankovní účet Raiffeisenbank a.s. CZK' }}</div>
+                <div><strong>Číslo účtu:</strong> {{ dodavatel.cislo_uctu if dodavatel else '5041011366/5500' }}</div>
+                <div><strong>SWIFT:</strong> {{ dodavatel.swift if dodavatel else 'RZBCCZPP' }}</div>
+                <div><strong>IBAN:</strong> {{ dodavatel.iban if dodavatel else 'CZ1055000000005041011366' }}</div>
+            </div>
+            <div style="margin-top: 15px;">
+                <div><strong>Konstantní symbol:</strong> {{ zaloha.konstantni_symbol if zaloha else '' }}</div>
+                <div><strong>VS:</strong> {{ zaloha.variabilni_symbol if zaloha else '' }}</div>
+            </div>
+        </div>
+
+        <!-- PRAVÁ STRANA - ODBĚRATEL -->
+        <div class="customer-info">
+            <div class="customer-box">
+                <div class="customer-title">Odběratel</div>
+                <div style="font-weight: bold; margin-bottom: 5px;">
+                    {{ odberatel.nazev_sro if odberatel else '' }}
+                </div>
+                <div>{{ odberatel.adresa_radek_1 if odberatel else '' }}</div>
+                <div>{{ odberatel.adresa_radek_2 if odberatel else '' }}</div>
+                <div style="margin-top: 10px;">
+                    <div><strong>IČO:</strong> {{ odberatel.ico_sro if odberatel else '' }}</div>
+                    <div><strong>DIČ:</strong> {{ odberatel.dic_sro if odberatel else '' }}</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- DODACÍ A PLATEBNÍ PODMÍNKY -->
+    <div class="conditions-section">
+        <div class="conditions-title">Dodací a platební podmínky</div>
+        <table class="conditions-table">
+            <tr>
+                <td><strong>Datum splatnosti:</strong></td>
+                <td>{{ zaloha.datum_splatnosti.strftime('%d.%m.%Y') if zaloha and zaloha.datum_splatnosti else '' }}</td>
+            </tr>
+            <tr>
+                <td><strong>Forma úhrady:</strong></td>
+                <td>{{ zaloha.forma_uhrady if zaloha else 'příkazem k úhradě' }}</td>
+            </tr>
+            <tr>
+                <td><strong>Datum vystavení:</strong></td>
+                <td>{{ zaloha.datum_vystaveni.strftime('%d.%m.%Y') if zaloha and zaloha.datum_vystaveni else '' }}</td>
+            </tr>
+        </table>
+    </div>
+
+    <!-- FAKTURUJEME SEKCE -->
+    <div class="invoice-section">
+        <table class="invoice-table">
+            <thead>
+                <tr>
+                    <th class="description">Fakturujeme Vám zálohu za dodávky silové elektřiny a distribuce</th>
+                    <th>Částka v Kč</th>
+                    <th>Částka v Kč</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td class="description">
+                        {{ stredisko.nazev_strediska }} na období {{ obdobi.mesic }}/{{ obdobi.rok }}
+                    </td>
+                    <td>{{ "%.0f"|format(zaloha.zaloha if zaloha and zaloha.zaloha else 0) }}</td>
+                    <td>{{ "%.0f"|format(zaloha.zaloha if zaloha and zaloha.zaloha else 0) }}</td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+
+    <!-- DPH SEKCE -->
+    <div class="dph-section">
+        <div class="dph-note">
+            Jsme plátci DPH. Je-li vyčísleno DPH, je jen informativní a nelze ho uplatnit.
+        </div>
+        
+        <table class="dph-table">
+            <tr>
+                <td><strong>Základ:</strong></td>
+                <td><strong>Daň:</strong></td>
+                <td><strong>Celkem:</strong></td>
+            </tr>
+            <tr>
+                <td>Faktura</td>
+                <td>DPH 0%</td>
+                <td>{{ "%.0f"|format(zaloha.zaloha if zaloha and zaloha.zaloha else 0) }}</td>
+                <td>{{ "%.0f"|format(zaloha.zaloha if zaloha and zaloha.zaloha else 0) }}</td>
+            </tr>
+        </table>
+    </div>
+
+    <!-- CELKOVÁ ČÁSTKA -->
+    <div class="total-amount">
+        <strong>Celkem k úhradě v Kč: {{ "%.0f"|format(zaloha.zaloha if zaloha and zaloha.zaloha else 0) }}</strong>
+    </div>
+
+    <!-- FOOTER -->
+    <div class="footer">
+        <div class="footer-company">
+            <strong>{{ dodavatel.nazev_sro if dodavatel else 'Your energy, s.r.o.' }}</strong>, 
+            {{ dodavatel.adresa_radek_1 if dodavatel else 'Italská 2584/69' }}, 
+            {{ dodavatel.adresa_radek_2 if dodavatel else '120 00 Praha 2 - Vinohrady' }}, 
+            IČO: {{ dodavatel.ico_sro if dodavatel else '24833851' }}
+        </div>
+        <div class="footer-details">
+            {{ dodavatel.zapis_u_soudu if dodavatel else 'zapsaná dne 7. dubna 2011 do OR vedeného Městským soudem v Praze oddíl C, vložka 178628' }}
+        </div>
+        <div class="footer-contact">
+            Vystavil: {{ vystavovatel.jmeno_vystavitele if vystavovatel else 'Petra Mullerová' }}, 
+            tel: {{ vystavovatel.telefon_vystavitele if vystavovatel else '778971688' }}, 
+            email: {{ vystavovatel.email_vystavitele if vystavovatel else 'mullerova@acprofin.cz' }}
+        </div>
+        <div class="footer-page">
+            <strong>Faktura:</strong> {{ zaloha.cislo_zalohove_faktury if zaloha else '' }}
+            <span style="float: right;"><strong>Strana: 1 / 1</strong></span>
+        </div>
+        
+        <div style="margin-top: 20px; text-align: center;">
+            <a href="{{ url_for('fakturace.fakturace', stredisko_id=stredisko.id, obdobi_id=obdobi.id) }}" 
+               style="padding: 8px 15px; background-color: #6c757d; color: white; text-decoration: none; border-radius: 3px;">
+               ← Zpět na fakturaci (zachová období {{ obdobi.rok }}/{{ '%02d'|format(obdobi.mesic) }})
+            </a>
+        </div>
+    </div>
+</body>
+</html>

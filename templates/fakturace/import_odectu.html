@@ -1,0 +1,319 @@
+{% extends "base.html" %}
+
+{% block title %}Import odečtů - {{ stredisko.nazev_strediska }}{% endblock %}
+
+{% block breadcrumb %}
+<nav aria-label="breadcrumb">
+    <ol class="breadcrumb breadcrumb-custom">
+        <li class="breadcrumb-item">
+            <a href="{{ url_for('strediska') }}">
+                <i class="bi bi-house-door me-1"></i>
+                Střediska
+            </a>
+        </li>
+        <li class="breadcrumb-item">
+            <a href="{{ url_for('spravovat_stredisko', stredisko_id=stredisko.id) }}">
+                {{ stredisko.nazev_strediska }}
+            </a>
+        </li>
+        <li class="breadcrumb-item">
+            <a href="{{ url_for('fakturace.fakturace', stredisko_id=stredisko.id) }}">
+                Fakturace
+            </a>
+        </li>
+        <li class="breadcrumb-item active">Import odečtů</li>
+    </ol>
+</nav>
+{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-12">
+        <!-- Page Header -->
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <div>
+                <h1 class="h2 mb-1">
+                    <i class="bi bi-upload icon-success me-2"></i>
+                    Import odečtů
+                </h1>
+                <p class="text-muted mb-0">Nahrání a zpracování odečtů pro {{ stredisko.nazev_strediska }}</p>
+            </div>
+            <div class="d-flex gap-2">
+                <a href="{{ url_for('fakturace.fakturace', stredisko_id=stredisko.id) }}" 
+                   class="btn btn-outline-primary-custom">
+                    <i class="bi bi-arrow-left me-2"></i>
+                    Zpět na fakturaci
+                </a>
+            </div>
+        </div>
+
+        {% if not vybrane_obdobi %}
+        <!-- No Period Available -->
+        <div class="alert alert-danger-custom alert-custom">
+            <i class="bi bi-exclamation-triangle-fill me-2"></i>
+            Žádné dostupné období fakturace pro toto středisko.
+        </div>
+        {% else %}
+
+        <!-- Period Selection -->
+        <div class="card-custom mb-4">
+            <div class="card-header-custom">
+                <h5 class="card-title">
+                    <i class="bi bi-calendar-range icon-primary me-2"></i>
+                    Výběr období pro import
+                </h5>
+            </div>
+            <div class="card-body p-4">
+                <form method="get" class="d-flex align-items-center gap-3 flex-wrap">
+                    <label for="obdobi_select" class="form-label-custom mb-0">
+                        <i class="bi bi-calendar me-2"></i>
+                        Import odečtů pro období:
+                    </label>
+                    <select name="obdobi_id" id="obdobi_select" class="form-select form-control-custom" 
+                            style="width: auto;" onchange="this.form.submit()">
+                        {% for obdobi in vsechna_obdobi %}
+                            <option value="{{ obdobi.id }}" {% if vybrane_obdobi and vybrane_obdobi.id == obdobi.id %}selected{% endif %}>
+                                {{ obdobi.rok }}/{{ "%02d"|format(obdobi.mesic) }}
+                            </option>
+                        {% endfor %}
+                    </select>
+                    <div class="text-muted">
+                        <small>Středisko: <strong>{{ stredisko.nazev_strediska }}</strong></small>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <!-- Actions Section -->
+        <div class="card-custom mb-4">
+            <div class="card-header-custom">
+                <h5 class="card-title">
+                    <i class="bi bi-gear icon-primary me-2"></i>
+                    Správa importu
+                </h5>
+            </div>
+            <div class="card-body p-4">
+                <div class="row align-items-center">
+                    <div class="col-md-8">
+                        <h6 class="mb-2">Import odečtů ze souboru</h6>
+                        <p class="text-muted mb-3">
+                            Nahrajte Excel soubor s odečty pro období {{ vybrane_obdobi.rok }}/{{ "%02d"|format(vybrane_obdobi.mesic) }}. 
+                            Existující importy pro toto období budou přepsány.
+                        </p>
+                    </div>
+                    <div class="col-md-4 text-md-end">
+                        <div class="d-flex flex-column gap-2">
+                            <button onclick="triggerUpload()" class="btn btn-success">
+                                <i class="bi bi-upload me-2"></i>
+                                Načíst ze souboru
+                            </button>
+                            {% if importy %}
+                            <form method="post" action="{{ url_for('odecty.smazat_import_odectu', stredisko_id=stredisko.id, obdobi_id=vybrane_obdobi.id) }}" style="display: inline;">
+                                <button type="submit" class="btn btn-outline-danger w-100" onclick="return confirm('Opravdu chcete smazat všechny importované odečty?')">
+                                    <i class="bi bi-trash me-2"></i>
+                                    Smazat import
+                                </button>
+                            </form>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Hidden Upload Form -->
+                <form id="uploadForm" 
+                      action="{{ url_for('odecty.nahrat_import_odectu', stredisko_id=stredisko.id, obdobi_id=vybrane_obdobi.id) }}" 
+                      method="post" 
+                      enctype="multipart/form-data" 
+                      style="display: none;">
+                    <input type="file" id="xlsxUpload" name="xlsx_file" accept=".xlsx,.xls" 
+                           onchange="document.getElementById('uploadForm').submit();">
+                </form>
+            </div>
+        </div>
+
+        <!-- Data Table -->
+        {% if importy %}
+        <div class="card-custom mb-4">
+            <div class="card-header-custom">
+                <h5 class="card-title">
+                    <i class="bi bi-table icon-primary me-2"></i>
+                    Importované odečty pro {{ vybrane_obdobi.rok }}/{{ "%02d"|format(vybrane_obdobi.mesic) }} ({{ importy|length }} záznamů)
+                </h5>
+            </div>
+            <div class="card-body p-0">
+                <div class="table-responsive">
+                    <table class="table table-custom mb-0">
+                        <thead>
+                            <tr>
+                                <th class="ps-4">Označení</th>
+                                <th>Název</th>
+                                <th>Textová inf.</th>
+                                <th>Začátek</th>
+                                <th>Konec</th>
+                                <th>Skutečně odečteno</th>
+                                <th>Zdroj hodnoty</th>
+                                <th>Popis dimenze</th>
+                                <th>PZ hodnota</th>
+                                <th>Hodnota odečtu</th>
+                                <th>Spotřeba</th>
+                                <th>Měrná jedn.</th>
+                                <th>Záloha Kč</th>
+                                <th>Příznak</th>
+                                <th>Dofakturace</th>
+                                <th class="pe-4">Slevový bonus</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for imp in importy %}
+                            <tr>
+                                <td class="ps-4">
+                                    <div class="d-flex align-items-center">
+                                        <i class="bi bi-lightning-charge icon-warning me-2"></i>
+                                        <strong>{{ imp.oznaceni_om }}</strong>
+                                    </div>
+                                </td>
+                                <td>{{ imp.nazev }}</td>
+                                <td>
+                                    <small class="text-muted">{{ imp.textova_informace }}</small>
+                                </td>
+                                <td>{{ imp.zacatek_periody_mereni.strftime('%d.%m.%Y') if imp.zacatek_periody_mereni else '-' }}</td>
+                                <td>{{ imp.konec_periody_mereni.strftime('%d.%m.%Y') if imp.konec_periody_mereni else '-' }}</td>
+                                <td>{{ imp.datum_a_cas_odectu.strftime('%d.%m.%Y %H:%M') if imp.datum_a_cas_odectu else '-' }}</td>
+                                <td>
+                                    <span class="badge bg-light text-dark">{{ imp.zdroj_hodnoty }}</span>
+                                </td>
+                                <td>
+                                    {% if imp.popis_dimenze in ['Spotřeba VT', 'VT'] %}
+                                        <span class="badge bg-success">{{ imp.popis_dimenze }}</span>
+                                    {% elif imp.popis_dimenze in ['Spotřeba NT', 'NT'] %}
+                                        <span class="badge bg-info">{{ imp.popis_dimenze }}</span>
+                                    {% else %}
+                                        <span class="badge bg-secondary">{{ imp.popis_dimenze }}</span>
+                                    {% endif %}
+                                </td>
+                                <td class="text-end">{{ "%.2f"|format(imp.pocatecni_hodnota|float) if imp.pocatecni_hodnota else '-' }}</td>
+                                <td class="text-end">{{ "%.2f"|format(imp.hodnota_odectu|float) if imp.hodnota_odectu else '-' }}</td>
+                                <td class="text-end fw-medium">{{ "%.2f"|format(imp.spotreba|float) if imp.spotreba else '-' }}</td>
+                                <td>{{ imp.merna_jednotka }}</td>
+                                <td class="text-end">{{ "%.2f"|format(imp.zaloha_importu_kc|float) if imp.zaloha_importu_kc else '-' }}</td>
+                                <td>{{ imp.priznak or '-' }}</td>
+                                <td class="text-end">{{ "%.2f"|format(imp.dofakturace|float) if imp.dofakturace else '-' }}</td>
+                                <td class="text-end pe-4">{{ "%.2f"|format(imp.slevovy_bonus|float) if imp.slevovy_bonus else '-' }}</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- Confirmation Section -->
+        <div class="card-custom">
+            <div class="card-header-custom">
+                <h5 class="card-title">
+                    <i class="bi bi-check-circle icon-success me-2"></i>
+                    Potvrzení importu
+                </h5>
+            </div>
+            <div class="card-body p-4">
+                <div class="d-flex align-items-center justify-content-between">
+                    <div>
+                        <h6 class="mb-2">Jsou importované odečty v pořádku?</h6>
+                        <p class="text-muted mb-0">
+                            Po potvrzení budou data přenesena do systému a můžete pokračovat výpočtem cen.
+                        </p>
+                    </div>
+                    <div>
+                        <a href="{{ url_for('odecty.import_potvrdit', stredisko_id=stredisko.id, obdobi_id=vybrane_obdobi.id) }}"
+                           class="btn btn-success btn-lg">
+                            <i class="bi bi-check-circle me-2"></i>
+                            Nahrát do systému
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        {% else %}
+        <!-- Empty State -->
+        <div class="text-center py-5">
+            <div class="mb-4">
+                <i class="bi bi-file-earmark-excel" style="font-size: 4rem; color: var(--text-muted);"></i>
+            </div>
+            <h3 class="h4 mb-3">Žádné importované odečty</h3>
+            <p class="text-muted mb-4">
+                Pro vybrané období {{ vybrane_obdobi.rok }}/{{ "%02d"|format(vybrane_obdobi.mesic) }} zatím nejsou importovány žádné odečty.<br>
+                Použijte tlačítko pro načtení odečtů ze souboru.
+            </p>
+            <button onclick="triggerUpload()" class="btn btn-primary-custom btn-lg">
+                <i class="bi bi-upload me-2"></i>
+                Načíst první odečty
+            </button>
+        </div>
+        {% endif %}
+
+        {% endif %}
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_css %}
+<style>
+    .table th {
+        font-size: 0.8125rem;
+        white-space: nowrap;
+    }
+    
+    .table td {
+        font-size: 0.875rem;
+        vertical-align: middle;
+    }
+    
+    .badge {
+        font-size: 0.75rem;
+        padding: 0.375rem 0.75rem;
+    }
+    
+    .fw-medium {
+        font-weight: 500;
+    }
+    
+    .text-end {
+        text-align: right;
+    }
+    
+    /* Responsive table improvements */
+    @media (max-width: 768px) {
+        .table-responsive {
+            font-size: 0.8rem;
+        }
+    }
+</style>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    function triggerUpload() {
+        document.getElementById("xlsxUpload").click();
+    }
+    
+    // Show loading state on file upload
+    document.addEventListener('DOMContentLoaded', function() {
+        var uploadInput = document.getElementById('xlsxUpload');
+        if (uploadInput) {
+            uploadInput.addEventListener('change', function() {
+                if (this.files.length > 0) {
+                    // Show loading overlay
+                    var overlay = document.createElement('div');
+                    overlay.className = 'position-fixed top-50 start-50 translate-middle bg-white p-4 rounded shadow-lg text-center';
+                    overlay.style.zIndex = '9999';
+                    overlay.innerHTML = '<div class="spinner-custom mx-auto mb-3"></div>' +
+                        '<h5>Nahrávám odečty...</h5>' +
+                        '<p class="text-muted mb-0">Prosím čekejte, zpracovávám soubor</p>';
+                    document.body.appendChild(overlay);
+                }
+            });
+        }
+    });
+</script>
+{% endblock %}
