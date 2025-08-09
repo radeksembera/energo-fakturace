@@ -1,5 +1,5 @@
 from flask import Blueprint, render_template, request, redirect, url_for, session, flash, jsonify
-from models import db, Stredisko, InfoDodavatele, InfoVystavovatele, InfoOdberatele, ZalohovaFaktura, Faktura, ObdobiFakturace, ImportOdectu, VypocetOM, OdberneMisto, CenaDistribuce, CenaDodavatel, Odecet
+from models import db, Stredisko, InfoDodavatele, InfoVystavovatele, InfoOdberatele, ZalohovaFaktura, Faktura, ImportOdečtu, VypocetOM, OdberneMisto, CenaDistribuce, CenaDodavatel, Odečet
 from session_helpers import handle_obdobi_selection, get_session_obdobi
 from file_helpers import check_faktury_exist
 

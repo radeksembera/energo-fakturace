@@ -22,7 +22,7 @@
                 <h1 class="h2 mb-1">Moje střediska</h1>
                 <p class="text-muted mb-0">Správa a přehled všech vašich středisek</p>
             </div>
-            <a href="{{ url_for('pridat_stredisko') }}" class="btn btn-primary-custom">
+            <a href="{{ url_for('strediska.pridat_stredisko') }}" class="btn btn-primary-custom">
                 <i class="bi bi-plus-circle me-2"></i>
                 Přidat středisko
             </a>
@@ -119,7 +119,7 @@
                         {% endif %}
                     </div>
                     <div class="card-footer bg-transparent border-0 p-4 pt-0">
-                        <a href="{{ url_for('spravovat_stredisko', stredisko_id=s.id) }}" 
+                        <a href="{{ url_for('strediska.spravovat_stredisko', stredisko_id=s.id) }}" 
                            class="btn btn-primary-custom w-100">
                             <i class="bi bi-gear me-2"></i>
                             Spravovat středisko
@@ -137,7 +137,7 @@
             </div>
             <h3 class="h4 mb-3">Nemáte žádná střediska</h3>
             <p class="text-muted mb-4">Začněte vytvořením vašeho prvního střediska pro fakturaci.</p>
-            <a href="{{ url_for('pridat_stredisko') }}" class="btn btn-primary-custom btn-lg">
+            <a href="{{ url_for('strediska.pridat_stredisko') }}" class="btn btn-primary-custom btn-lg">
                 <i class="bi bi-plus-circle me-2"></i>
                 Přidat první středisko
             </a>

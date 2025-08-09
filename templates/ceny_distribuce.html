@@ -6,13 +6,13 @@
 <nav aria-label="breadcrumb">
     <ol class="breadcrumb breadcrumb-custom">
         <li class="breadcrumb-item">
-            <a href="{{ url_for('strediska') }}">
+            <a href="{{ url_for('strediska.strediska') }}">
                 <i class="bi bi-house-door me-1"></i>
                 Střediska
             </a>
         </li>
         <li class="breadcrumb-item">
-            <a href="{{ url_for('spravovat_stredisko', stredisko_id=stredisko_id) }}">
+            <a href="{{ url_for('strediska.spravovat_stredisko', stredisko_id=stredisko_id) }}">
                 Středisko
             </a>
         </li>
@@ -34,7 +34,7 @@
                 <p class="text-muted mb-0">Správa cen za distribuci elektřiny</p>
             </div>
             <div class="d-flex gap-2">
-                <a href="{{ url_for('spravovat_stredisko', stredisko_id=stredisko_id) }}" 
+                <a href="{{ url_for('strediska.spravovat_stredisko', stredisko_id=stredisko_id) }}" 
                    class="btn btn-outline-primary-custom">
                     <i class="bi bi-arrow-left me-2"></i>
                     Zpět na středisko

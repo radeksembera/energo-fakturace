@@ -1,5 +1,5 @@
 from flask import Blueprint, render_template, request, redirect, url_for, session, flash
-from models import db, Stredisko, ImportOdectu, ObdobiFakturace, Odecet, ZalohovaFaktura
+from models import db, Stredisko, ImportOdečtu, Odečet, ZalohovaFaktura
 from session_helpers import handle_obdobi_selection, get_session_obdobi
 import pandas as pd
 

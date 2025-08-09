@@ -1,18 +1,55 @@
-<!doctype html>
-<html lang="cs">
-<head>
-  <meta charset="utf-8">
-  <title>Přihlášení</title>
-</head>
-<body>
-  <h1>Přihlášení</h1>
-  {% if error %}<p style="color:red">{{ error }}</p>{% endif %}
-  <form method="post">
-    <label for="username">Uživatelské jméno:</label><br>
-    <input type="text" id="username" name="username" required><br>
-    <label for="password">Heslo:</label><br>
-    <input type="password" id="password" name="password" required><br><br>
-    <button type="submit">Přihlásit se</button>
-  </form>
-</body>
-</html>
+{% extends "base.html" %}
+
+{% block title %}Přihlášení - Fakturační systém{% endblock %}
+
+{% block content %}
+<div class="container-fluid vh-100">
+    <div class="row h-100">
+        <!-- Left side - Login form -->
+        <div class="col-lg-6 d-flex align-items-center justify-content-center">
+            <div class="w-100" style="max-width: 400px;">
+                <div class="text-center mb-5">
+                    <i class="bi bi-lightning-charge-fill text-primary" style="font-size: 3rem;"></i>
+                    <h2 class="h3 mb-2">Fakturační systém</h2>
+                    <p class="text-muted">Přihlaste se ke svému účtu</p>
+                </div>
+
+                {% if error %}
+                <div class="alert alert-danger" role="alert">
+                    <i class="bi bi-exclamation-triangle me-2"></i>{{ error }}
+                </div>
+                {% endif %}
+
+                <form method="post">
+                    <div class="mb-3">
+                        <label for="email" class="form-label">Email</label>
+                        <input type="email" class="form-control form-control-lg" id="email" name="email" required 
+                               placeholder="vas@email.cz">
+                    </div>
+                    
+                    <div class="mb-4">
+                        <label for="password" class="form-label">Heslo</label>
+                        <input type="password" class="form-control form-control-lg" id="password" name="password" required
+                               placeholder="Vaše heslo">
+                    </div>
+                    
+                    <button type="submit" class="btn btn-primary btn-lg w-100 mb-3">
+                        <i class="bi bi-box-arrow-in-right me-2"></i>Přihlásit se
+                    </button>
+                </form>
+            </div>
+        </div>
+
+        <!-- Right side - Background/Image -->
+        <div class="col-lg-6 d-none d-lg-block" style="background: linear-gradient(135deg, var(--primary-color) 0%, var(--primary-dark) 100%);">
+            <div class="d-flex align-items-center justify-content-center h-100 text-white">
+                <div class="text-center">
+                    <i class="bi bi-graph-up" style="font-size: 5rem; opacity: 0.3;"></i>
+                    <h3 class="mt-4">Správa energetických faktur</h3>
+                    <p class="lead">Efektivní řešení pro vaše střediska</p>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

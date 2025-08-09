@@ -1,105 +1,90 @@
-from flask import Flask, render_template, request, redirect, url_for, session
-from flask_sqlalchemy import SQLAlchemy
-from werkzeug.security import generate_password_hash, check_password_hash
+# -*- coding: utf-8 -*-
+from flask import Flask, render_template, redirect
 import os
 
-from models import db, User, Stredisko
+# Nastav UTF-8 kódování
+os.environ['PYTHONIOENCODING'] = 'utf-8'
 
+# Import models a database
+from models import db
+
+# Import Blueprint
+from routes.auth import auth_bp
+from routes.admin import admin_bp
+from routes.strediska import strediska_bp
+from routes.ceny import ceny_bp
+from routes.fakturace import fakturace_bp
+from routes.odecty import odecty_bp
+from routes.print import print_bp
+
+from session_helpers import (
+    get_session_obdobi, 
+    set_session_obdobi, 
+    handle_obdobi_selection,
+    handle_obdobi_from_rok_mesic
+)
+
+# Load environment variables
+from dotenv import load_dotenv
+if os.path.exists('.env'):
+    load_dotenv()
+
+# Flask app configuration
 app = Flask(__name__)
 app.secret_key = os.environ.get("SECRET_KEY", "tajny_klic")
-app.config['SQLALCHEMY_DATABASE_URI'] = os.environ.get("DATABASE_URL")
+
+# Database configuration
+# Priorita: DATABASE_URL (produkce) → SQLALCHEMY_DATABASE_URI (lokálně)
+database_url = os.environ.get("DATABASE_URL") or os.environ.get("SQLALCHEMY_DATABASE_URI")
+if database_url and database_url.startswith("postgres://"):
+    # Oprava pro Heroku/Railway starý formát
+    database_url = database_url.replace("postgres://", "postgresql://", 1)
+
+# Fallback pro SQLite v produkci (pokud není DATABASE_URL)
+if not database_url:
+    database_url = "sqlite:///instance/energo_fakturace.db"
+
+app.config['SQLALCHEMY_DATABASE_URI'] = database_url
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
+# Initialize database
 db.init_app(app)
 
-# Pokud spouštíš lokálně, můžeš použít create_all (na serveru to nedělej!)
-with app.app_context():
-    db.create_all()
+# Register Blueprints
+app.register_blueprint(auth_bp)
+app.register_blueprint(admin_bp)
+app.register_blueprint(strediska_bp)
+app.register_blueprint(ceny_bp)
+app.register_blueprint(fakturace_bp, url_prefix="/strediska")
+app.register_blueprint(odecty_bp, url_prefix="/strediska")
+app.register_blueprint(print_bp, url_prefix="/faktury")
+
+# Template filters
+from utils.helpers import safe_sum_filter
+app.jinja_env.filters['safe_sum'] = safe_sum_filter
 
 @app.route("/")
 def index():
-    if not session.get("user_id"):
-        return redirect("/login")
     return redirect("/strediska")
 
-@app.route("/login", methods=["GET", "POST"])
-def login():
-    if request.method == "POST":
-        username = request.form["username"]
-        password = request.form["password"]
-        user = db.session.query(User).filter(User.username == username).first()
+# Error handlers
+@app.before_request
+def log_request_info():
+    from flask import request
+    print(f"Request: {request.method} {request.url}")
 
-        if user and check_password_hash(user.password_hash, password):
-            session["user_id"] = user.id
-            session["username"] = user.username
-            return redirect("/strediska")
-        return render_template("login.html", error="Neplatné přihlášení.")
-
-
-    return render_template("login.html")
-
-@app.route("/logout")
-def logout():
-    session.clear()
-    return redirect("/login")
-
-@app.route("/strediska")
-def strediska():
-    if not session.get("user_id"):
-        return redirect("/login")
-    strediska = Stredisko.query.filter_by(user_id=session["user_id"]).all()
-    return render_template("strediska.html", strediska=strediska)
-
-@app.route("/strediska/pridat", methods=["GET", "POST"])
-def pridat_stredisko():
-    if not session.get("user_id"):
-        return redirect("/login")
-
-    if request.method == "POST":
-        nazev = request.form["nazev"]
-        adresa = request.form["adresa"]
-        misto = request.form["misto"]
-        stredisko_kod = request.form["stredisko"]
-        email = request.form["stredisko_mail"]
-        distribuce = request.form["distribuce"]
-        poznamka = request.form["poznamka"]
-
-        nove_stredisko = Stredisko(
-            user_id=session["user_id"],
-            nazev_strediska=nazev,
-            adresa=adresa,
-            misto=misto,
-            stredisko=stredisko_kod,
-            stredisko_mail=email,
-            distribuce=distribuce,
-            poznamka=poznamka
-        )
-        db.session.add(nove_stredisko)
-        db.session.commit()
-        return redirect("/strediska")
-
-    return render_template("pridat_stredisko.html")
-
-
-@app.route("/admin/users", methods=["GET", "POST"])
-def admin_users():
-    if not session.get("user_id"):
-        return redirect("/login")
-    user = User.query.get(session["user_id"])
-    if not user or user.username != "admin":
-        return redirect("/login")
-
-    if request.method == "POST":
-        username = request.form["username"]
-        password_hash = generate_password_hash(request.form["password"])
-        new_user = User(username=username, password_hash=password_hash)
-        db.session.add(new_user)
-        db.session.commit()
-
-    users = User.query.order_by(User.id).all()
-    return render_template("admin_users.html", users=users)
-
+@app.errorhandler(Exception)
+def handle_exception(e):
+    print(f"Exception: {str(e)}")
+    return f"Chyba: {str(e)}", 500
 
 if __name__ == "__main__":
-    port = int(os.environ.get("PORT", 5000))
-    app.run(host="0.0.0.0", port=port, debug=True)
+    with app.app_context():
+        db.create_all()
+    
+    # Development server
+    if os.environ.get("FLASK_ENV") == "development":
+        app.run(debug=True, host="0.0.0.0", port=5000)
+    else:
+        # Production
+        app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 5000)))

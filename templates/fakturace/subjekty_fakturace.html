@@ -6,13 +6,13 @@
 <nav aria-label="breadcrumb">
     <ol class="breadcrumb breadcrumb-custom">
         <li class="breadcrumb-item">
-            <a href="{{ url_for('strediska') }}">
+            <a href="{{ url_for('strediska.strediska') }}">
                 <i class="bi bi-house-door me-1"></i>
                 Střediska
             </a>
         </li>
         <li class="breadcrumb-item">
-            <a href="{{ url_for('spravovat_stredisko', stredisko_id=stredisko.id) }}">
+            <a href="{{ url_for('strediska.spravovat_stredisko', stredisko_id=stredisko.id) }}">
                 {{ stredisko.nazev_strediska }}
             </a>
         </li>

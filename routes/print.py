@@ -1,5 +1,5 @@
 from flask import Blueprint, render_template, render_template_string, request, redirect, url_for, session, flash, make_response
-from models import db, Stredisko, Faktura, ZalohovaFaktura, InfoDodavatele, InfoOdberatele, InfoVystavovatele, ObdobiFakturace, VypocetOM, OdberneMisto, Odecet
+from models import db, Stredisko, Faktura, ZalohovaFaktura, InfoDodavatele, InfoOdberatele, InfoVystavovatele, VypocetOM, OdberneMisto, Odečet
 from datetime import datetime
 import io
 

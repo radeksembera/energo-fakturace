@@ -1,4 +1,5 @@
 from flask_sqlalchemy import SQLAlchemy
+from datetime import datetime
 
 # Inicializace SQLAlchemy
 db = SQLAlchemy()
@@ -7,8 +8,12 @@ db = SQLAlchemy()
 class User(db.Model):
     __tablename__ = 'users'
     id = db.Column(db.Integer, primary_key=True)
-    username = db.Column(db.Text, unique=True, nullable=False)
+    email = db.Column(db.Text, unique=True, nullable=False)
     password_hash = db.Column(db.Text, nullable=False)
+    is_admin = db.Column(db.Boolean, default=False)
+    is_active = db.Column(db.Boolean, default=True)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    last_login = db.Column(db.DateTime)
 
     strediska = db.relationship('Stredisko', backref='user', cascade="all, delete")
 
@@ -82,12 +87,6 @@ class Stredisko(db.Model):
     distribuce = db.Column(db.Text)
     poznamka = db.Column(db.Text)
     role = db.Column(db.Text, nullable=False)
-    
-    ceny_distribuce_id = db.Column(db.Integer, db.ForeignKey('ceny_distribuce.id'))
-    info_dodavatele_id = db.Column(db.Integer, db.ForeignKey('info_dodavatele.id'))
-    ceny_dodavatel_id = db.Column(db.Integer, db.ForeignKey('ceny_dodavatel.id'))
-    info_vystavovatele_id = db.Column(db.Integer, db.ForeignKey('info_vystavovatele.id'))
-    info_odberatele_id = db.Column(db.Integer, db.ForeignKey('info_odberatele.id'))
 
     odberna_mista = db.relationship('OdberneMisto', backref='stredisko', cascade="all, delete")
     odecty = db.relationship('Odečet', backref='stredisko', cascade="all, delete")
