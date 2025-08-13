@@ -1,36 +1,148 @@
-<!doctype html>
-<html lang="cs">
-<head>
-  <meta charset="utf-8">
-  <title>Přidat středisko</title>
-</head>
-<body>
-  <h1>Přidat nové středisko</h1>
-  <form method="post">
-    <label for="nazev">Název střediska:</label><br>
-    <input type="text" id="nazev" name="nazev" required><br>
+{% extends "base.html" %}
 
-    <label for="adresa">Adresa:</label><br>
-    <input type="text" id="adresa" name="adresa"><br>
+{% block title %}Přidat středisko{% endblock %}
 
-    <label for="misto">Místo:</label><br>
-    <input type="text" id="misto" name="misto"><br>
+{% block breadcrumb %}
+<nav aria-label="breadcrumb">
+    <ol class="breadcrumb breadcrumb-custom">
+        <li class="breadcrumb-item">
+            <a href="{{ url_for('strediska.strediska') }}">
+                <i class="bi bi-house-door me-1"></i>
+                Střediska
+            </a>
+        </li>
+        <li class="breadcrumb-item active">Přidat středisko</li>
+    </ol>
+</nav>
+{% endblock %}
 
-    <label for="stredisko">Kód střediska:</label><br>
-    <input type="text" id="stredisko" name="stredisko"><br>
+{% block content %}
+<div class="row">
+    <div class="col-12">
+        <!-- Page Header -->
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <div>
+                <h1 class="h2 mb-1">Přidat nové středisko</h1>
+                <p class="text-muted mb-0">Vytvoření nového střediska v systému</p>
+            </div>
+            <div class="d-flex gap-2">
+                <a href="{{ url_for('strediska.strediska') }}" class="btn btn-outline-primary-custom">
+                    <i class="bi bi-arrow-left me-2"></i>
+                    Zpět na přehled
+                </a>
+            </div>
+        </div>
 
-    <label for="stredisko_mail">E-mail střediska:</label><br>
-    <input type="email" id="stredisko_mail" name="stredisko_mail"><br>
-
-    <label for="distribuce">Distribuce:</label><br>
-    <input type="text" id="distribuce" name="distribuce"><br>
-
-    <label for="poznamka">Poznámka:</label><br>
-    <textarea id="poznamka" name="poznamka"></textarea><br><br>
-
-    <button type="submit">Uložit středisko</button>
-  </form>
-  <br>
-  <a href="/strediska">Zpět na přehled</a>
-</body>
-</html>
+        <!-- Form -->
+        <div class="row">
+            <div class="col-lg-8 mx-auto">
+                <div class="card-custom">
+                    <div class="card-header-custom">
+                        <h5 class="card-title">
+                            <i class="bi bi-plus-circle icon-primary me-2"></i>
+                            Údaje nového střediska
+                        </h5>
+                    </div>
+                    <div class="card-body p-4">
+                        <form method="post">
+                            <div class="row">
+                                <div class="col-md-6 mb-3">
+                                    <label for="nazev" class="form-label-custom">
+                                        <i class="bi bi-building me-2"></i>
+                                        Název střediska
+                                    </label>
+                                    <input type="text" 
+                                           class="form-control form-control-custom" 
+                                           id="nazev" 
+                                           name="nazev" 
+                                           required
+                                           placeholder="Zadejte název střediska">
+                                </div>
+                                <div class="col-md-6 mb-3">
+                                    <label for="stredisko" class="form-label-custom">
+                                        <i class="bi bi-hash me-2"></i>
+                                        Kód střediska
+                                    </label>
+                                    <input type="text" 
+                                           class="form-control form-control-custom" 
+                                           id="stredisko" 
+                                           name="stredisko"
+                                           placeholder="Zadejte kód střediska">
+                                </div>
+                                <div class="col-md-6 mb-3">
+                                    <label for="adresa" class="form-label-custom">
+                                        <i class="bi bi-geo-alt me-2"></i>
+                                        Adresa
+                                    </label>
+                                    <input type="text" 
+                                           class="form-control form-control-custom" 
+                                           id="adresa" 
+                                           name="adresa"
+                                           placeholder="Zadejte adresu">
+                                </div>
+                                <div class="col-md-6 mb-3">
+                                    <label for="misto" class="form-label-custom">
+                                        <i class="bi bi-pin-map me-2"></i>
+                                        Místo
+                                    </label>
+                                    <input type="text" 
+                                           class="form-control form-control-custom" 
+                                           id="misto" 
+                                           name="misto"
+                                           placeholder="Zadejte místo">
+                                </div>
+                                <div class="col-md-6 mb-3">
+                                    <label for="stredisko_mail" class="form-label-custom">
+                                        <i class="bi bi-envelope me-2"></i>
+                                        E-mail střediska
+                                    </label>
+                                    <input type="email" 
+                                           class="form-control form-control-custom" 
+                                           id="stredisko_mail" 
+                                           name="stredisko_mail"
+                                           placeholder="zadejte@email.cz">
+                                </div>
+                                <div class="col-md-6 mb-3">
+                                    <label for="distribuce" class="form-label-custom">
+                                        <i class="bi bi-diagram-2 me-2"></i>
+                                        Distribuce
+                                    </label>
+                                    <select class="form-select form-control-custom" 
+                                            id="distribuce" 
+                                            name="distribuce">
+                                        <option value="">Vyberte distribuci</option>
+                                        <option value="ČEZ">ČEZ Distribuce</option>
+                                        <option value="EGD">EGD Distribuce</option>
+                                        <option value="PRE">PRE Distribuce</option>
+                                    </select>
+                                </div>
+                                <div class="col-12 mb-3">
+                                    <label for="poznamka" class="form-label-custom">
+                                        <i class="bi bi-chat-text me-2"></i>
+                                        Poznámka
+                                    </label>
+                                    <textarea class="form-control form-control-custom" 
+                                              id="poznamka" 
+                                              name="poznamka" 
+                                              rows="3"
+                                              placeholder="Volitelná poznámka k středisku"></textarea>
+                                </div>
+                            </div>
+                            <div class="d-flex justify-content-end gap-2">
+                                <a href="{{ url_for('strediska.strediska') }}" class="btn btn-outline-primary-custom">
+                                    <i class="bi bi-x-circle me-2"></i>
+                                    Zrušit
+                                </a>
+                                <button type="submit" class="btn btn-primary-custom">
+                                    <i class="bi bi-save me-2"></i>
+                                    Uložit středisko
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

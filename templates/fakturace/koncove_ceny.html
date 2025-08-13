@@ -281,7 +281,7 @@
                             <div class="flex-grow-1 ms-3">
                                 <h6 class="mb-1">Ceny distribuce</h6>
                                 <p class="mb-0 text-muted">{{ pocet_cen_distribuce }} záznamů</p>
-                                <a href="{{ url_for('ceny_distribuce', stredisko_id=stredisko.id) }}" class="btn btn-sm {% if ma_ceny_distribuce %}btn-outline-primary{% else %}btn-outline-danger{% endif %} mt-2">
+                                <a href="{{ url_for('ceny.ceny_distribuce', stredisko_id=stredisko.id) }}" class="btn btn-sm {% if ma_ceny_distribuce %}btn-outline-primary{% else %}btn-outline-danger{% endif %} mt-2">
                                     {% if ma_ceny_distribuce %}Spravovat{% else %}Nastavit{% endif %}
                                 </a>
                             </div>
@@ -299,7 +299,7 @@
                             <div class="flex-grow-1 ms-3">
                                 <h6 class="mb-1">Ceny dodavatele</h6>
                                 <p class="mb-0 text-muted">{{ pocet_cen_dodavatele }} záznamů</p>
-                                <a href="{{ url_for('ceny_dodavatele', stredisko_id=stredisko.id) }}" class="btn btn-sm {% if ma_ceny_dodavatele %}btn-outline-primary{% else %}btn-outline-danger{% endif %} mt-2">
+                                <a href="{{ url_for('ceny.ceny_dodavatele', stredisko_id=stredisko.id) }}" class="btn btn-sm {% if ma_ceny_dodavatele %}btn-outline-primary{% else %}btn-outline-danger{% endif %} mt-2">
                                     {% if ma_ceny_dodavatele %}Spravovat{% else %}Nastavit{% endif %}
                                 </a>
                             </div>

@@ -1,5 +1,5 @@
 from flask import Blueprint, render_template, render_template_string, request, redirect, url_for, session, flash, make_response
-from models import db, Stredisko, Faktura, ZalohovaFaktura, InfoDodavatele, InfoOdberatele, InfoVystavovatele, VypocetOM, OdberneMisto, Odečet
+from models import db, Stredisko, Faktura, ZalohovaFaktura, InfoDodavatele, InfoOdberatele, InfoVystavovatele, VypocetOM, OdberneMisto, Odečet, ObdobiFakturace
 from datetime import datetime
 import io
 
@@ -39,11 +39,12 @@ def get_faktura_data(stredisko_id, rok, mesic):
     # Načti všechna potřebná data
     faktura = Faktura.query.filter_by(stredisko_id=stredisko_id, obdobi_id=obdobi.id).first()
     zaloha = ZalohovaFaktura.query.filter_by(stredisko_id=stredisko_id, obdobi_id=obdobi.id).first()
-    dodavatel = InfoDodavatele.query.filter_by(stredisko_id=stredisko_id).first()
-    odberatel = InfoOdberatele.query.filter_by(stredisko_id=stredisko_id).first()
+    dodavatel = InfoDodavatele.query.first()
+    odberatel = InfoOdberatele.query.first()
+    vystavovatel = InfoVystavovatele.query.first()
     
     # Načti výpočty
-    vypocty = VypocetOM.query.filter_by(obdobi_id=obdobi.id)\
+    vypocty = VypocetOM.query.filter_by(id__gt=0)\
         .join(OdberneMisto)\
         .filter(OdberneMisto.stredisko_id == stredisko_id)\
         .all()
@@ -102,6 +103,7 @@ def get_faktura_data(stredisko_id, rok, mesic):
         'zaloha': zaloha,
         'dodavatel': dodavatel,
         'odberatel': odberatel,
+        'vystavovatel': vystavovatel,
         'rekapitulace': rekapitulace,
         'zaklad_bez_dph': zaklad_bez_dph,
         'castka_dph': castka_dph,
@@ -451,9 +453,9 @@ def vygenerovat_zalohu_html(stredisko_id, rok, mesic):
 
     # Načti všechna potřebná data
     zaloha = ZalohovaFaktura.query.filter_by(stredisko_id=stredisko_id, obdobi_id=obdobi.id).first()
-    dodavatel = InfoDodavatele.query.filter_by(stredisko_id=stredisko_id).first()
-    odberatel = InfoOdberatele.query.filter_by(stredisko_id=stredisko_id).first()
-    vystavovatel = InfoVystavovatele.query.filter_by(stredisko_id=stredisko_id).first()
+    dodavatel = InfoDodavatele.query.first()
+    odberatel = InfoOdberatele.query.first()
+    vystavovatel = InfoVystavovatele.query.first()
 
     return render_template("print/zalohova_faktura.html", 
                           stredisko=stredisko,
@@ -481,9 +483,9 @@ def vygenerovat_zalohu_pdf(stredisko_id, rok, mesic):
 
         # Načti všechna potřebná data
         zaloha = ZalohovaFaktura.query.filter_by(stredisko_id=stredisko_id, obdobi_id=obdobi.id).first()
-        dodavatel = InfoDodavatele.query.filter_by(stredisko_id=stredisko_id).first()
-        odberatel = InfoOdberatele.query.filter_by(stredisko_id=stredisko_id).first()
-        vystavovatel = InfoVystavovatele.query.filter_by(stredisko_id=stredisko_id).first()
+        dodavatel = InfoDodavatele.query.first()
+        odberatel = InfoOdberatele.query.first()
+        vystavovatel = InfoVystavovatele.query.first()
 
         # Vytvoř PDF s UTF-8 kódováním
         buffer = io.BytesIO()
@@ -682,7 +684,7 @@ def vygenerovat_prilohu1_html(stredisko_id, rok, mesic):
 
     # Načti všechna potřebná data
     faktura = Faktura.query.filter_by(stredisko_id=stredisko_id, obdobi_id=obdobi.id).first()
-    dodavatel = InfoDodavatele.query.filter_by(stredisko_id=stredisko_id).first()
+    dodavatel = InfoDodavatele.query.first()
     
     # Načti pouze odečty s existujícími odběrnými místy - INNER JOIN
     odecty = db.session.query(Odecet, OdberneMisto)\
@@ -727,7 +729,7 @@ def vygenerovat_prilohu1_pdf(stredisko_id, rok, mesic):
 
         # Načti základní data
         faktura = Faktura.query.filter_by(stredisko_id=stredisko_id, obdobi_id=obdobi.id).first()
-        dodavatel = InfoDodavatele.query.filter_by(stredisko_id=stredisko_id).first()
+        dodavatel = InfoDodavatele.query.first()
         
         # Načti pouze odečty s existujícími odběrnými místy - INNER JOIN
         odecty = db.session.query(Odecet, OdberneMisto)\
@@ -930,12 +932,12 @@ def vygenerovat_prilohu2_html(stredisko_id, rok, mesic):
 
     # Načti základní data
     faktura = Faktura.query.filter_by(stredisko_id=stredisko_id, obdobi_id=obdobi.id).first()
-    dodavatel = InfoDodavatele.query.filter_by(stredisko_id=stredisko_id).first()
+    dodavatel = InfoDodavatele.query.first()
     
     # Načti všechny výpočty s odběrnými místy pro dané období
     vypocty_om = db.session.query(VypocetOM, OdberneMisto)\
         .join(OdberneMisto, VypocetOM.odberne_misto_id == OdberneMisto.id)\
-        .filter(VypocetOM.obdobi_id == obdobi.id)\
+        .filter(VypocetOM.id > 0)\
         .filter(OdberneMisto.stredisko_id == stredisko_id)\
         .order_by(OdberneMisto.cislo_om)\
         .all()
@@ -1024,7 +1026,7 @@ def vygenerovat_prilohu2_pdf(stredisko_id, rok, mesic):
         # Načti výpočty
         vypocty_om = db.session.query(VypocetOM, OdberneMisto)\
             .join(OdberneMisto, VypocetOM.odberne_misto_id == OdberneMisto.id)\
-            .filter(VypocetOM.obdobi_id == data['obdobi'].id)\
+            .filter(VypocetOM.id > 0)\
             .filter(OdberneMisto.stredisko_id == stredisko_id)\
             .order_by(OdberneMisto.cislo_om)\
             .all()
@@ -1034,7 +1036,7 @@ def vygenerovat_prilohu2_pdf(stredisko_id, rok, mesic):
 
         # Načti vystavovatele pro důležité informace
         from models import InfoVystavovatele
-        vystavovatel = InfoVystavovatele.query.filter_by(stredisko_id=stredisko_id).first()
+        vystavovatel = InfoVystavovatele.query.first()
 
         # ✅ REGISTRACE FONTŮ
         font_registered = False

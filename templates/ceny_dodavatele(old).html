@@ -6,14 +6,14 @@
 <nav aria-label="breadcrumb">
     <ol class="breadcrumb breadcrumb-custom">
         <li class="breadcrumb-item">
-            <a href="{{ url_for('strediska.strediska') }}">
+            <a href="{{ url_for('strediska') }}">
                 <i class="bi bi-house-door me-1"></i>
                 Střediska
             </a>
         </li>
         <li class="breadcrumb-item">
-            <a href="{{ url_for('strediska.spravovat_stredisko', stredisko_id=stredisko.id) }}">
-                {{ stredisko.nazev_strediska }}
+            <a href="{{ url_for('spravovat_stredisko', stredisko_id=stredisko_id) }}">
+                Středisko
             </a>
         </li>
         <li class="breadcrumb-item active">Ceny dodavatele</li>
@@ -34,7 +34,7 @@
                 <p class="text-muted mb-0">Správa cen za dodávku elektřiny</p>
             </div>
             <div class="d-flex gap-2">
-                <a href="{{ url_for('strediska.spravovat_stredisko', stredisko_id=stredisko.id) }}" 
+                <a href="{{ url_for('spravovat_stredisko', stredisko_id=stredisko_id) }}" 
                    class="btn btn-outline-primary-custom">
                     <i class="bi bi-arrow-left me-2"></i>
                     Zpět na středisko
@@ -58,25 +58,16 @@
                                 <i class="bi bi-calendar me-2"></i>
                                 Období:
                             </label>
-                            <div class="d-flex gap-2">
-                                <select name="rok" class="form-select form-control-custom" style="width: auto;">
-                                    {% for rok in range(2024, 2031) %}
-                                    <option value="{{ rok }}" {% if rok == zvoleny_rok %}selected{% endif %}>
-                                        {{ rok }}
-                                    </option>
-                                    {% endfor %}
-                                </select>
-                                <span class="align-self-center">/</span>
-                                <select name="mesic" class="form-select form-control-custom" style="width: auto;" onchange="this.form.submit()">
-                                    {% for mesic in range(1, 13) %}
-                                    <option value="{{ mesic }}" {% if mesic == zvoleny_mesic %}selected{% endif %}>
-                                        {{ "%02d"|format(mesic) }}
-                                    </option>
-                                    {% endfor %}
-                                </select>
-                            </div>
+                            <select name="obdobi_select" id="obdobiSelect" class="form-select form-control-custom" onchange="handleObdobiChange(this.value)">
+                                {% for obdobi in get_unified_obdobi(stredisko_id) %}
+                                <option value="{{ obdobi.value }}" 
+                                        {% if obdobi.rok == zvoleny_rok and obdobi.mesic == zvoleny_mesic %}selected{% endif %}>
+                                    {{ obdobi.display }}
+                                </option>
+                                {% endfor %}
+                            </select>
                             <div class="text-muted">
-                                Zobrazené období: <strong>{{ zvoleny_rok }}/{{ "%02d"|format(zvoleny_mesic) }}</strong>
+                                Zobrazují se ceny pro období <strong>{{ zvoleny_rok }}/{{ "%02d"|format(zvoleny_mesic) }}</strong>
                                 {% if dostupna_obdobi %}
                                     <br><small>Dostupná období: {{ dostupna_obdobi|join(', ') }}</small>
                                 {% endif %}
@@ -86,9 +77,9 @@
                 </div>
             </div>
             <div class="col-md-4">
-                {% if ceny %}
+                {% if ceny_dodavatele %}
                 <div class="stats-card">
-                    <div class="stats-value">{{ ceny|length }}</div>
+                    <div class="stats-value">{{ ceny_dodavatele|length }}</div>
                     <div class="stats-label">Cenových položek pro {{ zvoleny_rok }}/{{ "%02d"|format(zvoleny_mesic) }}</div>
                 </div>
                 {% else %}
@@ -126,14 +117,14 @@
                 <div class="row align-items-center">
                     <div class="col-md-8">
                         <h6 class="mb-2">
-                            {% if ceny %}
+                            {% if ceny_dodavatele %}
                                 Import cen dodavatele
                             {% else %}
                                 Nastavení cen dodavatele
                             {% endif %}
                         </h6>
                         <p class="text-muted mb-3">
-                            {% if ceny %}
+                            {% if ceny_dodavatele %}
                                 Nahrajte Excel soubor s cenami dodavatele pro období {{ zvoleny_rok }}/{{ "%02d"|format(zvoleny_mesic) }}. 
                                 Existující ceny pro toto období budou přepsány.
                             {% else %}
@@ -150,7 +141,7 @@
                                 Stáhnout vzor
                             </a>
                             
-                            {% if ceny %}
+                            {% if ceny_dodavatele %}
                                 <!-- Pokud už má ceny - zobraz standardní nahrání -->
                                 <button onclick="triggerUpload()" class="btn btn-success">
                                     <i class="bi bi-upload me-2"></i>
@@ -162,7 +153,7 @@
                                 </button>
                             {% else %}
                                 <!-- Pokud nemá ceny - zobraz kopírování z předchozího období -->
-                                <button onclick="copyFromPrevious()" class="btn btn-primary-custom">
+                                <button onclick="copyFromPreviousDOM()" class="btn btn-primary-custom">
                                     <i class="bi bi-copy me-2"></i>
                                     Kopírovat z předchozího období
                                 </button>
@@ -177,7 +168,7 @@
                 
                 <!-- Hidden Forms -->
                 <form id="uploadForm" 
-                      action="{{ url_for('ceny.nahrat_ceny_dodavatele', stredisko_id=stredisko.id) }}" 
+                      action="{{ url_for('nahrat_ceny_dodavatele', stredisko_id=stredisko_id) }}" 
                       method="post" 
                       enctype="multipart/form-data" 
                       style="display:none;">
@@ -188,7 +179,7 @@
                 </form>
 
                 <form id="deleteForm" 
-                      action="{{ url_for('ceny.smazat_ceny_dodavatele', stredisko_id=stredisko.id) }}" 
+                      action="{{ url_for('smazat_ceny_dodavatele', stredisko_id=stredisko_id) }}" 
                       method="post" 
                       style="display:none;">
                     <input type="hidden" name="rok" value="{{ zvoleny_rok }}">
@@ -196,7 +187,7 @@
                 </form>
 
                 <form id="copyForm" 
-                      action="{{ url_for('ceny.kopirovat_ceny_dodavatele', stredisko_id=stredisko.id) }}" 
+                      action="{{ url_for('kopirovat_ceny_dodavatele', stredisko_id=stredisko_id) }}" 
                       method="post" 
                       style="display:none;">
                     <input type="hidden" name="rok" value="{{ zvoleny_rok }}">
@@ -205,8 +196,8 @@
             </div>
         </div>
 
-        <!-- Upravit ceny -->
-        {% if ceny %}
+        <!-- ✅ NOVÝ BLOK - Upravit ceny -->
+        {% if ceny_dodavatele %}
         <div class="card-custom mb-4">
             <div class="card-header-custom">
                 <h5 class="card-title">
@@ -220,7 +211,7 @@
                         <h6 class="mb-2">Hromadná úprava cen</h6>
                         <p class="text-muted mb-3">
                             Zadejte nové ceny, které se aplikují na všechny záznamy v období {{ zvoleny_rok }}/{{ "%02d"|format(zvoleny_mesic) }}. 
-                            Ovlivní to celkem <strong>{{ ceny|length }} záznamů</strong>.
+                            Ovlivní to celkem <strong>{{ ceny_dodavatele|length }} záznamů</strong>.
                         </p>
                     </div>
                     <div class="col-md-4">
@@ -231,7 +222,7 @@
                     </div>
                 </div>
 
-                <form method="post" action="{{ url_for('ceny.hromadne_upravit_ceny_dodavatele', stredisko_id=stredisko.id) }}" id="hromadnaUprava">
+                <form method="post" action="{{ url_for('hromadne_upravit_ceny_dodavatele', stredisko_id=stredisko_id) }}" id="hromadnaUprava">
                     <input type="hidden" name="rok" value="{{ zvoleny_rok }}">
                     <input type="hidden" name="mesic" value="{{ zvoleny_mesic }}">
                     
@@ -294,7 +285,7 @@
                     <div class="d-flex justify-content-between align-items-center pt-3 border-top">
                         <div class="text-muted small">
                             <i class="bi bi-info-circle me-1"></i>
-                            Změny se projeví u všech {{ ceny|length }} záznamů v tomto období
+                            Změny se projeví u všech {{ ceny_dodavatele|length }} záznamů v tomto období
                         </div>
                         <button type="submit" class="btn btn-warning" onclick="return confirmHromadnaUprava()">
                             <i class="bi bi-arrow-repeat me-2"></i>
@@ -307,12 +298,12 @@
         {% endif %}
 
         <!-- Data Table -->
-        {% if ceny %}
+        {% if ceny_dodavatele %}
         <div class="card-custom">
             <div class="card-header-custom">
                 <h5 class="card-title">
                     <i class="bi bi-table icon-primary me-2"></i>
-                    Ceník dodavatele pro {{ zvoleny_rok }}/{{ "%02d"|format(zvoleny_mesic) }} ({{ ceny|length }} položek)
+                    Ceník dodavatele pro {{ zvoleny_rok }}/{{ "%02d"|format(zvoleny_mesic) }} ({{ ceny_dodavatele|length }} položek)
                 </h5>
             </div>
             <div class="card-body p-0">
@@ -329,7 +320,7 @@
                             </tr>
                         </thead>
                         <tbody>
-                            {% for cena in ceny %}
+                            {% for cena in ceny_dodavatele %}
                             <tr>
                                 <td class="ps-4">
                                     <div class="d-flex align-items-center">
@@ -340,49 +331,31 @@
                                         {% elif cena.distribuce == 'PRE' %}
                                             <span class="badge bg-info me-2">{{ cena.distribuce }}</span>
                                         {% else %}
-                                            <span class="badge bg-secondary me-2">{{ cena.distribuce or 'N/A' }}</span>
+                                            <span class="badge bg-secondary me-2">{{ cena.distribuce }}</span>
                                         {% endif %}
                                     </div>
                                 </td>
                                 <td>
-                                    <span class="badge bg-primary-custom">{{ cena.sazba or 'N/A' }}</span>
+                                    <span class="badge bg-primary-custom">{{ cena.sazba }}</span>
                                 </td>
                                 <td>
-                                    <code class="bg-light px-2 py-1 rounded">{{ cena.jistic or 'N/A' }}</code>
+                                    <code class="bg-light px-2 py-1 rounded">{{ cena.jistic }}</code>
                                 </td>
                                 <td class="text-end">
                                     <div class="d-flex flex-column align-items-end">
-                                        <span class="fw-medium text-success">
-                                            {% if cena.platba_za_elektrinu_vt %}
-                                                {{ "%.2f"|format(cena.platba_za_elektrinu_vt|float) }}
-                                            {% else %}
-                                                -
-                                            {% endif %}
-                                        </span>
+                                        <span class="fw-medium text-success">{{ "%.2f"|format(cena.platba_za_elektrinu_vt|float) }}</span>
                                         <small class="text-muted">VT tarif</small>
                                     </div>
                                 </td>
                                 <td class="text-end">
                                     <div class="d-flex flex-column align-items-end">
-                                        <span class="fw-medium text-info">
-                                            {% if cena.platba_za_elektrinu_nt %}
-                                                {{ "%.2f"|format(cena.platba_za_elektrinu_nt|float) }}
-                                            {% else %}
-                                                -
-                                            {% endif %}
-                                        </span>
+                                        <span class="fw-medium text-info">{{ "%.2f"|format(cena.platba_za_elektrinu_nt|float) }}</span>
                                         <small class="text-muted">NT tarif</small>
                                     </div>
                                 </td>
                                 <td class="text-end pe-4">
                                     <div class="d-flex flex-column align-items-end">
-                                        <span class="fw-medium text-primary-custom">
-                                            {% if cena.mesicni_plat %}
-                                                {{ "%.2f"|format(cena.mesicni_plat|float) }}
-                                            {% else %}
-                                                -
-                                            {% endif %}
-                                        </span>
+                                        <span class="fw-medium text-primary-custom">{{ "%.2f"|format(cena.mesicni_plat|float) }}</span>
                                         <small class="text-muted">stálý plat</small>
                                     </div>
                                 </td>
@@ -483,6 +456,7 @@
         font-weight: 500;
     }
     
+    /* Price highlighting */
     .text-success {
         color: var(--success-color) !important;
     }
@@ -491,6 +465,7 @@
         color: #0ea5e9 !important;
     }
 
+    /* ✅ NOVÉ STYLY pro hromadnou úpravu */
     .alert-warning-custom {
         background-color: #fffbeb;
         color: #92400e;
@@ -513,6 +488,16 @@
 
 {% block extra_js %}
 <script>
+    function handleObdobiChange(value) {
+        var parts = value.split('-');
+        var rok = parts[0];
+        var mesic = parts[1];
+        var url = new URL(window.location);
+        url.searchParams.set('rok', rok);
+        url.searchParams.set('mesic', mesic);
+        window.location.href = url.toString();
+    }
+
     function confirmDelete() {
         var obdobi = "{{ zvoleny_rok }}/{{ '%02d'|format(zvoleny_mesic) }}";
         if (confirm("Opravdu chcete smazat všechny ceny dodavatele pro období " + obdobi + "?")) {
@@ -526,7 +511,7 @@
         document.getElementById("csvUpload").click();
     }
 
-    function copyFromPrevious() {
+    function copyFromPreviousDOM() {
         var rokInput = document.querySelector('#copyForm input[name="rok"]');
         var mesicInput = document.querySelector('#copyForm input[name="mesic"]');
         
@@ -560,7 +545,9 @@
         }
     }
 
+    // ✅ NOVÁ FUNKCE - potvrzení hromadné úpravy
     function confirmHromadnaUprava() {
+        // ✅ OPRAVA: Získej počet záznamů z DOM místo Jinja
         var pocetZaznamu = document.querySelectorAll('tbody tr').length;
         var obdobiElement = document.querySelector('input[name="rok"]');
         var mesicElement = document.querySelector('input[name="mesic"]');
@@ -598,13 +585,15 @@
         return confirm(message);
     }
 
-    // Auto-vyplnění hodnot z první existující ceny pro usnadnění
+    // ✅ Auto-vyplnění hodnot z první existující ceny pro usnadnění
     document.addEventListener('DOMContentLoaded', function() {
+        // Pokud existuje tabulka s cenami, vezmi hodnoty z prvního řádku
         var firstVT = document.querySelector('tbody tr:first-child .text-success');
         var firstNT = document.querySelector('tbody tr:first-child .text-info');
         var firstPlat = document.querySelector('tbody tr:first-child .text-primary-custom');
         
         if (firstVT && firstNT && firstPlat) {
+            // Nastavíme placeholder hodnoty podle první ceny
             document.getElementById('platba_vt').placeholder = firstVT.textContent.trim();
             document.getElementById('platba_nt').placeholder = firstNT.textContent.trim();
             document.getElementById('mesicni_plat').placeholder = firstPlat.textContent.trim();

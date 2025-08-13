@@ -47,6 +47,15 @@ if not database_url:
 app.config['SQLALCHEMY_DATABASE_URI'] = database_url
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
+# PostgreSQL connection pool settings to prevent disconnections
+if database_url and database_url.startswith("postgresql://"):
+    app.config['SQLALCHEMY_ENGINE_OPTIONS'] = {
+        'pool_pre_ping': True,  # Validate connections before use
+        'pool_recycle': 300,    # Recycle connections after 5 minutes
+        'pool_size': 10,        # Connection pool size
+        'max_overflow': 20      # Additional connections allowed
+    }
+
 # Initialize database
 db.init_app(app)
 
@@ -54,14 +63,16 @@ db.init_app(app)
 app.register_blueprint(auth_bp)
 app.register_blueprint(admin_bp)
 app.register_blueprint(strediska_bp)
-app.register_blueprint(ceny_bp)
+app.register_blueprint(ceny_bp, url_prefix="/strediska")
 app.register_blueprint(fakturace_bp, url_prefix="/strediska")
 app.register_blueprint(odecty_bp, url_prefix="/strediska")
 app.register_blueprint(print_bp, url_prefix="/faktury")
 
-# Template filters
+# Template filters and functions
 from utils.helpers import safe_sum_filter
+from session_helpers import get_obdobi_display_name
 app.jinja_env.filters['safe_sum'] = safe_sum_filter
+app.jinja_env.globals['get_obdobi_display_name'] = get_obdobi_display_name
 
 @app.route("/")
 def index():

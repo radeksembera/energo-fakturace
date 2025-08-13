@@ -21,9 +21,11 @@ class User(db.Model):
 class CenaDistribuce(db.Model):
     __tablename__ = 'ceny_distribuce'
     id = db.Column(db.Integer, primary_key=True)
+    stredisko_id = db.Column(db.Integer, db.ForeignKey('strediska.id'))
     distribuce = db.Column(db.Text)
     sazba = db.Column(db.Text)
     jistic = db.Column(db.Text)
+    rok = db.Column(db.Integer)
     platba_za_jistic = db.Column(db.Numeric)
     platba_za_distribuci_vt = db.Column(db.Numeric)
     platba_za_distribuci_nt = db.Column(db.Numeric)
@@ -36,6 +38,8 @@ class CenaDistribuce(db.Model):
 class CenaDodavatel(db.Model):
     __tablename__ = 'ceny_dodavatel'
     id = db.Column(db.Integer, primary_key=True)
+    stredisko_id = db.Column(db.Integer, db.ForeignKey('strediska.id'))
+    obdobi_id = db.Column(db.Integer, db.ForeignKey('obdobi_fakturace.id'))
     distribuce = db.Column(db.Text)
     sazba = db.Column(db.Text)
     jistic = db.Column(db.Text)
@@ -47,6 +51,7 @@ class CenaDodavatel(db.Model):
 class InfoDodavatele(db.Model):
     __tablename__ = 'info_dodavatele'
     id = db.Column(db.Integer, primary_key=True)
+    # stredisko_id odstraněno - globální info
     nazev_sro = db.Column(db.Text)
     adresa_radek_1 = db.Column(db.Text)
     adresa_radek_2 = db.Column(db.Text)
@@ -61,6 +66,7 @@ class InfoDodavatele(db.Model):
 class InfoVystavovatele(db.Model):
     __tablename__ = 'info_vystavovatele'
     id = db.Column(db.Integer, primary_key=True)
+    # stredisko_id odstraněno - globální info
     jmeno_vystavitele = db.Column(db.Text)
     telefon_vystavitele = db.Column(db.Text)
     email_vystavitele = db.Column(db.Text)
@@ -68,6 +74,7 @@ class InfoVystavovatele(db.Model):
 class InfoOdberatele(db.Model):
     __tablename__ = 'info_odberatele'
     id = db.Column(db.Integer, primary_key=True)
+    # stredisko_id odstraněno - globální info
     nazev_sro = db.Column(db.Text)
     adresa_radek_1 = db.Column(db.Text)
     adresa_radek_2 = db.Column(db.Text)
@@ -114,6 +121,7 @@ class VypocetOM(db.Model):
     __tablename__ = 'vypocty_om'
     id = db.Column(db.Integer, primary_key=True)
     odberne_misto_id = db.Column(db.Integer, db.ForeignKey('odberna_mista.id'))
+    # obdobi_id sloupec neexistuje v DB - zatím odstraněno
     platba_za_jistic = db.Column(db.Numeric)
     platba_za_distribuci_vt = db.Column(db.Numeric)
     platba_za_distribuci_nt = db.Column(db.Numeric)
@@ -134,9 +142,9 @@ class Odečet(db.Model):
     __tablename__ = 'odecty'
     id = db.Column(db.Integer, primary_key=True)
     stredisko_id = db.Column(db.Integer, db.ForeignKey('strediska.id'))
+    # Přidáno období_id pro jednotnou správu
+    obdobi_id = db.Column(db.Integer, db.ForeignKey('obdobi_fakturace.id'))
     oznaceni = db.Column(db.Text)
-    rok = db.Column(db.Integer)
-    mesic = db.Column(db.Integer)
     zacatek_periody_mereni = db.Column(db.Date)
     konec_periody_mereni = db.Column(db.Date)
     pocatecni_hodnota_vt = db.Column(db.Numeric)
@@ -154,9 +162,12 @@ class ImportOdečtu(db.Model):
     __tablename__ = 'import_odectu'
     id = db.Column(db.Integer, primary_key=True)
     stredisko_id = db.Column(db.Integer, db.ForeignKey('strediska.id'))
+    # Přidáno období_id pro jednotnou správu
+    obdobi_id = db.Column(db.Integer, db.ForeignKey('obdobi_fakturace.id'))
     oznaceni_om = db.Column(db.Text)
-    rok = db.Column(db.Integer)
-    mesic = db.Column(db.Integer)
+    # Zachováme rok/měsíc z importovaných dat
+    import_rok = db.Column(db.Integer)
+    import_mesic = db.Column(db.Integer)
     nazev = db.Column(db.Text)
     textova_informace = db.Column(db.Text)
     zacatek_periody_mereni = db.Column(db.Date)
@@ -178,8 +189,8 @@ class ZalohovaFaktura(db.Model):
     __tablename__ = 'zalohova_faktura'
     id = db.Column(db.Integer, primary_key=True)
     stredisko_id = db.Column(db.Integer, db.ForeignKey('strediska.id'))
-    rok = db.Column(db.Integer)
-    mesic = db.Column(db.Integer)
+    # Přidáno období_id pro jednotnou správu
+    obdobi_id = db.Column(db.Integer, db.ForeignKey('obdobi_fakturace.id'))
     cislo_zalohove_faktury = db.Column(db.Text)
     konstantni_symbol = db.Column(db.Integer)
     variabilni_symbol = db.Column(db.Integer)
@@ -193,8 +204,8 @@ class Faktura(db.Model):
     __tablename__ = 'faktura'
     id = db.Column(db.Integer, primary_key=True)
     stredisko_id = db.Column(db.Integer, db.ForeignKey('strediska.id'))
-    rok = db.Column(db.Integer)
-    mesic = db.Column(db.Integer)
+    # Přidáno období_id pro jednotnou správu
+    obdobi_id = db.Column(db.Integer, db.ForeignKey('obdobi_fakturace.id'))
     cislo_faktury = db.Column(db.Text)
     variabilni_symbol = db.Column(db.Integer)
     konstantni_symbol = db.Column(db.Integer)
@@ -206,3 +217,12 @@ class Faktura(db.Model):
     sazba_dph = db.Column(db.Numeric)
     fakturace_od = db.Column(db.Date)
     fakturace_do = db.Column(db.Date)
+
+# --- OBDOBI FAKTURACE ---
+class ObdobiFakturace(db.Model):
+    __tablename__ = 'obdobi_fakturace'
+    id = db.Column(db.Integer, primary_key=True)
+    stredisko_id = db.Column(db.Integer, db.ForeignKey('strediska.id'))
+    rok = db.Column(db.Integer, nullable=False)
+    mesic = db.Column(db.Integer, nullable=False)
+    # Odstranil jsem nazev, stav a created_at - nejsou v existující tabulce

@@ -127,7 +127,7 @@
                 
                 <!-- Hidden Upload Form -->
                 <form id="uploadForm" 
-                      action="{{ url_for('nahrat_odberna_mista', stredisko_id=stredisko.id) }}" 
+                      action="{{ url_for('strediska.nahrat_odberna_mista', stredisko_id=stredisko.id) }}" 
                       method="post" 
                       enctype="multipart/form-data" 
                       style="display: none;">
@@ -311,7 +311,7 @@
                                        data-name="ean_om" 
                                        data-value="{{ om.ean_om or '' }}" 
                                        data-pk="{{ om.id }}"
-                                       data-url="{{ url_for('upravit_odberne_misto', stredisko_id=stredisko.id) }}">
+                                       data-url="{{ url_for('strediska.upravit_odberne_misto', stredisko_id=stredisko.id) }}">
                                         <code class="bg-light px-2 py-1 rounded">{{ om.ean_om or 'Klikněte pro úpravu' }}</code>
                                     </a>
                                 </td>
@@ -320,7 +320,7 @@
                                        data-name="nazev_om" 
                                        data-value="{{ om.nazev_om or '' }}" 
                                        data-pk="{{ om.id }}"
-                                       data-url="{{ url_for('upravit_odberne_misto', stredisko_id=stredisko.id) }}">
+                                       data-url="{{ url_for('strediska.upravit_odberne_misto', stredisko_id=stredisko.id) }}">
                                         {{ om.nazev_om or 'Klikněte pro úpravu' }}
                                     </a>
                                 </td>
@@ -331,7 +331,7 @@
                                        data-pk="{{ om.id }}"
                                        data-type="select"
                                        data-source='[{"value":"","text":"Vyberte sazbu"},{"value":"C01d","text":"C01d"},{"value":"C02d","text":"C02d"},{"value":"C03d","text":"C03d"},{"value":"C25d","text":"C25d"},{"value":"C26d","text":"C26d"},{"value":"C27d","text":"C27d"},{"value":"C35d","text":"C35d"},{"value":"C45d","text":"C45d"},{"value":"C46d","text":"C46d"},{"value":"C56d","text":"C56d"},{"value":"C62d","text":"C62d"},{"value":"D01d","text":"D01d"},{"value":"D02d","text":"D02d"},{"value":"D25d","text":"D25d"},{"value":"D26d","text":"D26d"},{"value":"D27d","text":"D27d"},{"value":"D35d","text":"D35d"},{"value":"D45d","text":"D45d"},{"value":"D56d","text":"D56d"},{"value":"D57d","text":"D57d"},{"value":"D61d","text":"D61d"}]'
-                                       data-url="{{ url_for('upravit_odberne_misto', stredisko_id=stredisko.id) }}">
+                                       data-url="{{ url_for('strediska.upravit_odberne_misto', stredisko_id=stredisko.id) }}">
                                         {{ om.distribucni_sazba_om or 'Klikněte pro úpravu' }}
                                     </a>
                                 </td>
@@ -342,7 +342,7 @@
                                        data-pk="{{ om.id }}"
                                        data-type="select"
                                        data-source='[{"value":"","text":"Vyberte kategorii"},{"value":"do 3x10A a do 1x25A včetně","text":"do 3x10A a do 1x25A včetně"},{"value":"nad 3x10A do 3x16A včetně","text":"nad 3x10A do 3x16A včetně"},{"value":"nad 3x16A do 3x20A včetně","text":"nad 3x16A do 3x20A včetně"},{"value":"nad 3x20A do 3x25A včetně","text":"nad 3x20A do 3x25A včetně"},{"value":"nad 3x25A do 3x32A včetně","text":"nad 3x25A do 3x32A včetně"},{"value":"nad 3x32A do 3x40A včetně","text":"nad 3x32A do 3x40A včetně"},{"value":"nad 3x40A do 3x50A včetně","text":"nad 3x40A do 3x50A včetně"},{"value":"nad 3x50A do 3x63A včetně","text":"nad 3x50A do 3x63A včetně"},{"value":"nad 3x63A do 3x80A včetně","text":"nad 3x63A do 3x80A včetně"},{"value":"nad 3x80A do 3x100A včetně","text":"nad 3x80A do 3x100A včetně"},{"value":"nad 3x100A do 3x125A včetně","text":"nad 3x100A do 3x125A včetně"},{"value":"nad 3x125A do 3x160A včetně","text":"nad 3x125A do 3x160A včetně"},{"value":"nad 3x160A za každou 1A","text":"nad 3x160A za každou 1A"},{"value":"nad 1x25A za každou 1A","text":"nad 1x25A za každou 1A"},{"value":"nad 3x63A za každou 1A","text":"nad 3x63A za každou 1A"}]'
-                                       data-url="{{ url_for('upravit_odberne_misto', stredisko_id=stredisko.id) }}">
+                                       data-url="{{ url_for('strediska.upravit_odberne_misto', stredisko_id=stredisko.id) }}">
                                         {{ om.kategorie_jistice_om or 'Klikněte pro úpravu' }}
                                     </a>
                                 </td>
@@ -351,7 +351,7 @@
                                        data-name="hodnota_jistice_om" 
                                        data-value="{{ om.hodnota_jistice_om or '' }}" 
                                        data-pk="{{ om.id }}"
-                                       data-url="{{ url_for('upravit_odberne_misto', stredisko_id=stredisko.id) }}">
+                                       data-url="{{ url_for('strediska.upravit_odberne_misto', stredisko_id=stredisko.id) }}">
                                         {{ om.hodnota_jistice_om or '0' }}
                                     </a>
                                 </td>
@@ -360,7 +360,7 @@
                                        data-name="poznamka_om" 
                                        data-value="{{ om.poznamka_om or '' }}" 
                                        data-pk="{{ om.id }}"
-                                       data-url="{{ url_for('upravit_odberne_misto', stredisko_id=stredisko.id) }}">
+                                       data-url="{{ url_for('strediska.upravit_odberne_misto', stredisko_id=stredisko.id) }}">
                                         {{ om.poznamka_om or 'Bez poznámky' }}
                                     </a>
                                 </td>
@@ -491,7 +491,7 @@
         
         if (confirm(`Opravdu chcete smazat odběrné místo ${cisloOM}?`)) {
             if (confirm('Všechny související výpočty budou také smazány. Pokračovat?')) {
-                fetch('{{ url_for("smazat_odberne_misto", stredisko_id=stredisko.id) }}', {
+                fetch('{{ url_for("strediska.smazat_odberne_misto", stredisko_id=stredisko.id) }}', {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/x-www-form-urlencoded',

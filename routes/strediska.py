@@ -1,5 +1,5 @@
 from flask import Blueprint, render_template, request, redirect, url_for, session, flash
-from models import db, User, Stredisko, OdberneMisto, VypocetOM, Odečet
+from models import db, User, Stredisko, OdberneMisto, VypocetOM, Odečet, ObdobiFakturace
 from routes.auth import login_required
 from utils.helpers import safe_excel_string
 import pandas as pd
@@ -92,6 +92,30 @@ def spravovat_stredisko(stredisko_id):
     stredisko = Stredisko.query.get_or_404(stredisko_id)
     return render_template("sprava_strediska.html", stredisko=stredisko)
 
+@strediska_bp.route("/<int:stredisko_id>/upravit", methods=["POST"])
+@login_required
+def upravit_stredisko(stredisko_id):
+    has_access, error_response = check_stredisko_access(stredisko_id, 'write')
+    if not has_access:
+        flash("❌ Nemáte oprávnění upravovat toto středisko.")
+        return redirect(url_for("strediska.spravovat_stredisko", stredisko_id=stredisko_id))
+
+    stredisko = Stredisko.query.get_or_404(stredisko_id)
+    
+    # Aktualizuj údaje střediska
+    stredisko.nazev_strediska = request.form["nazev_strediska"]
+    stredisko.stredisko = request.form["stredisko_kod"]
+    stredisko.adresa = request.form["adresa"]
+    stredisko.misto = request.form["misto"]
+    stredisko.stredisko_mail = request.form["stredisko_mail"]
+    stredisko.distribuce = request.form["distribuce"]
+    stredisko.poznamka = request.form["poznamka"]
+    
+    db.session.commit()
+    flash("✅ Středisko bylo úspěšně upraveno.")
+    
+    return redirect(url_for("strediska.spravovat_stredisko", stredisko_id=stredisko_id))
+
 @strediska_bp.route("/<int:stredisko_id>/odberna_mista", methods=["GET", "POST"])
 @login_required
 def prehled_odbernych_mist(stredisko_id):
@@ -163,7 +187,71 @@ def pridat_stredisko():
         db.session.add(nove_stredisko)
         db.session.commit()
         
-        flash(f"✅ Středisko {nazev} bylo úspěšně vytvořeno.")
+        # Vytvoř období fakturace pro nové středisko (1/2025 až 12/2026)
+        for rok in [2025, 2026]:
+            for mesic in range(1, 13):
+                obdobi = ObdobiFakturace(
+                    stredisko_id=nove_stredisko.id,
+                    rok=rok,
+                    mesic=mesic
+                )
+                db.session.add(obdobi)
+        
+        db.session.commit()
+        
+        flash(f"✅ Středisko {nazev} bylo úspěšně vytvořeno s období fakturace 2025-2026.")
         return redirect(url_for("strediska.strediska"))
 
     return render_template("pridat_stredisko.html")
+
+@strediska_bp.route("/<int:stredisko_id>/nahrat_odberna_mista", methods=["POST"])
+@login_required
+def nahrat_odberna_mista(stredisko_id):
+    has_access, error_response = check_stredisko_access(stredisko_id, 'write')
+    if not has_access:
+        flash("❌ Nemáte oprávnění upravovat toto středisko.")
+        return redirect(url_for("strediska.prehled_odbernych_mist", stredisko_id=stredisko_id))
+    
+    # TODO: Implementovat nahrání Excel souboru
+    flash("⚠️ Upload funkce zatím není implementována.")
+    return redirect(url_for("strediska.prehled_odbernych_mist", stredisko_id=stredisko_id))
+
+@strediska_bp.route("/<int:stredisko_id>/upravit_odberne_misto", methods=["POST"])
+@login_required
+def upravit_odberne_misto(stredisko_id):
+    has_access, error_response = check_stredisko_access(stredisko_id, 'write')
+    if not has_access:
+        return {"status": "error", "message": "Nemáte oprávnění"}, 403
+    
+    om_id = request.form.get('pk')
+    field_name = request.form.get('name')
+    new_value = request.form.get('value')
+    
+    om = OdberneMisto.query.filter_by(id=om_id, stredisko_id=stredisko_id).first()
+    if not om:
+        return {"status": "error", "message": "Odběrné místo nenalezeno"}, 404
+    
+    # Aktualizuj hodnotu
+    setattr(om, field_name, new_value)
+    db.session.commit()
+    
+    return {"status": "success", "message": "Hodnota byla aktualizována"}
+
+@strediska_bp.route("/<int:stredisko_id>/smazat_odberne_misto", methods=["POST"])
+@login_required
+def smazat_odberne_misto(stredisko_id):
+    has_access, error_response = check_stredisko_access(stredisko_id, 'write')
+    if not has_access:
+        return {"status": "error", "message": "Nemáte oprávnění"}, 403
+    
+    om_id = request.form.get('om_id')
+    
+    om = OdberneMisto.query.filter_by(id=om_id, stredisko_id=stredisko_id).first()
+    if not om:
+        return {"status": "error", "message": "Odběrné místo nenalezeno"}, 404
+    
+    cislo_om = om.cislo_om
+    db.session.delete(om)
+    db.session.commit()
+    
+    return {"status": "success", "message": f"Odběrné místo {cislo_om} bylo smazáno"}

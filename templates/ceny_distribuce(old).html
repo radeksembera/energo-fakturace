@@ -6,14 +6,14 @@
 <nav aria-label="breadcrumb">
     <ol class="breadcrumb breadcrumb-custom">
         <li class="breadcrumb-item">
-            <a href="{{ url_for('strediska.strediska') }}">
+            <a href="{{ url_for('strediska') }}">
                 <i class="bi bi-house-door me-1"></i>
                 Střediska
             </a>
         </li>
         <li class="breadcrumb-item">
-            <a href="{{ url_for('strediska.spravovat_stredisko', stredisko_id=stredisko.id) }}">
-                {{ stredisko.nazev_strediska }}
+            <a href="{{ url_for('spravovat_stredisko', stredisko_id=stredisko_id) }}">
+                Středisko
             </a>
         </li>
         <li class="breadcrumb-item active">Ceny distribuce</li>
@@ -34,42 +34,11 @@
                 <p class="text-muted mb-0">Správa cen za distribuci elektřiny</p>
             </div>
             <div class="d-flex gap-2">
-                <a href="{{ url_for('strediska.spravovat_stredisko', stredisko_id=stredisko.id) }}" 
+                <a href="{{ url_for('spravovat_stredisko', stredisko_id=stredisko_id) }}" 
                    class="btn btn-outline-primary-custom">
                     <i class="bi bi-arrow-left me-2"></i>
                     Zpět na středisko
                 </a>
-            </div>
-        </div>
-
-        <!-- Period Selection -->
-        <div class="card-custom mb-4">
-            <div class="card-header-custom">
-                <h5 class="card-title">
-                    <i class="bi bi-calendar-range icon-primary me-2"></i>
-                    Výběr období
-                </h5>
-            </div>
-            <div class="card-body p-4">
-                <form method="get" class="d-flex align-items-center gap-3 flex-wrap">
-                    <label for="rok_select" class="form-label-custom mb-0">
-                        <i class="bi bi-calendar me-2"></i>
-                        Ceny distribuce pro rok:
-                    </label>
-                    <select name="rok" id="rok_select" class="form-select form-control-custom" 
-                            style="width: auto;" onchange="this.form.submit()">
-                        {% for rok in dostupne_roky %}
-                        <option value="{{ rok }}" {% if rok == vybrany_rok %}selected{% endif %}>
-                            {{ rok }}
-                        </option>
-                        {% endfor %}
-                    </select>
-                    {% if vybrany_rok %}
-                    <div class="text-muted">
-                        <small>Zobrazené období: <strong>{{ vybrany_rok }}</strong></small>
-                    </div>
-                    {% endif %}
-                </form>
             </div>
         </div>
 
@@ -91,29 +60,32 @@
                             </label>
                             <select name="rok" id="rokSelect" class="form-select form-control-custom" 
                                     style="width: auto;" onchange="this.form.submit()">
-                                {% for rok in dostupne_roky %}
-                                <option value="{{ rok }}" {% if rok == vybrany_rok %}selected{% endif %}>
+                                {% for rok in range(2020, 2031) %}
+                                <option value="{{ rok }}" {% if rok == zvoleny_rok %}selected{% endif %}>
                                     {{ rok }}
                                 </option>
                                 {% endfor %}
                             </select>
                             <div class="text-muted">
-                                Zobrazují se ceny pro rok <strong>{{ vybrany_rok }}</strong>
+                                Zobrazují se ceny pro rok <strong>{{ zvoleny_rok }}</strong>
+                                {% if dostupne_roky %}
+                                    <br><small>Dostupné roky: {{ dostupne_roky|join(', ') }}</small>
+                                {% endif %}
                             </div>
                         </form>
                     </div>
                 </div>
             </div>
             <div class="col-md-4">
-                {% if ceny %}
+                {% if ceny_distribuce %}
                 <div class="stats-card">
-                    <div class="stats-value">{{ ceny|length }}</div>
-                    <div class="stats-label">Cenových položek pro {{ vybrany_rok }}</div>
+                    <div class="stats-value">{{ ceny_distribuce|length }}</div>
+                    <div class="stats-label">Cenových položek pro {{ zvoleny_rok }}</div>
                 </div>
                 {% else %}
                 <div class="stats-card" style="border-left-color: var(--warning-color);">
                     <div class="stats-value" style="color: var(--warning-color);">0</div>
-                    <div class="stats-label">Cenových položek pro {{ vybrany_rok }}</div>
+                    <div class="stats-label">Cenových položek pro {{ zvoleny_rok }}</div>
                 </div>
                 {% endif %}
             </div>
@@ -132,7 +104,7 @@
                     <div class="col-md-8">
                         <h6 class="mb-2">Import cen distribuce</h6>
                         <p class="text-muted mb-3">
-                            Nahrajte Excel soubor s cenami distribuce pro rok {{ vybrany_rok }}. 
+                            Nahrajte Excel soubor s cenami distribuce pro rok {{ zvoleny_rok }}. 
                             Existující ceny pro tento rok budou přepsány.
                         </p>
                     </div>
@@ -148,7 +120,7 @@
                                 <i class="bi bi-upload me-2"></i>
                                 Nahrát ceny
                             </button>
-                            {% if ceny %}
+                            {% if ceny_distribuce %}
                             <button onclick="confirmDelete()" class="btn btn-outline-danger">
                                 <i class="bi bi-trash me-2"></i>
                                 Smazat vše
@@ -160,31 +132,31 @@
                 
                 <!-- Hidden Forms -->
                 <form id="uploadForm" 
-                      action="{{ url_for('ceny.nahrat_ceny_distribuce', stredisko_id=stredisko.id) }}" 
+                      action="{{ url_for('nahrat_ceny_distribuce', stredisko_id=stredisko_id) }}" 
                       method="post" 
                       enctype="multipart/form-data" 
                       style="display:none;">
-                    <input type="hidden" name="rok" value="{{ vybrany_rok }}">
+                    <input type="hidden" name="rok" value="{{ zvoleny_rok }}">
                     <input type="file" id="csvUpload" name="xlsx_file" accept=".xlsx" 
                            onchange="document.getElementById('uploadForm').submit();">
                 </form>
 
                 <form id="deleteForm" 
-                      action="{{ url_for('ceny.smazat_ceny_distribuce', stredisko_id=stredisko.id) }}" 
+                      action="{{ url_for('smazat_ceny_distribuce', stredisko_id=stredisko_id) }}" 
                       method="post" 
                       style="display:none;">
-                    <input type="hidden" name="rok" value="{{ vybrany_rok }}">
+                    <input type="hidden" name="rok" value="{{ zvoleny_rok }}">
                 </form>
             </div>
         </div>
 
         <!-- Data Table -->
-        {% if ceny %}
+        {% if ceny_distribuce %}
         <div class="card-custom">
             <div class="card-header-custom">
                 <h5 class="card-title">
                     <i class="bi bi-table icon-primary me-2"></i>
-                    Ceník distribuce ({{ ceny|length }} položek)
+                    Ceník distribuce pro rok {{ zvoleny_rok }} ({{ ceny_distribuce|length }} položek)
                 </h5>
             </div>
             <div class="card-body p-0">
@@ -195,15 +167,18 @@
                                 <th class="ps-4">Distribuce</th>
                                 <th>Sazba</th>
                                 <th>Jistič</th>
-                                <th class="text-end">Platba za jistič<br><small class="text-muted">(Kč/měsíc)</small></th>
+                                <th class="text-end">Platba za jistič<br><small class="text-muted">(Kč/měsíc/A)</small></th>
                                 <th class="text-end">Distribuce VT<br><small class="text-muted">(Kč/MWh)</small></th>
                                 <th class="text-end">Distribuce NT<br><small class="text-muted">(Kč/MWh)</small></th>
                                 <th class="text-end">Systémové služby<br><small class="text-muted">(Kč/MWh)</small></th>
+                                <th class="text-end">POZE jistič<br><small class="text-muted">(Kč/A/měsíc)</small></th>
+                                <th class="text-end">POZE spotřeba<br><small class="text-muted">(Kč/MWh)</small></th>
+                                <th class="text-end">Nesíťová infrastruktura<br><small class="text-muted">(Kč/měsíc)</small></th>
                                 <th class="text-end pe-4">Daň z elektřiny<br><small class="text-muted">(Kč/MWh)</small></th>
                             </tr>
                         </thead>
                         <tbody>
-                            {% for cena in ceny %}
+                            {% for cena in ceny_distribuce %}
                             <tr>
                                 <td class="ps-4">
                                     <div class="d-flex align-items-center">
@@ -214,61 +189,24 @@
                                         {% elif cena.distribuce == 'PRE' %}
                                             <span class="badge bg-info me-2">{{ cena.distribuce }}</span>
                                         {% else %}
-                                            <span class="badge bg-secondary me-2">{{ cena.distribuce or 'N/A' }}</span>
+                                            <span class="badge bg-secondary me-2">{{ cena.distribuce }}</span>
                                         {% endif %}
                                     </div>
                                 </td>
                                 <td>
-                                    <span class="badge bg-primary-custom">{{ cena.sazba or 'N/A' }}</span>
+                                    <span class="badge bg-primary-custom">{{ cena.sazba }}</span>
                                 </td>
                                 <td>
-                                    <code class="bg-light px-2 py-1 rounded">{{ cena.jistic or 'N/A' }}</code>
+                                    <code class="bg-light px-2 py-1 rounded">{{ cena.jistic }}</code>
                                 </td>
-                                <td class="text-end">
-                                    <span class="fw-medium text-primary">
-                                        {% if cena.platba_za_jistic %}
-                                            {{ "%.2f"|format(cena.platba_za_jistic|float) }}
-                                        {% else %}
-                                            -
-                                        {% endif %}
-                                    </span>
-                                </td>
-                                <td class="text-end">
-                                    <span class="fw-medium text-success">
-                                        {% if cena.platba_za_distribuci_vt %}
-                                            {{ "%.2f"|format(cena.platba_za_distribuci_vt|float) }}
-                                        {% else %}
-                                            -
-                                        {% endif %}
-                                    </span>
-                                </td>
-                                <td class="text-end">
-                                    <span class="fw-medium text-info">
-                                        {% if cena.platba_za_distribuci_nt %}
-                                            {{ "%.2f"|format(cena.platba_za_distribuci_nt|float) }}
-                                        {% else %}
-                                            -
-                                        {% endif %}
-                                    </span>
-                                </td>
-                                <td class="text-end">
-                                    <span class="fw-medium text-warning">
-                                        {% if cena.systemove_sluzby %}
-                                            {{ "%.2f"|format(cena.systemove_sluzby|float) }}
-                                        {% else %}
-                                            -
-                                        {% endif %}
-                                    </span>
-                                </td>
-                                <td class="text-end pe-4">
-                                    <span class="fw-medium text-danger">
-                                        {% if cena.dan_z_elektriny %}
-                                            {{ "%.2f"|format(cena.dan_z_elektriny|float) }}
-                                        {% else %}
-                                            -
-                                        {% endif %}
-                                    </span>
-                                </td>
+                                <td class="text-end fw-medium">{{ "%.2f"|format(cena.platba_za_jistic|float) }}</td>
+                                <td class="text-end fw-medium">{{ "%.2f"|format(cena.platba_za_distribuci_vt|float) }}</td>
+                                <td class="text-end fw-medium">{{ "%.2f"|format(cena.platba_za_distribuci_nt|float) }}</td>
+                                <td class="text-end fw-medium">{{ "%.2f"|format(cena.systemove_sluzby|float) }}</td>
+                                <td class="text-end fw-medium">{{ "%.2f"|format(cena.poze_dle_jistice|float) }}</td>
+                                <td class="text-end fw-medium">{{ "%.2f"|format(cena.poze_dle_spotreby|float) }}</td>
+                                <td class="text-end fw-medium">{{ "%.2f"|format(cena.nesitova_infrastruktura|float) }}</td>
+                                <td class="text-end fw-medium pe-4">{{ "%.2f"|format(cena.dan_z_elektriny|float) }}</td>
                             </tr>
                             {% endfor %}
                         </tbody>
@@ -282,9 +220,9 @@
             <div class="mb-4">
                 <i class="bi bi-bar-chart" style="font-size: 4rem; color: var(--text-muted);"></i>
             </div>
-            <h3 class="h4 mb-3">Žádné ceny distribuce pro rok {{ vybrany_rok }}</h3>
+            <h3 class="h4 mb-3">Žádné ceny distribuce pro rok {{ zvoleny_rok }}</h3>
             <p class="text-muted mb-4">
-                Pro rok {{ vybrany_rok }} zatím nejsou nahrány žádné ceny distribuce.<br>
+                Pro rok {{ zvoleny_rok }} zatím nejsou nahrány žádné ceny distribuce.<br>
                 Nahrajte Excel soubor s cenami pomocí tlačítka výše.
             </p>
             <div class="d-flex justify-content-center gap-3">

@@ -1,0 +1,48 @@
+<!-- Jednotný selectbox pro výběr období fakturace -->
+{% if dostupna_obdobi %}
+<div class="card-custom mb-4">
+    <div class="card-header-custom">
+        <h6 class="card-title mb-0">
+            <i class="bi bi-calendar-range icon-primary me-2"></i>
+            Výběr období fakturace
+        </h6>
+    </div>
+    <div class="card-body p-3">
+        <form method="get" class="d-flex align-items-center gap-3 flex-wrap">
+            <label class="form-label-custom mb-0">
+                <i class="bi bi-calendar me-2"></i>
+                Období:
+            </label>
+            <select name="obdobi_select" 
+                    class="form-select form-control-custom" 
+                    style="width: auto; min-width: 180px;"
+                    onchange="changeObdobi(this.value)">
+                {% for obdobi in dostupna_obdobi %}
+                <option value="{{ obdobi.rok }}-{{ obdobi.mesic }}" 
+                        {% if obdobi.rok == vybrane_obdobi.rok and obdobi.mesic == vybrane_obdobi.mesic %}selected{% endif %}>
+                    {{ get_obdobi_display_name(obdobi.rok, obdobi.mesic) }}
+                </option>
+                {% endfor %}
+            </select>
+            <div class="text-muted">
+                Zobrazují se data pro období 
+                <strong>{{ get_obdobi_display_name(vybrane_obdobi.rok, vybrane_obdobi.mesic) }}</strong>
+            </div>
+        </form>
+    </div>
+</div>
+
+<script>
+function changeObdobi(value) {
+    var parts = value.split('-');
+    var rok = parts[0];
+    var mesic = parts[1];
+    
+    // Přidej parametry do URL a přesměruj
+    var url = new URL(window.location);
+    url.searchParams.set('rok', rok);
+    url.searchParams.set('mesic', mesic);
+    window.location.href = url.toString();
+}
+</script>
+{% endif %}
