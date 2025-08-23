@@ -1,6 +1,6 @@
 from flask import Blueprint, render_template, request, redirect, url_for, session, flash, jsonify
 from models import db, Stredisko, InfoDodavatele, InfoVystavovatele, InfoOdberatele, ZalohovaFaktura, Faktura, ImportOdečtu, VypocetOM, OdberneMisto, CenaDistribuce, CenaDodavatel, Odečet, ObdobiFakturace
-from session_helpers import handle_obdobi_selection, get_session_obdobi, get_dostupna_obdobi_pro_stredisko
+from session_helpers import handle_obdobi_selection, get_session_obdobi, get_dostupna_obdobi_pro_stredisko, set_session_obdobi
 from file_helpers import check_faktury_exist
 
 
@@ -29,9 +29,9 @@ def fakturace(stredisko_id):
         return redirect(url_for("strediska.spravovat_stredisko", stredisko_id=stredisko_id))
 
     # Načti informace o subjektech pro kontrolu stavu
-    dodavatel = InfoDodavatele.query.first()
-    vystavovatel = InfoVystavovatele.query.first()
-    odberatel = InfoOdberatele.query.first()
+    dodavatel = InfoDodavatele.query.filter_by(stredisko_id=stredisko_id).first()
+    vystavovatel = InfoVystavovatele.query.filter_by(stredisko_id=stredisko_id).first()
+    odberatel = InfoOdberatele.query.filter_by(stredisko_id=stredisko_id).first()
     
 
     return render_template(
@@ -54,9 +54,9 @@ def subjekty_fakturace(stredisko_id):
     if stredisko.user_id != session["user_id"]:
         return "Nepovolený přístup", 403
 
-    dodavatel = InfoDodavatele.query.first()
-    vystavovatel = InfoVystavovatele.query.first()
-    odberatel = InfoOdberatele.query.first()
+    dodavatel = InfoDodavatele.query.filter_by(stredisko_id=stredisko_id).first()
+    vystavovatel = InfoVystavovatele.query.filter_by(stredisko_id=stredisko_id).first()
+    odberatel = InfoOdberatele.query.filter_by(stredisko_id=stredisko_id).first()
 
     return render_template("fakturace/subjekty_fakturace.html",
                            stredisko=stredisko,
@@ -75,7 +75,7 @@ def ulozit_dodavatele(stredisko_id):
         return "Nepovolený přístup", 403
 
     # Najdi nebo vytvoř záznam dodavatele
-    dodavatel = InfoDodavatele.query.first()
+    dodavatel = InfoDodavatele.query.filter_by(stredisko_id=stredisko_id).first()
     if not dodavatel:
         dodavatel = InfoDodavatele(stredisko_id=stredisko_id)
 
@@ -171,8 +171,24 @@ def koncove_ceny(stredisko_id):
         stredisko_id=stredisko_id
     ).order_by(ObdobiFakturace.rok, ObdobiFakturace.mesic).all()
     
-    # Zpracuj výběr období ze session
-    vybrane_obdobi = handle_obdobi_selection(stredisko_id, request.args)
+    # Zpracuj výběr období - speciální handling pro obdobi_id
+    obdobi_id = request.args.get('obdobi_id', type=int)
+    vybrane_obdobi = None
+    
+    if obdobi_id:
+        # Najdi období podle ID
+        obdobi = ObdobiFakturace.query.filter_by(
+            id=obdobi_id,
+            stredisko_id=stredisko_id
+        ).first()
+        
+        if obdobi:
+            set_session_obdobi(stredisko_id, obdobi.rok, obdobi.mesic)
+            vybrane_obdobi = obdobi
+    
+    if not vybrane_obdobi:
+        # Pokud není vybrané období, použij session nebo default
+        vybrane_obdobi = get_session_obdobi(stredisko_id)
 
     # Načti výpočty pro vybrané období
     vypocty = []
@@ -600,7 +616,7 @@ def upravit_dodavatele(stredisko_id):
         field_name = request.form.get('name')
         new_value = request.form.get('value')
 
-        dodavatel = InfoDodavatele.query.first()
+        dodavatel = InfoDodavatele.query.filter_by(stredisko_id=stredisko_id).first()
         if not dodavatel:
             dodavatel = InfoDodavatele(stredisko_id=stredisko_id)
             db.session.add(dodavatel)

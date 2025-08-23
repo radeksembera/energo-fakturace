@@ -51,7 +51,7 @@ class CenaDodavatel(db.Model):
 class InfoDodavatele(db.Model):
     __tablename__ = 'info_dodavatele'
     id = db.Column(db.Integer, primary_key=True)
-    # stredisko_id odstraněno - globální info
+    stredisko_id = db.Column(db.Integer, db.ForeignKey('strediska.id'))
     nazev_sro = db.Column(db.Text)
     adresa_radek_1 = db.Column(db.Text)
     adresa_radek_2 = db.Column(db.Text)
@@ -66,7 +66,7 @@ class InfoDodavatele(db.Model):
 class InfoVystavovatele(db.Model):
     __tablename__ = 'info_vystavovatele'
     id = db.Column(db.Integer, primary_key=True)
-    # stredisko_id odstraněno - globální info
+    stredisko_id = db.Column(db.Integer, db.ForeignKey('strediska.id'))
     jmeno_vystavitele = db.Column(db.Text)
     telefon_vystavitele = db.Column(db.Text)
     email_vystavitele = db.Column(db.Text)
@@ -74,7 +74,7 @@ class InfoVystavovatele(db.Model):
 class InfoOdberatele(db.Model):
     __tablename__ = 'info_odberatele'
     id = db.Column(db.Integer, primary_key=True)
-    # stredisko_id odstraněno - globální info
+    stredisko_id = db.Column(db.Integer, db.ForeignKey('strediska.id'))
     nazev_sro = db.Column(db.Text)
     adresa_radek_1 = db.Column(db.Text)
     adresa_radek_2 = db.Column(db.Text)
@@ -100,6 +100,9 @@ class Stredisko(db.Model):
     importy = db.relationship('ImportOdečtu', backref='stredisko', cascade="all, delete")
     faktury = db.relationship('Faktura', backref='stredisko', cascade="all, delete")
     zaloha_faktury = db.relationship('ZalohovaFaktura', backref='stredisko', cascade="all, delete")
+    info_dodavatele = db.relationship('InfoDodavatele', backref='stredisko', cascade="all, delete")
+    info_vystavovatele = db.relationship('InfoVystavovatele', backref='stredisko', cascade="all, delete")
+    info_odberatele = db.relationship('InfoOdberatele', backref='stredisko', cascade="all, delete")
 
 # --- ODBERNA MISTA ---
 class OdberneMisto(db.Model):

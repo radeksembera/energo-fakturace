@@ -42,36 +42,6 @@
             </div>
         </div>
 
-        <!-- Period Selection -->
-        <div class="card-custom mb-4">
-            <div class="card-header-custom">
-                <h5 class="card-title">
-                    <i class="bi bi-calendar-range icon-primary me-2"></i>
-                    Výběr období
-                </h5>
-            </div>
-            <div class="card-body p-4">
-                <form method="get" class="d-flex align-items-center gap-3 flex-wrap">
-                    <label for="rok_select" class="form-label-custom mb-0">
-                        <i class="bi bi-calendar me-2"></i>
-                        Ceny distribuce pro rok:
-                    </label>
-                    <select name="rok" id="rok_select" class="form-select form-control-custom" 
-                            style="width: auto;" onchange="this.form.submit()">
-                        {% for rok in dostupne_roky %}
-                        <option value="{{ rok }}" {% if rok == vybrany_rok %}selected{% endif %}>
-                            {{ rok }}
-                        </option>
-                        {% endfor %}
-                    </select>
-                    {% if vybrany_rok %}
-                    <div class="text-muted">
-                        <small>Zobrazené období: <strong>{{ vybrany_rok }}</strong></small>
-                    </div>
-                    {% endif %}
-                </form>
-            </div>
-        </div>
 
         <!-- Year Selection & Stats -->
         <div class="row mb-4">

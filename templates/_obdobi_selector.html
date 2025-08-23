@@ -20,13 +20,13 @@
                 {% for obdobi in dostupna_obdobi %}
                 <option value="{{ obdobi.rok }}-{{ obdobi.mesic }}" 
                         {% if obdobi.rok == vybrane_obdobi.rok and obdobi.mesic == vybrane_obdobi.mesic %}selected{% endif %}>
-                    {{ get_obdobi_display_name(obdobi.rok, obdobi.mesic) }}
+                    {{ obdobi.rok }}/{{ '%02d'|format(obdobi.mesic) }}
                 </option>
                 {% endfor %}
             </select>
             <div class="text-muted">
                 Zobrazují se data pro období 
-                <strong>{{ get_obdobi_display_name(vybrane_obdobi.rok, vybrane_obdobi.mesic) }}</strong>
+                <strong>{{ vybrane_obdobi.rok }}/{{ '%02d'|format(vybrane_obdobi.mesic) }}</strong>
             </div>
         </form>
     </div>
