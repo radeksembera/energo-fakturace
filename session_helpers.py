@@ -77,7 +77,21 @@ def handle_obdobi_selection(stredisko_id, request_args):
     """
     Zpracuje výběr období z URL parametrů nebo formuláře
     """
-    # Kontrola URL parametrů ?rok=2025&mesic=7
+    # Kontrola URL parametru ?obdobi_id=123
+    obdobi_id = request_args.get('obdobi_id', type=int)
+    
+    if obdobi_id:
+        # Najdi období podle ID v databázi
+        obdobi = ObdobiFakturace.query.filter_by(
+            id=obdobi_id,
+            stredisko_id=stredisko_id
+        ).first()
+        
+        if obdobi:
+            set_session_obdobi(stredisko_id, obdobi.rok, obdobi.mesic)
+            return obdobi
+    
+    # Kontrola URL parametrů ?rok=2025&mesic=7 (zpětná kompatibilita)
     rok = request_args.get('rok', type=int)
     mesic = request_args.get('mesic', type=int)
     

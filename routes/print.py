@@ -1,5 +1,7 @@
 from flask import Blueprint, render_template, render_template_string, request, redirect, url_for, session, flash, make_response
 from models import db, Stredisko, Faktura, ZalohovaFaktura, InfoDodavatele, InfoOdberatele, InfoVystavovatele, VypocetOM, OdberneMisto, Odečet, ObdobiFakturace
+# Alias pro zpětnou kompatibilitu s kódem bez diakritiky
+Odecet = Odečet
 from datetime import datetime
 import io
 
@@ -44,7 +46,7 @@ def get_faktura_data(stredisko_id, rok, mesic):
     vystavovatel = InfoVystavovatele.query.filter_by(stredisko_id=stredisko_id).first()
     
     # Načti výpočty
-    vypocty = VypocetOM.query.filter_by(id__gt=0)\
+    vypocty = VypocetOM.query.filter(VypocetOM.id > 0)\
         .join(OdberneMisto)\
         .filter(OdberneMisto.stredisko_id == stredisko_id)\
         .all()

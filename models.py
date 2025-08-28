@@ -156,7 +156,7 @@ class Odečet(db.Model):
     pocatecni_hodnota_nt = db.Column(db.Numeric)
     hodnota_odectu_nt = db.Column(db.Numeric)
     spotreba_nt = db.Column(db.Numeric)
-    dofakturace = db.Column(db.Boolean)
+    dofakturace = db.Column(db.Numeric)
     slevovy_bonus = db.Column(db.Numeric)
     priznak = db.Column(db.Text)
 

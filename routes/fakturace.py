@@ -1,5 +1,7 @@
 from flask import Blueprint, render_template, request, redirect, url_for, session, flash, jsonify
 from models import db, Stredisko, InfoDodavatele, InfoVystavovatele, InfoOdberatele, ZalohovaFaktura, Faktura, ImportOdečtu, VypocetOM, OdberneMisto, CenaDistribuce, CenaDodavatel, Odečet, ObdobiFakturace
+# Alias pro zpětnou kompatibilitu s kódem bez diakritiky
+Odecet = Odečet
 from session_helpers import handle_obdobi_selection, get_session_obdobi, get_dostupna_obdobi_pro_stredisko, set_session_obdobi
 from file_helpers import check_faktury_exist
 
@@ -403,11 +405,9 @@ def prepocitat_koncove_ceny(stredisko_id):
                 # 14. celkem_vc_dph = zaklad_bez_dph + castka_dph
                 celkem_vc_dph = zaklad_bez_dph + castka_dph
 
-                # Vytvoř výpočet s KONKRÉTNÍ délkou období pro toto OM
+                # Vytvoř výpočet
                 vypocet = VypocetOM(
                     odberne_misto_id=om.id,
-                    obdobi_id=obdobi_vypoctu.id,
-                    delka_obdobi_fakturace=delka_obdobi_om,  # ✅ POČET DNÍ PRO TOTO OM
                     
                     # Distribuce
                     platba_za_jistic=round(platba_za_jistic, 2),
