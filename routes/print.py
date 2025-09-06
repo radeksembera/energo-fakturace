@@ -688,13 +688,35 @@ def vygenerovat_prilohu1_html(stredisko_id, rok, mesic):
     faktura = Faktura.query.filter_by(stredisko_id=stredisko_id, obdobi_id=obdobi.id).first()
     dodavatel = InfoDodavatele.query.filter_by(stredisko_id=stredisko_id).first()
     
-    # Načti pouze odečty s existujícími odběrnými místy - INNER JOIN
-    odecty = db.session.query(Odecet, OdberneMisto)\
-        .join(OdberneMisto, (Odecet.oznaceni == OdberneMisto.cislo_om) & (OdberneMisto.stredisko_id == stredisko_id))\
-        .filter(Odecet.stredisko_id == stredisko_id)\
-        .filter(Odecet.obdobi_id == obdobi.id)\
+    # Načti odečty pro dané období
+    odecty_raw = Odecet.query\
+        .filter_by(stredisko_id=stredisko_id, obdobi_id=obdobi.id)\
         .order_by(Odecet.oznaceni)\
         .all()
+    
+    # Načti odběrná místa pro středisko
+    odberna_mista = {om.cislo_om: om for om in OdberneMisto.query.filter_by(stredisko_id=stredisko_id).all()}
+    
+    # Spáruj odečty s odběrnými místy
+    odecty = []
+    for odecet in odecty_raw:
+        # Zkus najít odpovídající odběrné místo
+        om = None
+        if odecet.oznaceni in odberna_mista:
+            om = odberna_mista[odecet.oznaceni]
+        else:
+            # Zkus s doplněnými nulami
+            oznaceni_padded = odecet.oznaceni.zfill(7) if odecet.oznaceni else ""
+            if oznaceni_padded in odberna_mista:
+                om = odberna_mista[oznaceni_padded]
+            else:
+                # Zkus bez vedoucích nul
+                oznaceni_stripped = odecet.oznaceni.lstrip('0') if odecet.oznaceni else ""
+                if oznaceni_stripped in odberna_mista:
+                    om = odberna_mista[oznaceni_stripped]
+        
+        if om:  # Pouze pokud najdeme odpovídající odběrné místo
+            odecty.append((odecet, om))
     
     # Převeď na formát pro template - přidej odkaz na OM
     odecty_data = []
@@ -733,13 +755,35 @@ def vygenerovat_prilohu1_pdf(stredisko_id, rok, mesic):
         faktura = Faktura.query.filter_by(stredisko_id=stredisko_id, obdobi_id=obdobi.id).first()
         dodavatel = InfoDodavatele.query.filter_by(stredisko_id=stredisko_id).first()
         
-        # Načti pouze odečty s existujícími odběrnými místy - INNER JOIN
-        odecty = db.session.query(Odecet, OdberneMisto)\
-            .join(OdberneMisto, (Odecet.oznaceni == OdberneMisto.cislo_om) & (OdberneMisto.stredisko_id == stredisko_id))\
-            .filter(Odecet.stredisko_id == stredisko_id)\
-            .filter(Odecet.obdobi_id == obdobi.id)\
+        # Načti odečty pro dané období
+        odecty_raw = Odecet.query\
+            .filter_by(stredisko_id=stredisko_id, obdobi_id=obdobi.id)\
             .order_by(Odecet.oznaceni)\
             .all()
+        
+        # Načti odběrná místa pro středisko
+        odberna_mista = {om.cislo_om: om for om in OdberneMisto.query.filter_by(stredisko_id=stredisko_id).all()}
+        
+        # Spáruj odečty s odběrnými místy
+        odecty = []
+        for odecet in odecty_raw:
+            # Zkus najít odpovídající odběrné místo
+            om = None
+            if odecet.oznaceni in odberna_mista:
+                om = odberna_mista[odecet.oznaceni]
+            else:
+                # Zkus s doplněnými nulami
+                oznaceni_padded = odecet.oznaceni.zfill(7) if odecet.oznaceni else ""
+                if oznaceni_padded in odberna_mista:
+                    om = odberna_mista[oznaceni_padded]
+                else:
+                    # Zkus bez vedoucích nul
+                    oznaceni_stripped = odecet.oznaceni.lstrip('0') if odecet.oznaceni else ""
+                    if oznaceni_stripped in odberna_mista:
+                        om = odberna_mista[oznaceni_stripped]
+            
+            if om:  # Pouze pokud najdeme odpovídající odběrné místo
+                odecty.append((odecet, om))
 
         # ✅ REGISTRACE FONTŮ
         font_registered = False
@@ -1018,6 +1062,101 @@ def vygenerovat_prilohu2_html(stredisko_id, rok, mesic):
 
 @print_bp.route("/<int:stredisko_id>/<int:rok>-<int:mesic>/priloha2/pdf")
 def vygenerovat_prilohu2_pdf(stredisko_id, rok, mesic):
+    """NOVÁ ZJEDNODUŠENÁ VERZE - Generuje PDF přílohu 2"""
+    if not session.get("user_id"):
+        return redirect("/login")
+
+    stredisko = Stredisko.query.get_or_404(stredisko_id)
+    if stredisko.user_id != session["user_id"]:
+        return "Nepovolený přístup", 403
+
+    try:
+        # Získej data
+        data, error = get_faktura_data(stredisko_id, rok, mesic)
+        if error:
+            return error
+
+        # Načti výpočty jednoduše
+        vypocty_om = db.session.query(VypocetOM, OdberneMisto)\
+            .join(OdberneMisto, VypocetOM.odberne_misto_id == OdberneMisto.id)\
+            .filter(OdberneMisto.stredisko_id == stredisko_id)\
+            .order_by(OdberneMisto.cislo_om)\
+            .all()
+        
+        if not vypocty_om:
+            return "Nejsou k dispozici výpočty pro vybrané období.", 400
+
+        # Vytvoř jednoduché PDF
+        buffer = io.BytesIO()
+        doc = SimpleDocTemplate(buffer, pagesize=A4, 
+                              rightMargin=20*mm, leftMargin=20*mm,
+                              topMargin=20*mm, bottomMargin=20*mm)
+        
+        story = []
+        styles = getSampleStyleSheet()
+        
+        # Jednoduché záhlaví
+        story.append(Paragraph(f"<b>PŘÍLOHA 2 - Rozpis položek</b>", styles['Title']))
+        story.append(Paragraph(f"Číslo faktury: {data['faktura'].cislo_faktury if data['faktura'] else ''}", styles['Normal']))
+        story.append(Spacer(1, 20))
+        
+        # Jednoduchá tabulka pro každé OM
+        for vypocet, om in vypocty_om:
+            story.append(Paragraph(f"<b>Odběrné místo: {om.cislo_om}</b>", styles['Heading2']))
+            story.append(Paragraph(f"Název: {om.nazev_om or ''}", styles['Normal']))
+            
+            # Jednoduchá tabulka s hodnotami
+            data_table = [
+                ['Položka', 'Částka'],
+                ['Měsíční plat', f"{float(vypocet.mesicni_plat or 0):.2f}"],
+                ['Platba za elektřinu VT', f"{float(vypocet.platba_za_elektrinu_vt or 0):.2f}"],
+                ['Platba za elektřinu NT', f"{float(vypocet.platba_za_elektrinu_nt or 0):.2f}"],
+                ['Platba za jistič', f"{float(vypocet.platba_za_jistic or 0):.2f}"],
+                ['Systémové služby', f"{float(vypocet.systemove_sluzby or 0):.2f}"],
+                ['Celkem bez DPH', f"{float(vypocet.zaklad_bez_dph or 0):.2f}"],
+                ['DPH', f"{float(vypocet.castka_dph or 0):.2f}"],
+                ['Celkem s DPH', f"{float(vypocet.celkem_vc_dph or 0):.2f}"]
+            ]
+            
+            table = Table(data_table, colWidths=[300, 100])
+            table.setStyle(TableStyle([
+                ('FONTSIZE', (0, 0), (-1, -1), 9),
+                ('GRID', (0, 0), (-1, -1), 0.5, colors.black),
+                ('BACKGROUND', (0, 0), (-1, 0), colors.lightgrey),
+                ('ALIGN', (1, 1), (1, -1), 'RIGHT'),
+            ]))
+            
+            story.append(table)
+            story.append(Spacer(1, 15))
+        
+        # Generuj PDF
+        doc.build(story)
+        
+        pdf_data = buffer.getvalue()
+        buffer.close()
+        
+        # Kontrola, že PDF data nejsou prázdná
+        if not pdf_data:
+            return "Chyba: PDF data jsou prázdná", 500
+            
+        print(f"✅ DEBUG: PDF příloha 2 vygenerována, velikost: {len(pdf_data)} bytes")
+        
+        response = make_response(pdf_data)
+        response.headers['Content-Type'] = 'application/pdf'
+        response.headers['Content-Disposition'] = f'inline; filename=priloha2_{rok}_{mesic:02d}.pdf'
+        
+        return response
+        
+    except Exception as e:
+        print(f"❌ Chyba v zjednodušené příloze 2: {e}")
+        import traceback
+        traceback.print_exc()
+        return f"Chyba při generování přílohy 2: {e}", 500
+
+
+@print_bp.route("/<int:stredisko_id>/<int:rok>-<int:mesic>/priloha2_backup/pdf")
+def vygenerovat_prilohu2_pdf_backup(stredisko_id, rok, mesic):
+    """ZÁLOHNÍ VERZE - příliš komplexní, způsobuje EOF chyby"""
     """Generuje PDF přílohu 2 - rozpis položek za odběrná místa s automatickým stránkováním a důležitými informacemi"""
     
     data, error = get_faktura_data(stredisko_id, rok, mesic)
@@ -1459,13 +1598,22 @@ def vygenerovat_kompletni_pdf(stredisko_id, rok, mesic):
         # 3. ZÍSKEJ PDF PŘÍLOHU 2
         try:
             priloha2_response = vygenerovat_prilohu2_pdf(stredisko_id, rok, mesic)
+            print(f"🔍 Debug: priloha2_response typ: {type(priloha2_response)}")
+            print(f"🔍 Debug: hasattr data: {hasattr(priloha2_response, 'data')}")
+            
             if hasattr(priloha2_response, 'data'):
+                print(f"🔍 Debug: velikost dat: {len(priloha2_response.data)} bytes")
                 priloha2_pdf = PdfReader(io.BytesIO(priloha2_response.data))
                 for page in priloha2_pdf.pages:
                     merger.add_page(page)
                 print(f"✅ Přidána příloha 2 - {len(priloha2_pdf.pages)} stránek")
+            else:
+                print(f"❌ Příloha 2 response nemá data atribut: {priloha2_response}")
+                return f"Chyba: příloha 2 nevrátila validní PDF response", 500
         except Exception as e:
             print(f"❌ Chyba při generování přílohy 2: {e}")
+            import traceback
+            print(f"❌ Traceback: {traceback.format_exc()}")
             return f"Chyba při generování přílohy 2: {e}", 500
         
         # 4. VYTVOŘ FINÁLNÍ PDF

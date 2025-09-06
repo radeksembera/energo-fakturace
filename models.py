@@ -124,7 +124,7 @@ class VypocetOM(db.Model):
     __tablename__ = 'vypocty_om'
     id = db.Column(db.Integer, primary_key=True)
     odberne_misto_id = db.Column(db.Integer, db.ForeignKey('odberna_mista.id'))
-    # obdobi_id sloupec neexistuje v DB - zatím odstraněno
+    obdobi_id = db.Column(db.Integer, db.ForeignKey('obdobi_fakturace.id'))
     platba_za_jistic = db.Column(db.Numeric)
     platba_za_distribuci_vt = db.Column(db.Numeric)
     platba_za_distribuci_nt = db.Column(db.Numeric)

@@ -198,6 +198,7 @@ def koncove_ceny(stredisko_id):
         vypocty = VypocetOM.query\
             .join(OdberneMisto)\
             .filter(OdberneMisto.stredisko_id == stredisko_id)\
+            .filter(VypocetOM.obdobi_id == vybrane_obdobi.id)\
             .all()
     
     # Kontrola dostupnosti cen pro vybrané období
@@ -268,8 +269,21 @@ def prepocitat_koncove_ceny(stredisko_id):
         faktura = Faktura.query.filter_by(stredisko_id=stredisko_id).first()
         sazba_dph = float(faktura.sazba_dph / 100) if faktura and faktura.sazba_dph else 0.21
 
-        # Smaž staré výpočty pro toto období
-        VypocetOM.query.delete()
+        # Smaž staré výpočty pro toto období a středisko
+        # Nejprve najdi ID výpočtů k smazání
+        vypocty_ids = db.session.query(VypocetOM.id)\
+            .join(OdberneMisto)\
+            .filter(OdberneMisto.stredisko_id == stredisko_id)\
+            .filter(VypocetOM.obdobi_id == obdobi_vypoctu.id)\
+            .scalar_subquery()
+        
+        # Poté je smaž pomocí IN dotazu
+        VypocetOM.query.filter(VypocetOM.id.in_(
+            db.session.query(VypocetOM.id)\
+                .join(OdberneMisto)\
+                .filter(OdberneMisto.stredisko_id == stredisko_id)\
+                .filter(VypocetOM.obdobi_id == obdobi_vypoctu.id)
+        )).delete(synchronize_session=False)
 
         uspesne_vypocty = 0
         chyby = []
@@ -408,6 +422,7 @@ def prepocitat_koncove_ceny(stredisko_id):
                 # Vytvoř výpočet
                 vypocet = VypocetOM(
                     odberne_misto_id=om.id,
+                    obdobi_id=obdobi_vypoctu.id,
                     
                     # Distribuce
                     platba_za_jistic=round(platba_za_jistic, 2),
@@ -474,8 +489,13 @@ def smazat_vypocty(stredisko_id):
         
         print(f"🗑️ DEBUG: Mažu výpočty pro období {vybrane_obdobi.rok}/{vybrane_obdobi.mesic:02d} (ID: {vybrane_obdobi.id})")
         
-        # Smaž výpočty pro vybrané období
-        smazano = VypocetOM.query.delete()
+        # Smaž výpočty pro vybrané období a středisko
+        smazano = VypocetOM.query.filter(VypocetOM.id.in_(
+            db.session.query(VypocetOM.id)\
+                .join(OdberneMisto)\
+                .filter(OdberneMisto.stredisko_id == stredisko_id)\
+                .filter(VypocetOM.obdobi_id == vybrane_obdobi.id)
+        )).delete(synchronize_session=False)
         db.session.commit()
         
         if smazano > 0:

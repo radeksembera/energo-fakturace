@@ -212,8 +212,108 @@ def nahrat_odberna_mista(stredisko_id):
         flash("❌ Nemáte oprávnění upravovat toto středisko.")
         return redirect(url_for("strediska.prehled_odbernych_mist", stredisko_id=stredisko_id))
     
-    # TODO: Implementovat nahrání Excel souboru
-    flash("⚠️ Upload funkce zatím není implementována.")
+    try:
+        # Zkontroluj, zda byl soubor nahrán
+        if 'file' not in request.files:
+            flash("❌ Nebyl vybrán žádný soubor.")
+            return redirect(url_for("strediska.prehled_odbernych_mist", stredisko_id=stredisko_id))
+        
+        file = request.files['file']
+        if file.filename == '':
+            flash("❌ Nebyl vybrán žádný soubor.")
+            return redirect(url_for("strediska.prehled_odbernych_mist", stredisko_id=stredisko_id))
+        
+        # Zkontroluj příponu souboru
+        if not file.filename.lower().endswith(('.xlsx', '.xls')):
+            flash("❌ Podporované jsou pouze Excel soubory (.xlsx, .xls).")
+            return redirect(url_for("strediska.prehled_odbernych_mist", stredisko_id=stredisko_id))
+        
+        # Načti Excel soubor
+        try:
+            df = pd.read_excel(file)
+        except Exception as e:
+            flash(f"❌ Chyba při čtení Excel souboru: {str(e)}")
+            return redirect(url_for("strediska.prehled_odbernych_mist", stredisko_id=stredisko_id))
+        
+        # Zkontroluj požadované sloupce
+        required_columns = ['cislo_om', 'ean_om', 'nazev_om', 'distribucni_sazba_om', 
+                           'kategorie_jistice_om', 'hodnota_jistice_om', 'poznamka_om']
+        missing_columns = [col for col in required_columns if col not in df.columns]
+        
+        if missing_columns:
+            flash(f"❌ Chybějící sloupce v Excel souboru: {', '.join(missing_columns)}")
+            return redirect(url_for("strediska.prehled_odbernych_mist", stredisko_id=stredisko_id))
+        
+        # Statistiky
+        total_rows = len(df)
+        added_count = 0
+        skipped_count = 0
+        error_count = 0
+        
+        # Zpracuj každý řádek
+        for index, row in df.iterrows():
+            try:
+                # Přeskočit prázdné řádky
+                if pd.isna(row['cislo_om']) or str(row['cislo_om']).strip() == '':
+                    continue
+                
+                cislo_om = str(row['cislo_om']).strip()
+                
+                # Zkontroluj, zda odběrné místo již existuje
+                existing_om = OdberneMisto.query.filter_by(
+                    stredisko_id=stredisko_id, 
+                    cislo_om=cislo_om
+                ).first()
+                
+                if existing_om:
+                    skipped_count += 1
+                    continue
+                
+                # Vytvoř nové odběrné místo
+                nove_om = OdberneMisto(
+                    stredisko_id=stredisko_id,
+                    cislo_om=cislo_om,
+                    ean_om=safe_excel_string(row.get('ean_om', '')),
+                    nazev_om=safe_excel_string(row.get('nazev_om', '')),
+                    distribucni_sazba_om=safe_excel_string(row.get('distribucni_sazba_om', '')),
+                    kategorie_jistice_om=safe_excel_string(row.get('kategorie_jistice_om', '')),
+                    hodnota_jistice_om=safe_excel_string(row.get('hodnota_jistice_om', '')),
+                    poznamka_om=safe_excel_string(row.get('poznamka_om', ''))
+                )
+                
+                db.session.add(nove_om)
+                added_count += 1
+                
+            except Exception as e:
+                error_count += 1
+                print(f"Chyba při zpracování řádku {index + 1}: {str(e)}")
+                continue
+        
+        # Uložit změny do databáze
+        try:
+            db.session.commit()
+            
+            # Vytvoř zprávu o výsledku
+            message_parts = []
+            if added_count > 0:
+                message_parts.append(f"✅ Přidáno {added_count} odběrných míst")
+            if skipped_count > 0:
+                message_parts.append(f"⚠️ Přeskočeno {skipped_count} duplicitních míst")
+            if error_count > 0:
+                message_parts.append(f"❌ {error_count} řádků s chybou")
+            
+            if message_parts:
+                flash(" | ".join(message_parts))
+            else:
+                flash("⚠️ Nebyly zpracovány žádné řádky.")
+                
+        except Exception as e:
+            db.session.rollback()
+            flash(f"❌ Chyba při ukládání do databáze: {str(e)}")
+    
+    except Exception as e:
+        flash(f"❌ Neočekávaná chyba: {str(e)}")
+    
     return redirect(url_for("strediska.prehled_odbernych_mist", stredisko_id=stredisko_id))
 
 @strediska_bp.route("/<int:stredisko_id>/upravit_odberne_misto", methods=["POST"])
