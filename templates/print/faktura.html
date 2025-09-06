@@ -2,244 +2,354 @@
 <html lang="cs">
 <head>
     <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Faktura {{ faktura.cislo_faktury if faktura else 'XXXX' }}</title>
+    <link href="https://unpkg.com/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
     <style>
-        @page { margin: 2cm; }
-        body { font-family: Arial, sans-serif; font-size: 11px; line-height: 1.2; margin: 0; }
-        .header { display: flex; justify-content: space-between; margin-bottom: 20px; }
-        .company-info { width: 48%; }
-        .invoice-info { width: 48%; }
-        .title { font-size: 16px; font-weight: bold; margin-bottom: 15px; }
-        .company-details { margin: 10px 0; }
-        .customer-box { border: 2px solid #000; padding: 10px; margin: 10px 0; }
-        .conditions-table { width: 100%; border-collapse: collapse; margin: 15px 0; }
-        .conditions-table th, .conditions-table td { 
-            border: 1px solid #000; padding: 6px; text-align: left; font-size: 10px; 
+        @page { 
+            margin: 1.5cm; 
         }
-        .rekapitulace { width: 100%; border-collapse: collapse; margin: 20px 0; }
-        .rekapitulace th, .rekapitulace td { 
-            border: 1px solid #000; padding: 5px; text-align: left; font-size: 10px; 
+        
+        body { 
+            font-family: Arial, sans-serif; 
+            font-size: 14px; 
+            line-height: 1.4; 
         }
-        .rekapitulace th { background-color: #f0f0f0; font-weight: bold; }
-        .amount { text-align: right; }
-        .total-row { font-weight: bold; background-color: #f5f5f5; }
-        .final-amount { text-align: center; font-size: 14px; font-weight: bold; 
-                       margin: 20px 0; padding: 10px; border: 2px solid #000; }
-        .dph-table { width: 50%; margin: 20px 0; border-collapse: collapse; }
-        .dph-table th, .dph-table td { border: 1px solid #000; padding: 5px; font-size: 10px; }
-        .footer { margin-top: 30px; font-size: 9px; color: #666; }
-        .right-align { text-align: right; }
+        
+        /* Print optimalizace */
+        @media print {
+            .btn { display: none !important; }
+            .container { max-width: none !important; }
+            body { font-size: 12px; }
+        }
+        
+        .invoice-header {
+            border-bottom: 3px solid #007bff;
+            padding-bottom: 1rem;
+            margin-bottom: 2rem;
+        }
+        
+        .company-logo {
+            max-width: 150px;
+            height: auto;
+        }
+        
+        .invoice-title {
+            font-size: 2.5rem;
+            font-weight: 700;
+            color: #007bff;
+            text-transform: uppercase;
+            margin: 0;
+        }
+        
+        .invoice-details {
+            background-color: #f8f9fa;
+            padding: 1rem;
+            border-radius: 0.375rem;
+            border-left: 4px solid #007bff;
+        }
+        
+        .address-block {
+            background-color: #fff;
+            border: 1px solid #dee2e6;
+            border-radius: 0.375rem;
+            padding: 1.5rem;
+        }
+        
+        .table-custom {
+            font-size: 0.9rem;
+        }
+        
+        .table-custom th {
+            background-color: #007bff;
+            color: white;
+            font-weight: 600;
+        }
+        
+        .total-section {
+            background-color: #f8f9fa;
+            border-radius: 0.375rem;
+            padding: 1rem;
+        }
+        
+        .final-total {
+            background-color: #007bff;
+            color: white;
+            font-size: 1.25rem;
+            font-weight: 700;
+        }
+        
+        /* Stylů pro přechodovou kompatibilitu */
+        .text-end { text-align: right; }
+        .text-center { text-align: center; }
+        .text-primary { color: #007bff !important; }
+        .text-muted { color: #6c757d !important; }
+        .mb-1 { margin-bottom: 0.25rem; }
+        .mb-2 { margin-bottom: 0.5rem; }
+        .mb-3 { margin-bottom: 1rem; }
+        .mt-3 { margin-top: 1rem; }
+        .mt-4 { margin-top: 1.5rem; }
+        .mt-5 { margin-top: 3rem; }
+        .p-3 { padding: 1rem; }
+        .rounded { border-radius: 0.375rem; }
     </style>
 </head>
 <body>
-    <!-- HLAVIČKA -->
-    <div class="header">
-        <div class="company-info">
-            <div class="title">FAKTURA - DAŇOVÝ DOKLAD</div>
-            <div style="font-size: 14px; font-weight: bold; margin-bottom: 10px;">
-                {{ dodavatel.nazev_sro if dodavatel else 'Your energy, s.r.o.' }}
-            </div>
-            <div>{{ dodavatel.adresa_radek_1 if dodavatel else 'Italská 2584/69' }}</div>
-            <div>{{ dodavatel.adresa_radek_2 if dodavatel else '120 00 Praha 2 - Vinohrady' }}</div>
-            <div><strong>DIČ</strong> {{ dodavatel.dic_sro if dodavatel else 'CZ24833851' }}</div>
-            <div><strong>IČO</strong> {{ dodavatel.ico_sro if dodavatel else '24833851' }}</div>
-            
-            <div class="company-details">
-                <div><strong>Banka:</strong> {{ dodavatel.banka if dodavatel else 'Bankovní účet Raiffeisenbank a.s. CZK' }}</div>
-                <div><strong>Č.úč.</strong> {{ dodavatel.cislo_uctu if dodavatel else '5041011366/5500' }}</div>
-                <div><strong>IBAN</strong> {{ dodavatel.iban if dodavatel else 'CZ1055000000005041011366' }}</div>
-                <div><strong>SWIFT/BIC</strong> {{ dodavatel.swift if dodavatel else 'RZBCCZPP' }}</div>
+    <div class="container-fluid">
+        <!-- HLAVIČKA -->
+        <div class="invoice-header">
+            <div class="row">
+                <div class="col-md-6">
+                    <h1 class="invoice-title">FAKTURA</h1>
+                    <h2 style="font-size: 1.2rem; color: #6c757d;">DAŇOVÝ DOKLAD</h2>
+                    <div class="mt-3">
+                        <h5>{{ dodavatel.nazev_sro if dodavatel else 'Your energy, s.r.o.' }}</h5>
+                        <p class="mb-1">{{ dodavatel.adresa_radek_1 if dodavatel else 'Italská 2584/69' }}</p>
+                        <p class="mb-1">{{ dodavatel.adresa_radek_2 if dodavatel else '120 00 Praha 2 - Vinohrady' }}</p>
+                        <p class="mb-1"><strong>DIČ:</strong> {{ dodavatel.dic_sro if dodavatel else 'CZ24833851' }}</p>
+                        <p class="mb-3"><strong>IČO:</strong> {{ dodavatel.ico_sro if dodavatel else '24833851' }}</p>
+                        
+                        <div class="mt-3">
+                            <p class="mb-1"><strong>Banka:</strong> {{ dodavatel.banka if dodavatel else 'Bankovní účet Raiffeisenbank a.s. CZK' }}</p>
+                            <p class="mb-1"><strong>Č.úč.:</strong> {{ dodavatel.cislo_uctu if dodavatel else '5041011366/5500' }}</p>
+                            <p class="mb-1"><strong>IBAN:</strong> {{ dodavatel.iban if dodavatel else 'CZ1055000000005041011366' }}</p>
+                            <p class="mb-0"><strong>SWIFT/BIC:</strong> {{ dodavatel.swift if dodavatel else 'RZBCCZPP' }}</p>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="col-md-6 text-end">
+                    <div class="invoice-details">
+                        <h4 class="mb-3">Faktura č. {{ faktura.cislo_faktury if faktura else '' }}</h4>
+                        <p class="mb-2"><strong>Konst. symbol:</strong> {{ faktura.konstantni_symbol if faktura else '' }}</p>
+                        <p class="mb-3"><strong>VS:</strong> {{ faktura.variabilni_symbol if faktura else '' }}</p>
+                    </div>
+                    
+                    <div class="address-block mt-4">
+                        <h6 class="text-primary mb-2">Odběratel:</h6>
+                        <p class="mb-1"><strong>{{ odberatel.nazev_sro if odberatel else '' }}</strong></p>
+                        <p class="mb-1">{{ odberatel.adresa_radek_1 if odberatel else '' }}</p>
+                        <p class="mb-1">{{ odberatel.adresa_radek_2 if odberatel else '' }}</p>
+                        <p class="mb-1"><strong>IČO:</strong> {{ odberatel.ico_sro if odberatel else '' }}</p>
+                        <p class="mb-0"><strong>DIČ:</strong> {{ odberatel.dic_sro if odberatel else '' }}</p>
+                    </div>
+                    
+                    <div class="mt-3">
+                        <p class="mb-1"><strong>Středisko:</strong> {{ stredisko.stredisko }} {{ stredisko.nazev_strediska }}</p>
+                        <p class="mb-0">{{ stredisko.stredisko_mail if stredisko.stredisko_mail else 'info@yourenergy.cz' }}</p>
+                    </div>
+                </div>
             </div>
         </div>
-        
-        <div class="invoice-info right-align">
-            <div style="font-size: 14px; font-weight: bold; margin-bottom: 10px;">
-                Číslo {{ faktura.cislo_faktury if faktura else '' }}
+
+        <!-- DODACÍ A PLATEBNÍ PODMÍNKY -->
+        <div class="row mt-4">
+            <div class="col-12">
+                <h5 class="text-primary mb-3">Dodací a platební podmínky</h5>
+                <div class="table-responsive">
+                    <table class="table table-bordered table-custom">
+                        <thead>
+                            <tr>
+                                <th>Datum splatnosti</th>
+                                <th>Datum vystavení</th>
+                                <th>Datum zdanit. plnění</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td>{{ faktura.datum_splatnosti.strftime('%d.%m.%Y') if faktura and faktura.datum_splatnosti else '' }}</td>
+                                <td>{{ faktura.datum_vystaveni.strftime('%d.%m.%Y') if faktura and faktura.datum_vystaveni else '' }}</td>
+                                <td>{{ faktura.datum_zdanitelneho_plneni.strftime('%d.%m.%Y') if faktura and faktura.datum_zdanitelneho_plneni else '' }}</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+                
+                <div class="table-responsive mt-3">
+                    <table class="table table-bordered table-custom">
+                        <thead>
+                            <tr>
+                                <th>Forma úhrady</th>
+                                <th>Popis dodávky</th>
+                                <th></th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td>{{ faktura.forma_uhrady if faktura else '' }}</td>
+                                <td>{{ faktura.popis_dodavky if faktura else 'Vyúčtování ' + obdobi.rok|string + '%02d'|format(obdobi.mesic) }}</td>
+                                <td></td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
             </div>
-            <div style="margin-bottom: 15px;">
-                <div><strong>konst. symbol</strong> {{ faktura.konstantni_symbol if faktura else '' }}</div>
-                <div><strong>VS</strong> {{ faktura.variabilni_symbol if faktura else '' }}</div>
-            </div>
-            <div>Objednávka:</div>
-            
-            <div class="customer-box">
-                <div><strong>Odběratel:</strong></div>
-                <div><strong>{{ odberatel.nazev_sro if odberatel else '' }}</strong></div>
-                <div>{{ odberatel.adresa_radek_1 if odberatel else '' }}</div>
-                <div>{{ odberatel.adresa_radek_2 if odberatel else '' }}</div>
-                <div><strong>IČO:</strong> {{ odberatel.ico_sro if odberatel else '' }}</div>
-                <div><strong>DIČ:</strong> {{ odberatel.dic_sro if odberatel else '' }}</div>
-            </div>
-            
-            <div><strong>Středisko:</strong> {{ stredisko.stredisko }} {{ stredisko.nazev_strediska }}</div>
-            <div style="margin-top: 10px;">{{ stredisko.stredisko_mail if stredisko.stredisko_mail else 'info@yourenergy.cz' }}</div>
         </div>
-    </div>
 
-    <!-- DODACÍ A PLATEBNÍ PODMÍNKY -->
-    <table class="conditions-table">
-        <tr>
-            <th colspan="3"><strong>Dodací a platební podmínky</strong></th>
-        </tr>
-        <tr>
-            <th>Datum splatnosti</th>
-            <th>Datum vystavení</th>
-            <th>Datum zdanit. plnění</th>
-        </tr>
-        <tr>
-            <td>{{ faktura.datum_splatnosti.strftime('%d.%m.%Y') if faktura and faktura.datum_splatnosti else '' }}</td>
-            <td>{{ faktura.datum_vystaveni.strftime('%d.%m.%Y') if faktura and faktura.datum_vystaveni else '' }}</td>
-            <td>{{ faktura.datum_zdanitelneho_plneni.strftime('%d.%m.%Y') if faktura and faktura.datum_zdanitelneho_plneni else '' }}</td>
-        </tr>
-        <tr>
-            <th>Forma úhrady</th>
-            <th>Popis dodávky</th>
-            <th></th>
-        </tr>
-        <tr>
-            <td>{{ faktura.forma_uhrady if faktura else '' }}</td>
-            <td>{{ faktura.popis_dodavky if faktura else 'Vyúčtování ' + obdobi.rok|string + '%02d'|format(obdobi.mesic) }}</td>
-            <td></td>
-        </tr>
-    </table>
-
-    <!-- REKAPITULACE -->
-<!-- REKAPITULACE -->
-<table class="rekapitulace">
-    <tr>
-        <th><strong>Rekapitulace</strong></th>
-        <th>Základ daně</th>
-        <th>Sazba DPH</th>
-        <th>Částka DPH</th>
-        <th>Celkem vč. DPH</th>
-    </tr>
-<tr>
-    <td>Měsíční plat (za jistič)</td>
-    <td class="amount">{{ "%.2f"|format(rekapitulace.platba_za_jistic) }}</td>
-    <td class="amount">{{ (sazba_dph * 100)|round|int }}</td>
-    <td class="amount">{{ "%.2f"|format(rekapitulace.platba_za_jistic * sazba_dph) }}</td>
-    <td class="amount">{{ "%.2f"|format(rekapitulace.platba_za_jistic * (1 + sazba_dph)) }}</td>
-</tr>
+        <!-- REKAPITULACE -->
+        <div class="row mt-4">
+            <div class="col-12">
+                <h5 class="text-primary mb-3">Rekapitulace</h5>
+                <div class="table-responsive">
+                    <table class="table table-bordered table-custom">
+                        <thead>
+                            <tr>
+                                <th><strong>Rekapitulace</strong></th>
+                                <th>Základ daně</th>
+                                <th>Sazba DPH</th>
+                                <th>Částka DPH</th>
+                                <th>Celkem vč. DPH</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td>Měsíční plat (za jistič)</td>
+                                <td class="text-end">{{ "%.2f"|format(rekapitulace.platba_za_jistic) }}</td>
+                                <td class="text-end">{{ (sazba_dph * 100)|round|int }}</td>
+                                <td class="text-end">{{ "%.2f"|format(rekapitulace.platba_za_jistic * sazba_dph) }}</td>
+                                <td class="text-end">{{ "%.2f"|format(rekapitulace.platba_za_jistic * (1 + sazba_dph)) }}</td>
+                            </tr>
 <tr>
     <td>Plat za elektřinu ve VT</td>
-    <td class="amount">{{ "%.2f"|format(rekapitulace.distribuce_vt) }}</td>
-    <td class="amount">{{ (sazba_dph * 100)|round|int }}</td>
-    <td class="amount">{{ "%.2f"|format(rekapitulace.distribuce_vt * sazba_dph) }}</td>
-    <td class="amount">{{ "%.2f"|format(rekapitulace.distribuce_vt * (1 + sazba_dph)) }}</td>
+    <td class="text-end">{{ "%.2f"|format(rekapitulace.distribuce_vt) }}</td>
+    <td class="text-end">{{ (sazba_dph * 100)|round|int }}</td>
+    <td class="text-end">{{ "%.2f"|format(rekapitulace.distribuce_vt * sazba_dph) }}</td>
+    <td class="text-end">{{ "%.2f"|format(rekapitulace.distribuce_vt * (1 + sazba_dph)) }}</td>
 </tr>
 <tr>
     <td>Plat za elektřinu ve NT</td>
-    <td class="amount">{{ "%.2f"|format(rekapitulace.distribuce_nt) }}</td>
-    <td class="amount">{{ (sazba_dph * 100)|round|int }}</td>
-    <td class="amount">{{ "%.2f"|format(rekapitulace.distribuce_nt * sazba_dph) }}</td>
-    <td class="amount">{{ "%.2f"|format(rekapitulace.distribuce_nt * (1 + sazba_dph)) }}</td>
+    <td class="text-end">{{ "%.2f"|format(rekapitulace.distribuce_nt) }}</td>
+    <td class="text-end">{{ (sazba_dph * 100)|round|int }}</td>
+    <td class="text-end">{{ "%.2f"|format(rekapitulace.distribuce_nt * sazba_dph) }}</td>
+    <td class="text-end">{{ "%.2f"|format(rekapitulace.distribuce_nt * (1 + sazba_dph)) }}</td>
 </tr>
     <tr>
         <td>Cena za systémové služby</td>
-        <td class="amount">{{ "%.2f"|format(rekapitulace.systemove_sluzby) }}</td>
-        <td class="amount">{{ (sazba_dph * 100)|round|int }}</td>
-        <td class="amount">{{ "%.2f"|format(rekapitulace.systemove_sluzby * sazba_dph) }}</td>
-        <td class="amount">{{ "%.2f"|format(rekapitulace.systemove_sluzby * (1 + sazba_dph)) }}</td>
+        <td class="text-end">{{ "%.2f"|format(rekapitulace.systemove_sluzby) }}</td>
+        <td class="text-end">{{ (sazba_dph * 100)|round|int }}</td>
+        <td class="text-end">{{ "%.2f"|format(rekapitulace.systemove_sluzby * sazba_dph) }}</td>
+        <td class="text-end">{{ "%.2f"|format(rekapitulace.systemove_sluzby * (1 + sazba_dph)) }}</td>
     </tr>
     <tr>
         <td>Podpora elekt. z podporovaných zdrojů energie</td>
-        <td class="amount">{{ "%.2f"|format(rekapitulace.poze_minimum) }}</td>
-        <td class="amount">{{ (sazba_dph * 100)|round|int }}</td>
-        <td class="amount">{{ "%.2f"|format(rekapitulace.poze_minimum * sazba_dph) }}</td>
-        <td class="amount">{{ "%.2f"|format(rekapitulace.poze_minimum * (1 + sazba_dph)) }}</td>
+        <td class="text-end">{{ "%.2f"|format(rekapitulace.poze_minimum) }}</td>
+        <td class="text-end">{{ (sazba_dph * 100)|round|int }}</td>
+        <td class="text-end">{{ "%.2f"|format(rekapitulace.poze_minimum * sazba_dph) }}</td>
+        <td class="text-end">{{ "%.2f"|format(rekapitulace.poze_minimum * (1 + sazba_dph)) }}</td>
     </tr>
     <tr>
         <td>Poplatek za nesíťovou infrastrukturu</td>
-        <td class="amount">{{ "%.2f"|format(rekapitulace.nesitova_infrastruktura) }}</td>
-        <td class="amount">{{ (sazba_dph * 100)|round|int }}</td>
-        <td class="amount">{{ "%.2f"|format(rekapitulace.nesitova_infrastruktura * sazba_dph) }}</td>
-        <td class="amount">{{ "%.2f"|format(rekapitulace.nesitova_infrastruktura * (1 + sazba_dph)) }}</td>
+        <td class="text-end">{{ "%.2f"|format(rekapitulace.nesitova_infrastruktura) }}</td>
+        <td class="text-end">{{ (sazba_dph * 100)|round|int }}</td>
+        <td class="text-end">{{ "%.2f"|format(rekapitulace.nesitova_infrastruktura * sazba_dph) }}</td>
+        <td class="text-end">{{ "%.2f"|format(rekapitulace.nesitova_infrastruktura * (1 + sazba_dph)) }}</td>
     </tr>
 <tr>
     <td>Stálý plat (dodavatel)</td>
-    <td class="amount">{{ "%.2f"|format(rekapitulace.mesicni_plat) }}</td>
-    <td class="amount">{{ (sazba_dph * 100)|round|int }}</td>
-    <td class="amount">{{ "%.2f"|format(rekapitulace.mesicni_plat * sazba_dph) }}</td>
-    <td class="amount">{{ "%.2f"|format(rekapitulace.mesicni_plat * (1 + sazba_dph)) }}</td>
+    <td class="text-end">{{ "%.2f"|format(rekapitulace.mesicni_plat) }}</td>
+    <td class="text-end">{{ (sazba_dph * 100)|round|int }}</td>
+    <td class="text-end">{{ "%.2f"|format(rekapitulace.mesicni_plat * sazba_dph) }}</td>
+    <td class="text-end">{{ "%.2f"|format(rekapitulace.mesicni_plat * (1 + sazba_dph)) }}</td>
 </tr>
 <tr>
     <td>Plat za silovou elektřinu v VT (dodavatel)</td>
-    <td class="amount">{{ "%.2f"|format(rekapitulace.elektrinu_vt) }}</td>
-    <td class="amount">{{ (sazba_dph * 100)|round|int }}</td>
-    <td class="amount">{{ "%.2f"|format(rekapitulace.elektrinu_vt * sazba_dph) }}</td>
-    <td class="amount">{{ "%.2f"|format(rekapitulace.elektrinu_vt * (1 + sazba_dph)) }}</td>
+    <td class="text-end">{{ "%.2f"|format(rekapitulace.elektrinu_vt) }}</td>
+    <td class="text-end">{{ (sazba_dph * 100)|round|int }}</td>
+    <td class="text-end">{{ "%.2f"|format(rekapitulace.elektrinu_vt * sazba_dph) }}</td>
+    <td class="text-end">{{ "%.2f"|format(rekapitulace.elektrinu_vt * (1 + sazba_dph)) }}</td>
 </tr>
 <tr>
     <td>Plat za silovou elektřinu v NT (dodavatel)</td>
-    <td class="amount">{{ "%.2f"|format(rekapitulace.elektrinu_nt) }}</td>
-    <td class="amount">{{ (sazba_dph * 100)|round|int }}</td>
-    <td class="amount">{{ "%.2f"|format(rekapitulace.elektrinu_nt * sazba_dph) }}</td>
-    <td class="amount">{{ "%.2f"|format(rekapitulace.elektrinu_nt * (1 + sazba_dph)) }}</td>
+    <td class="text-end">{{ "%.2f"|format(rekapitulace.elektrinu_nt) }}</td>
+    <td class="text-end">{{ (sazba_dph * 100)|round|int }}</td>
+    <td class="text-end">{{ "%.2f"|format(rekapitulace.elektrinu_nt * sazba_dph) }}</td>
+    <td class="text-end">{{ "%.2f"|format(rekapitulace.elektrinu_nt * (1 + sazba_dph)) }}</td>
 </tr>
     <tr>
         <td>Daň</td>
-        <td class="amount">{{ "%.2f"|format(rekapitulace.dan_z_elektriny) }}</td>
-        <td class="amount">{{ (sazba_dph * 100)|round|int }}</td>
-        <td class="amount">{{ "%.2f"|format(rekapitulace.dan_z_elektriny * sazba_dph) }}</td>
-        <td class="amount">{{ "%.2f"|format(rekapitulace.dan_z_elektriny * (1 + sazba_dph)) }}</td>
+        <td class="text-end">{{ "%.2f"|format(rekapitulace.dan_z_elektriny) }}</td>
+        <td class="text-end">{{ (sazba_dph * 100)|round|int }}</td>
+        <td class="text-end">{{ "%.2f"|format(rekapitulace.dan_z_elektriny * sazba_dph) }}</td>
+        <td class="text-end">{{ "%.2f"|format(rekapitulace.dan_z_elektriny * (1 + sazba_dph)) }}</td>
     </tr>
     <tr>
         <td>Dofakturace / Bonus</td>
-        <td class="amount">{{ "%.2f"|format(rekapitulace.dofakturace_bonus) }}</td>
-        <td class="amount">{{ (sazba_dph * 100)|round|int }}</td>
-        <td class="amount">{{ "%.2f"|format(rekapitulace.dofakturace_bonus * sazba_dph) }}</td>
-        <td class="amount">{{ "%.2f"|format(rekapitulace.dofakturace_bonus * (1 + sazba_dph)) }}</td>
+        <td class="text-end">{{ "%.2f"|format(rekapitulace.dofakturace_bonus) }}</td>
+        <td class="text-end">{{ (sazba_dph * 100)|round|int }}</td>
+        <td class="text-end">{{ "%.2f"|format(rekapitulace.dofakturace_bonus * sazba_dph) }}</td>
+        <td class="text-end">{{ "%.2f"|format(rekapitulace.dofakturace_bonus * (1 + sazba_dph)) }}</td>
     </tr>
-    <tr class="total-row">
-        <td><strong>Celkem za doklad</strong></td>
-        <td class="amount"><strong>{{ "%.2f"|format(zaklad_bez_dph) }}</strong></td>
-        <td class="amount"></td>
-        <td class="amount"><strong>{{ "%.2f"|format(castka_dph) }}</strong></td>
-        <td class="amount"><strong>{{ "%.2f"|format(celkem_vc_dph) }}</strong></td>
-    </tr>
-    <tr>
-    <td>Zaplaceno zálohou</td>
-        <td class="amount">{{ "%.2f"|format(-zaloha_hodnota) if zaloha else "0,00" }}</td>
-        <td class="amount">{{ sazba_dph_procenta }}</td>
-        <td class="amount">{{ "%.2f"|format(-zaloha_dph) if zaloha else "0,00" }}</td>
-        <td class="amount">{{ "%.2f"|format(-zaloha_celkem_vc_dph) if zaloha else "0,00" }}</td>
-    </tr>
-</table>
+                            <tr class="final-total">
+                                <td><strong>Celkem za doklad</strong></td>
+                                <td class="text-end"><strong>{{ "%.2f"|format(zaklad_bez_dph) }}</strong></td>
+                                <td class="text-end"></td>
+                                <td class="text-end"><strong>{{ "%.2f"|format(castka_dph) }}</strong></td>
+                                <td class="text-end"><strong>{{ "%.2f"|format(celkem_vc_dph) }}</strong></td>
+                            </tr>
+                            <tr>
+                                <td>Zaplaceno zálohou</td>
+                                <td class="text-end">{{ "%.2f"|format(-zaloha_hodnota) if zaloha else "0,00" }}</td>
+                                <td class="text-end">{{ sazba_dph_procenta }}</td>
+                                <td class="text-end">{{ "%.2f"|format(-zaloha_dph) if zaloha else "0,00" }}</td>
+                                <td class="text-end">{{ "%.2f"|format(-zaloha_celkem_vc_dph) if zaloha else "0,00" }}</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
 
-    <!-- K PLATBĚ -->
-    <div class="final-amount">
-        <strong>K platbě celkem Kč {{ "%.2f"|format(k_platbe) }}</strong>
-    </div>
+        <!-- K PLATBĚ -->
+        <div class="row mt-4">
+            <div class="col-12">
+                <div class="total-section text-center p-3">
+                    <h4 class="final-total p-3 rounded">K platbě celkem Kč {{ "%.2f"|format(k_platbe) }}</h4>
+                </div>
+            </div>
+        </div>
 
-    <!-- REKAPITULACE DPH -->
-    <table class="dph-table">
-        <tr>
-            <th colspan="4"><strong>Rekapitulace DPH</strong></th>
-        </tr>
-        <tr>
-            <th>Sazba DPH</th>
-            <th>Základ daně</th>
-            <th>DPH</th>
-            <th>Celkem</th>
-        </tr>
-        <tr>
-            <td>Základní sazba 21 %</td>
-            <td class="amount">{{ "%.2f"|format(k_platbe / (1 + sazba_dph)) }}</td>
-            <td class="amount">{{ "%.2f"|format(k_platbe * sazba_dph / (1 + sazba_dph)) }}</td>
-            <td class="amount">{{ "%.2f"|format(k_platbe) }}</td>
-        </tr>
-    </table>
+        <!-- REKAPITULACE DPH -->
+        <div class="row mt-4">
+            <div class="col-12">
+                <h5 class="text-primary mb-3">Rekapitulace DPH</h5>
+                <div class="table-responsive">
+                    <table class="table table-bordered table-custom">
+                        <thead>
+                            <tr>
+                                <th>Sazba DPH</th>
+                                <th>Základ daně</th>
+                                <th>DPH</th>
+                                <th>Celkem</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td>Základní sazba 21 %</td>
+                                <td class="text-end">{{ "%.2f"|format(k_platbe / (1 + sazba_dph)) }}</td>
+                                <td class="text-end">{{ "%.2f"|format(k_platbe * sazba_dph / (1 + sazba_dph)) }}</td>
+                                <td class="text-end">{{ "%.2f"|format(k_platbe) }}</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
 
-    <!-- FOOTER -->
-    <div class="footer">
-        <p>Rozpis jednotlivých položek faktury je uveden na následující straně.</p>
-        <p><strong>FAKTURA:</strong> {{ faktura.cislo_faktury if faktura else '270325044' }} &nbsp;&nbsp;&nbsp;&nbsp; Strana: 1 / 22</p>
-            <div style="margin-top: 20px; text-align: center;">
-    <a href="{{ url_for('fakturace.fakturace', stredisko_id=stredisko.id, obdobi_id=obdobi.id) }}" 
-       style="padding: 8px 15px; background-color: #6c757d; color: white; text-decoration: none; border-radius: 3px;">
-       ← Zpět na fakturaci (zachová období {{ obdobi.rok }}/{{ '%02d'|format(obdobi.mesic) }})
-    </a>
-</div>
+        <!-- FOOTER -->
+        <div class="row mt-5">
+            <div class="col-12">
+                <div class="text-center text-muted">
+                    <p class="mb-2">Rozpis jednotlivých položek faktury je uveden na následující straně.</p>
+                    <p class="mb-3"><strong>FAKTURA:</strong> {{ faktura.cislo_faktury if faktura else '270325044' }} &nbsp;&nbsp;&nbsp;&nbsp; Strana: 1 / 22</p>
+                    <div class="mt-4">
+                        <a href="{{ url_for('fakturace.fakturace', stredisko_id=stredisko.id, obdobi_id=obdobi.id) }}" 
+                           class="btn btn-secondary">
+                           ← Zpět na fakturaci (zachová období {{ obdobi.rok }}/{{ '%02d'|format(obdobi.mesic) }})
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
     </div>
 </body>
 </html>
