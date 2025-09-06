@@ -1020,13 +1020,40 @@ def vygenerovat_prilohu2_html(stredisko_id, rok, mesic):
             oznaceni=om.cislo_om.zfill(7) if om.cislo_om else None
         ).first()
         
+        # Výpočet jednotkových cen
+        # Spotřeby v MWh
+        spotreba_vt_mwh = float(odecet.spotreba_vt or 0) / 1000 if odecet else 0
+        spotreba_nt_mwh = float(odecet.spotreba_nt or 0) / 1000 if odecet else 0
+        celkova_spotreba_mwh = spotreba_vt_mwh + spotreba_nt_mwh
+        
+        # Jednotkové ceny (cena / spotřeba)
+        jednotkova_cena_elektriny_vt = float(vypocet.platba_za_elektrinu_vt or 0) / spotreba_vt_mwh if spotreba_vt_mwh > 0 else 0
+        jednotkova_cena_elektriny_nt = float(vypocet.platba_za_elektrinu_nt or 0) / spotreba_nt_mwh if spotreba_nt_mwh > 0 else 0
+        jednotkova_cena_distribuce_vt = float(vypocet.platba_za_distribuci_vt or 0) / spotreba_vt_mwh if spotreba_vt_mwh > 0 else 0
+        jednotkova_cena_distribuce_nt = float(vypocet.platba_za_distribuci_nt or 0) / spotreba_nt_mwh if spotreba_nt_mwh > 0 else 0
+        jednotkova_cena_systemove_sluzby = float(vypocet.systemove_sluzby or 0) / celkova_spotreba_mwh if celkova_spotreba_mwh > 0 else 0
+        jednotkova_cena_poze = float(poze_minimum) / celkova_spotreba_mwh if celkova_spotreba_mwh > 0 else 0
+        jednotkova_cena_dan = float(vypocet.dan_z_elektriny or 0) / celkova_spotreba_mwh if celkova_spotreba_mwh > 0 else 0
+
         vypocty_data.append({
             'om': om,
             'vypocet': vypocet,
             'odecet': odecet,
             'poze_minimum': poze_minimum,
             'celkem_om': celkem_om,
-            'sazba_dph': sazba_dph
+            'sazba_dph': sazba_dph,
+            # Spotřeby v MWh
+            'spotreba_vt_mwh': spotreba_vt_mwh,
+            'spotreba_nt_mwh': spotreba_nt_mwh,
+            'celkova_spotreba_mwh': celkova_spotreba_mwh,
+            # Jednotkové ceny
+            'jednotkova_cena_elektriny_vt': jednotkova_cena_elektriny_vt,
+            'jednotkova_cena_elektriny_nt': jednotkova_cena_elektriny_nt,
+            'jednotkova_cena_distribuce_vt': jednotkova_cena_distribuce_vt,
+            'jednotkova_cena_distribuce_nt': jednotkova_cena_distribuce_nt,
+            'jednotkova_cena_systemove_sluzby': jednotkova_cena_systemove_sluzby,
+            'jednotkova_cena_poze': jednotkova_cena_poze,
+            'jednotkova_cena_dan': jednotkova_cena_dan
         })
 
     # ✅ OPRAVA: Renderuj template s UTF-8 kódováním
@@ -1060,9 +1087,81 @@ def vygenerovat_prilohu2_html(stredisko_id, rok, mesic):
         return response
 
 
+def _get_priloha2_pdf_bytes(stredisko_id, rok, mesic):
+    """Interní funkce pro získání PDF bytů přílohy 2 (pro kompletní fakturu)"""
+    # Stejná logika jako vygenerovat_priloha2_pdf, ale vrací jen PDF bytes
+    try:
+        # Najdi období
+        obdobi = ObdobiFakturace.query.filter_by(
+            stredisko_id=stredisko_id, rok=rok, mesic=mesic
+        ).first()
+        if not obdobi:
+            raise ValueError(f"Období {rok}/{mesic:02d} nenalezeno")
+
+        # Načti základní data
+        faktura = Faktura.query.filter_by(stredisko_id=stredisko_id, obdobi_id=obdobi.id).first()
+        dodavatel = InfoDodavatele.query.filter_by(stredisko_id=stredisko_id).first()
+        stredisko = Stredisko.query.get(stredisko_id)
+        
+        # Načti výpočty (zkrácená verze)
+        vypocty_om = db.session.query(VypocetOM, OdberneMisto)\
+            .join(OdberneMisto, VypocetOM.odberne_misto_id == OdberneMisto.id)\
+            .filter(VypocetOM.obdobi_id == obdobi.id)\
+            .filter(OdberneMisto.stredisko_id == stredisko_id)\
+            .order_by(OdberneMisto.cislo_om)\
+            .all()
+        
+        if not vypocty_om:
+            raise ValueError("Nejsou výpočty pro vybrané období")
+
+        # Připrav data (zkrácená verze - jen to nejnutnější)
+        vypocty_data = []
+        for vypocet, om in vypocty_om:
+            poze_minimum = min(float(vypocet.poze_dle_jistice or 0), float(vypocet.poze_dle_spotreby or 0))
+            celkem_om = (
+                float(vypocet.mesicni_plat or 0) + float(vypocet.platba_za_elektrinu_vt or 0) +
+                float(vypocet.platba_za_elektrinu_nt or 0) + float(vypocet.platba_za_jistic or 0) +
+                float(vypocet.platba_za_distribuci_vt or 0) + float(vypocet.platba_za_distribuci_nt or 0) +
+                float(vypocet.systemove_sluzby or 0) + poze_minimum +
+                float(vypocet.nesitova_infrastruktura or 0) + float(vypocet.dan_z_elektriny or 0)
+            )
+            
+            # Základní spotřeby a ceny
+            odecet = Odecet.query.filter_by(stredisko_id=stredisko_id, obdobi_id=obdobi.id, oznaceni=om.cislo_om.zfill(7)).first()
+            spotreba_vt_mwh = float(odecet.spotreba_vt or 0) / 1000 if odecet else 0
+            spotreba_nt_mwh = float(odecet.spotreba_nt or 0) / 1000 if odecet else 0
+            celkova_spotreba_mwh = spotreba_vt_mwh + spotreba_nt_mwh
+            
+            vypocty_data.append({
+                'om': om, 'vypocet': vypocet, 'odecet': odecet, 'poze_minimum': poze_minimum, 'celkem_om': celkem_om,
+                'spotreba_vt_mwh': spotreba_vt_mwh, 'spotreba_nt_mwh': spotreba_nt_mwh, 'celkova_spotreba_mwh': celkova_spotreba_mwh,
+                'jednotkova_cena_elektriny_vt': float(vypocet.platba_za_elektrinu_vt or 0) / spotreba_vt_mwh if spotreba_vt_mwh > 0 else 0,
+                'jednotkova_cena_elektriny_nt': float(vypocet.platba_za_elektrinu_nt or 0) / spotreba_nt_mwh if spotreba_nt_mwh > 0 else 0,
+                'jednotkova_cena_distribuce_vt': float(vypocet.platba_za_distribuci_vt or 0) / spotreba_vt_mwh if spotreba_vt_mwh > 0 else 0,
+                'jednotkova_cena_distribuce_nt': float(vypocet.platba_za_distribuci_nt or 0) / spotreba_nt_mwh if spotreba_nt_mwh > 0 else 0,
+                'jednotkova_cena_systemove_sluzby': float(vypocet.systemove_sluzby or 0) / celkova_spotreba_mwh if celkova_spotreba_mwh > 0 else 0,
+                'jednotkova_cena_poze': float(poze_minimum) / celkova_spotreba_mwh if celkova_spotreba_mwh > 0 else 0,
+                'jednotkova_cena_dan': float(vypocet.dan_z_elektriny or 0) / celkova_spotreba_mwh if celkova_spotreba_mwh > 0 else 0,
+                'sazba_dph': 0.21
+            })
+
+        # Generuj HTML a PDF
+        html_content = render_template("print/priloha2.html", 
+                            stredisko=stredisko, obdobi=obdobi, faktura=faktura, 
+                            dodavatel=dodavatel, vypocty_data=vypocty_data)
+
+        from weasyprint import HTML
+        html_doc = HTML(string=html_content)
+        return html_doc.write_pdf()
+        
+    except Exception as e:
+        print(f"❌ Chyba v _get_priloha2_pdf_bytes: {e}")
+        raise
+
+
 @print_bp.route("/<int:stredisko_id>/<int:rok>-<int:mesic>/priloha2/pdf")
 def vygenerovat_prilohu2_pdf(stredisko_id, rok, mesic):
-    """NOVÁ ZJEDNODUŠENÁ VERZE - Generuje PDF přílohu 2"""
+    """Generuje PDF přílohu 2 z HTML template"""
     if not session.get("user_id"):
         return redirect("/login")
 
@@ -1071,14 +1170,19 @@ def vygenerovat_prilohu2_pdf(stredisko_id, rok, mesic):
         return "Nepovolený přístup", 403
 
     try:
-        # Získej data
-        data, error = get_faktura_data(stredisko_id, rok, mesic)
-        if error:
-            return error
+        # Najdi období
+        obdobi = ObdobiFakturace.query.filter_by(
+            stredisko_id=stredisko_id, rok=rok, mesic=mesic
+        ).first_or_404()
 
-        # Načti výpočty jednoduše
+        # Načti základní data
+        faktura = Faktura.query.filter_by(stredisko_id=stredisko_id, obdobi_id=obdobi.id).first()
+        dodavatel = InfoDodavatele.query.filter_by(stredisko_id=stredisko_id).first()
+        
+        # Načti všechny výpočty s odběrnými místy pro dané období - OPRAVENÝ DOTAZ
         vypocty_om = db.session.query(VypocetOM, OdberneMisto)\
             .join(OdberneMisto, VypocetOM.odberne_misto_id == OdberneMisto.id)\
+            .filter(VypocetOM.obdobi_id == obdobi.id)\
             .filter(OdberneMisto.stredisko_id == stredisko_id)\
             .order_by(OdberneMisto.cislo_om)\
             .all()
@@ -1086,69 +1190,102 @@ def vygenerovat_prilohu2_pdf(stredisko_id, rok, mesic):
         if not vypocty_om:
             return "Nejsou k dispozici výpočty pro vybrané období.", 400
 
-        # Vytvoř jednoduché PDF
-        buffer = io.BytesIO()
-        doc = SimpleDocTemplate(buffer, pagesize=A4, 
-                              rightMargin=20*mm, leftMargin=20*mm,
-                              topMargin=20*mm, bottomMargin=20*mm)
+        # Připrav data pro template (stejně jako HTML verze)
+        vypocty_data = []
+        sazba_dph = float(faktura.sazba_dph / 100) if faktura and faktura.sazba_dph else 0.21
         
-        story = []
-        styles = getSampleStyleSheet()
-        
-        # Jednoduché záhlaví
-        story.append(Paragraph(f"<b>PŘÍLOHA 2 - Rozpis položek</b>", styles['Title']))
-        story.append(Paragraph(f"Číslo faktury: {data['faktura'].cislo_faktury if data['faktura'] else ''}", styles['Normal']))
-        story.append(Spacer(1, 20))
-        
-        # Jednoduchá tabulka pro každé OM
         for vypocet, om in vypocty_om:
-            story.append(Paragraph(f"<b>Odběrné místo: {om.cislo_om}</b>", styles['Heading2']))
-            story.append(Paragraph(f"Název: {om.nazev_om or ''}", styles['Normal']))
+            # Vypočítej minimum z POZE
+            poze_minimum = min(float(vypocet.poze_dle_jistice or 0), float(vypocet.poze_dle_spotreby or 0))
             
-            # Jednoduchá tabulka s hodnotami
-            data_table = [
-                ['Položka', 'Částka'],
-                ['Měsíční plat', f"{float(vypocet.mesicni_plat or 0):.2f}"],
-                ['Platba za elektřinu VT', f"{float(vypocet.platba_za_elektrinu_vt or 0):.2f}"],
-                ['Platba za elektřinu NT', f"{float(vypocet.platba_za_elektrinu_nt or 0):.2f}"],
-                ['Platba za jistič', f"{float(vypocet.platba_za_jistic or 0):.2f}"],
-                ['Systémové služby', f"{float(vypocet.systemove_sluzby or 0):.2f}"],
-                ['Celkem bez DPH', f"{float(vypocet.zaklad_bez_dph or 0):.2f}"],
-                ['DPH', f"{float(vypocet.castka_dph or 0):.2f}"],
-                ['Celkem s DPH', f"{float(vypocet.celkem_vc_dph or 0):.2f}"]
-            ]
+            # Celková suma za OM
+            celkem_om = (
+                float(vypocet.mesicni_plat or 0) +
+                float(vypocet.platba_za_elektrinu_vt or 0) +
+                float(vypocet.platba_za_elektrinu_nt or 0) +
+                float(vypocet.platba_za_jistic or 0) +
+                float(vypocet.platba_za_distribuci_vt or 0) +
+                float(vypocet.platba_za_distribuci_nt or 0) +
+                float(vypocet.systemove_sluzby or 0) +
+                poze_minimum +
+                float(vypocet.nesitova_infrastruktura or 0) +
+                float(vypocet.dan_z_elektriny or 0)
+            )
             
-            table = Table(data_table, colWidths=[300, 100])
-            table.setStyle(TableStyle([
-                ('FONTSIZE', (0, 0), (-1, -1), 9),
-                ('GRID', (0, 0), (-1, -1), 0.5, colors.black),
-                ('BACKGROUND', (0, 0), (-1, 0), colors.lightgrey),
-                ('ALIGN', (1, 1), (1, -1), 'RIGHT'),
-            ]))
+            # Načti odečet pro získání spotřeb
+            odecet = Odecet.query.filter_by(
+                stredisko_id=stredisko_id,
+                obdobi_id=obdobi.id,
+                oznaceni=om.cislo_om.zfill(7) if om.cislo_om else None
+            ).first()
             
-            story.append(table)
-            story.append(Spacer(1, 15))
-        
-        # Generuj PDF
-        doc.build(story)
-        
-        pdf_data = buffer.getvalue()
-        buffer.close()
-        
-        # Kontrola, že PDF data nejsou prázdná
-        if not pdf_data:
-            return "Chyba: PDF data jsou prázdná", 500
+            # Výpočet jednotkových cen
+            spotreba_vt_mwh = float(odecet.spotreba_vt or 0) / 1000 if odecet else 0
+            spotreba_nt_mwh = float(odecet.spotreba_nt or 0) / 1000 if odecet else 0
+            celkova_spotreba_mwh = spotreba_vt_mwh + spotreba_nt_mwh
             
-        print(f"✅ DEBUG: PDF příloha 2 vygenerována, velikost: {len(pdf_data)} bytes")
-        
-        response = make_response(pdf_data)
-        response.headers['Content-Type'] = 'application/pdf'
-        response.headers['Content-Disposition'] = f'inline; filename=priloha2_{rok}_{mesic:02d}.pdf'
-        
-        return response
+            jednotkova_cena_elektriny_vt = float(vypocet.platba_za_elektrinu_vt or 0) / spotreba_vt_mwh if spotreba_vt_mwh > 0 else 0
+            jednotkova_cena_elektriny_nt = float(vypocet.platba_za_elektrinu_nt or 0) / spotreba_nt_mwh if spotreba_nt_mwh > 0 else 0
+            jednotkova_cena_distribuce_vt = float(vypocet.platba_za_distribuci_vt or 0) / spotreba_vt_mwh if spotreba_vt_mwh > 0 else 0
+            jednotkova_cena_distribuce_nt = float(vypocet.platba_za_distribuci_nt or 0) / spotreba_nt_mwh if spotreba_nt_mwh > 0 else 0
+            jednotkova_cena_systemove_sluzby = float(vypocet.systemove_sluzby or 0) / celkova_spotreba_mwh if celkova_spotreba_mwh > 0 else 0
+            jednotkova_cena_poze = float(poze_minimum) / celkova_spotreba_mwh if celkova_spotreba_mwh > 0 else 0
+            jednotkova_cena_dan = float(vypocet.dan_z_elektriny or 0) / celkova_spotreba_mwh if celkova_spotreba_mwh > 0 else 0
+
+            vypocty_data.append({
+                'om': om,
+                'vypocet': vypocet,
+                'odecet': odecet,
+                'poze_minimum': poze_minimum,
+                'celkem_om': celkem_om,
+                'sazba_dph': sazba_dph,
+                'spotreba_vt_mwh': spotreba_vt_mwh,
+                'spotreba_nt_mwh': spotreba_nt_mwh,
+                'celkova_spotreba_mwh': celkova_spotreba_mwh,
+                'jednotkova_cena_elektriny_vt': jednotkova_cena_elektriny_vt,
+                'jednotkova_cena_elektriny_nt': jednotkova_cena_elektriny_nt,
+                'jednotkova_cena_distribuce_vt': jednotkova_cena_distribuce_vt,
+                'jednotkova_cena_distribuce_nt': jednotkova_cena_distribuce_nt,
+                'jednotkova_cena_systemove_sluzby': jednotkova_cena_systemove_sluzby,
+                'jednotkova_cena_poze': jednotkova_cena_poze,
+                'jednotkova_cena_dan': jednotkova_cena_dan
+            })
+
+        # Generuj HTML z template
+        html_content = render_template("print/priloha2.html", 
+                            stredisko=stredisko,
+                            obdobi=obdobi,
+                            faktura=faktura,
+                            dodavatel=dodavatel,
+                            vypocty_data=vypocty_data)
+
+        # Použij WeasyPrint pro konverzi HTML→PDF
+        try:
+            from weasyprint import HTML, CSS
+            import io
+            
+            # Vytvoř PDF z HTML
+            html_doc = HTML(string=html_content)
+            pdf_bytes = html_doc.write_pdf()
+            
+            # Vytvoř response s PDF daty
+            response = make_response(pdf_bytes)
+            response.headers['Content-Type'] = 'application/pdf'
+            response.headers['Content-Disposition'] = f'inline; filename=priloha2_{rok}_{mesic:02d}.pdf'
+            
+            print(f"✅ WeasyPrint PDF příloha 2 vygenerována, velikost: {len(pdf_bytes)} bytes")
+            return response
+            
+        except ImportError:
+            # Fallback pokud WeasyPrint není dostupný
+            print("⚠️ WeasyPrint není dostupný, vracím HTML")
+            response = make_response(html_content)
+            response.headers['Content-Type'] = 'text/html; charset=utf-8'
+            response.headers['Content-Disposition'] = f'inline; filename=priloha2_{rok}_{mesic:02d}.pdf'
+            return response
         
     except Exception as e:
-        print(f"❌ Chyba v zjednodušené příloze 2: {e}")
+        print(f"❌ Chyba při generování PDF přílohy 2: {e}")
         import traceback
         traceback.print_exc()
         return f"Chyba při generování přílohy 2: {e}", 500
@@ -1595,26 +1732,22 @@ def vygenerovat_kompletni_pdf(stredisko_id, rok, mesic):
             print(f"❌ Chyba při generování přílohy 1: {e}")
             return f"Chyba při generování přílohy 1: {e}", 500
         
-        # 3. ZÍSKEJ PDF PŘÍLOHU 2
+        # 3. ZÍSKEJ PDF PŘÍLOHU 2 (WeasyPrint verze)
         try:
-            priloha2_response = vygenerovat_prilohu2_pdf(stredisko_id, rok, mesic)
-            print(f"🔍 Debug: priloha2_response typ: {type(priloha2_response)}")
-            print(f"🔍 Debug: hasattr data: {hasattr(priloha2_response, 'data')}")
+            # Použij vnitřní funkci pro získání PDF bytů
+            priloha2_pdf_bytes = _get_priloha2_pdf_bytes(stredisko_id, rok, mesic)
             
-            if hasattr(priloha2_response, 'data'):
-                print(f"🔍 Debug: velikost dat: {len(priloha2_response.data)} bytes")
-                priloha2_pdf = PdfReader(io.BytesIO(priloha2_response.data))
-                for page in priloha2_pdf.pages:
-                    merger.add_page(page)
-                print(f"✅ Přidána příloha 2 - {len(priloha2_pdf.pages)} stránek")
-            else:
-                print(f"❌ Příloha 2 response nemá data atribut: {priloha2_response}")
-                return f"Chyba: příloha 2 nevrátila validní PDF response", 500
+            # Přidej PDF stránky do mergeru
+            priloha2_pdf = PdfReader(io.BytesIO(priloha2_pdf_bytes))
+            for page in priloha2_pdf.pages:
+                merger.add_page(page)
+            print(f"✅ Přidána příloha 2 (WeasyPrint) - {len(priloha2_pdf.pages)} stránek")
+            
+        except ImportError:
+            print(f"⚠️ WeasyPrint není dostupný - příloha 2 přeskočena")
         except Exception as e:
             print(f"❌ Chyba při generování přílohy 2: {e}")
-            import traceback
-            print(f"❌ Traceback: {traceback.format_exc()}")
-            return f"Chyba při generování přílohy 2: {e}", 500
+            # Pokračujeme bez přílohy 2
         
         # 4. VYTVOŘ FINÁLNÍ PDF
         output_buffer = io.BytesIO()
