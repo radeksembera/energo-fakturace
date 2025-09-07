@@ -18,7 +18,44 @@ from file_helpers import get_faktury_path, get_faktura_filenames, check_faktury_
 from flask import make_response
 from reportlab.platypus import BaseDocTemplate, PageTemplate, Frame
 from reportlab.platypus.doctemplate import PageTemplate
-from PyPDF2 import PdfReader 
+
+# Import kompatibilní verze PDF knihovny
+try:
+    from pypdf import PdfReader, PdfWriter
+    PDF_VERSION = 'pypdf'
+except ImportError:
+    try:
+        from PyPDF2 import PdfReader, PdfWriter
+        PDF_VERSION = 'pyPDF2_new'
+    except ImportError:
+        # Fallback pro starší PyPDF2
+        from PyPDF2 import PdfFileReader as PdfReader, PdfFileWriter as PdfWriter
+        PDF_VERSION = 'pyPDF2_old'
+
+# Kompatibilní wrapper funkce pro různé verze PDF knihoven
+def add_page_to_writer(writer, page):
+    """Kompatibilní funkce pro přidání stránky do PdfWriter"""
+    if hasattr(writer, 'add_page'):
+        writer.add_page(page)  # Nová syntaxe (pypdf, PyPDF2 3.x+)
+    elif hasattr(writer, 'addPage'):
+        writer.addPage(page)   # Stará syntaxe (PyPDF2 < 3.x)
+    else:
+        raise Exception("Nepodporovaná verze PDF knihovny")
+
+def write_pdf_to_stream(writer, stream):
+    """Kompatibilní funkce pro zápis PDF do streamu"""
+    if hasattr(writer, 'write'):
+        writer.write(stream)
+    elif hasattr(writer, 'writeToFile'):
+        writer.writeToFile(stream)  # Možná starší verze
+    else:
+        raise Exception("Nepodporovaná verze PDF knihovny pro zápis")
+
+def close_pdf_writer(writer):
+    """Kompatibilní funkce pro zatvorenie PDF writera"""
+    if hasattr(writer, 'close'):
+        writer.close()
+    # Staršie verzie nemusia mať close() metódu 
 
 print_bp = Blueprint("print", __name__, template_folder="templates")
 
@@ -731,7 +768,6 @@ def vygenerovat_prilohu1_pdf(stredisko_id, rok, mesic):
         
         # Vypočítáme počet stránek
         temp_buffer.seek(0)
-        from PyPDF2 import PdfReader
         try:
             reader = PdfReader(temp_buffer)
             total_pages = len(reader.pages)
@@ -1525,7 +1561,6 @@ def vygenerovat_kompletni_pdf(stredisko_id, rok, mesic):
         return "Nepovolený přístup", 403
 
     try:
-        from PyPDF2 import PdfWriter, PdfReader
         import io
         from flask import url_for
         
@@ -1538,7 +1573,7 @@ def vygenerovat_kompletni_pdf(stredisko_id, rok, mesic):
             faktura_bytes = _get_faktura_pdf_bytes(stredisko_id, rok, mesic)
             faktura_pdf = PdfReader(io.BytesIO(faktura_bytes))
             for page in faktura_pdf.pages:
-                merger.add_page(page)
+                add_page_to_writer(merger, page)
             print(f"✅ Přidána faktura - {len(faktura_pdf.pages)} stránek")
         except Exception as e:
             print(f"❌ Chyba při generování faktury: {e}")
@@ -1550,7 +1585,7 @@ def vygenerovat_kompletni_pdf(stredisko_id, rok, mesic):
             if hasattr(priloha1_response, 'data'):
                 priloha1_pdf = PdfReader(io.BytesIO(priloha1_response.data))
                 for page in priloha1_pdf.pages:
-                    merger.add_page(page)
+                    add_page_to_writer(merger, page)
                 print(f"✅ Přidána příloha 1 - {len(priloha1_pdf.pages)} stránek")
         except Exception as e:
             print(f"❌ Chyba při generování přílohy 1: {e}")
@@ -1564,7 +1599,7 @@ def vygenerovat_kompletni_pdf(stredisko_id, rok, mesic):
             # Přidej PDF stránky do mergeru
             priloha2_pdf = PdfReader(io.BytesIO(priloha2_pdf_bytes))
             for page in priloha2_pdf.pages:
-                merger.add_page(page)
+                add_page_to_writer(merger, page)
             print(f"✅ Přidána příloha 2 (WeasyPrint) - {len(priloha2_pdf.pages)} stránek")
             
         except ImportError:
@@ -1575,8 +1610,8 @@ def vygenerovat_kompletni_pdf(stredisko_id, rok, mesic):
         
         # 4. VYTVOŘ FINÁLNÍ PDF
         output_buffer = io.BytesIO()
-        merger.write(output_buffer)
-        merger.close()
+        write_pdf_to_stream(merger, output_buffer)
+        close_pdf_writer(merger)
         
         pdf_data = output_buffer.getvalue()
         output_buffer.close()
