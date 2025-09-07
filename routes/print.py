@@ -5,7 +5,7 @@ Odecet = Odečet
 from datetime import datetime
 import io
 
-# ✅ REPORTLAB IMPORTS
+# [OK] REPORTLAB IMPORTS
 from reportlab.pdfgen import canvas
 from reportlab.lib.pagesizes import A4
 from reportlab.lib.units import mm
@@ -59,20 +59,49 @@ def close_pdf_writer(writer):
 
 def create_pdf_reader(stream):
     """Kompatibilní funkce pro vytvorenie PdfReader"""
+    import io
+    
+    # Uisti sa, že stream je na začiatku
+    if hasattr(stream, 'seek'):
+        stream.seek(0)
+    
     try:
         # Skús najnovšiu syntax (pypdf, PyPDF2 3.x+)
         return PdfReader(stream)
+    except TypeError as e:
+        if 'takes 1 positional argument' in str(e) or 'positional argument' in str(e):
+            # Pre staršie verzie PyPDF2 - skús rôzne prístupy
+            try:
+                # Možno je problém s io.BytesIO vs file object
+                if isinstance(stream, io.BytesIO):
+                    # Skús s dátami namiesto streamu
+                    data = stream.getvalue()
+                    stream.seek(0)  # Reset stream
+                    temp_stream = io.BytesIO(data)
+                    return PdfReader(temp_stream)
+                else:
+                    # Skús konverziu na BytesIO
+                    if hasattr(stream, 'read'):
+                        data = stream.read()
+                        stream.seek(0)  # Reset pôvodný stream
+                        return PdfReader(io.BytesIO(data))
+                    else:
+                        raise Exception(f"Nepodporovaný stream typ: {type(stream)}")
+            except Exception as inner_e:
+                print(f"[ERROR] Fallback tiež zlyhal: {inner_e}")
+                # Posledný pokus - vytvor nový reader a nastav mu stream manuálne
+                try:
+                    reader = PdfReader.__new__(PdfReader)
+                    if hasattr(reader, '_initialize') and hasattr(stream, 'read'):
+                        reader._initialize(stream)
+                        return reader
+                except:
+                    pass
+                raise e  # Vráť originálnu chybu
+        raise e
     except Exception as e:
-        # Ak to nepôjde, skús starú syntax
-        if 'takes 1 positional argument' in str(e):
-            # Pre starú PyPDF2 verziu možno potrebujeme iný approach
-            if hasattr(PdfReader, '__init__'):
-                # Skús volať bez argumentov a potom nastaviť stream
-                reader = PdfReader()
-                if hasattr(reader, 'stream'):
-                    reader.stream = stream
-                return reader
-        raise e  # Prehoď originálnu chybu 
+        print(f"[ERROR] Neočakávaná chyba v create_pdf_reader: {e}")
+        raise e 
 
 print_bp = Blueprint("print", __name__, template_folder="templates")
 
@@ -131,7 +160,7 @@ def get_faktura_data(stredisko_id, rok, mesic):
         'distribuce_vt': float(sum(v.platba_za_distribuci_vt or 0 for v in vypocty)),
         'distribuce_nt': float(sum(v.platba_za_distribuci_nt or 0 for v in vypocty)),
         'dan_z_elektriny': float(sum(v.dan_z_elektriny or 0 for v in vypocty)),
-        'dofakturace_bonus': dofakturace_bonus,  # ✅ DOFAKTURACE/BONUS
+        'dofakturace_bonus': dofakturace_bonus,  # [OK] DOFAKTURACE/BONUS
     }
     
     sazba_dph = float(faktura.sazba_dph / 100) if faktura and faktura.sazba_dph else 0.21
@@ -182,7 +211,7 @@ def register_czech_fonts():
         from reportlab.pdfbase import pdfmetrics
         import os
         
-        # ✅ ROZŠÍŘENÝ SEZNAM FONTŮ S ČESKOU PODPOROU
+        # [OK] ROZŠÍŘENÝ SEZNAM FONTŮ S ČESKOU PODPOROU
         font_paths = [
             # Windows fonty s plnou českou podporou
             'C:/Windows/Fonts/arial.ttf',
@@ -210,7 +239,7 @@ def register_czech_fonts():
         for font_path in font_paths:
             if os.path.exists(font_path):
                 try:
-                    # ✅ REGISTRUJ ZÁKLADNÍ A TUČNÝ FONT
+                    # [OK] REGISTRUJ ZÁKLADNÍ A TUČNÝ FONT
                     pdfmetrics.registerFont(TTFont('CzechFont', font_path))
                     
                     # Pokud existuje bold verze, registruj i tu
@@ -218,14 +247,14 @@ def register_czech_fonts():
                     if os.path.exists(bold_path):
                         pdfmetrics.registerFont(TTFont('CzechFont-Bold', bold_path))
                     
-                    print(f"✅ Registrován český font: {font_path}")
+                    print(f"[OK] Registrován český font: {font_path}")
                     font_registered = True
                     break
                 except Exception as e:
-                    print(f"⚠️ Chyba při registraci fontu {font_path}: {e}")
+                    print(f"[WARNING] Chyba při registraci fontu {font_path}: {e}")
                     continue
         
-        # ✅ FALLBACK - DejaVu Sans má perfektní českou podporu
+        # [OK] FALLBACK - DejaVu Sans má perfektní českou podporu
         if not font_registered:
             try:
                 # Zkus stáhnout a použít DejaVu Sans (má skvělou českou podporu)
@@ -241,15 +270,15 @@ def register_czech_fonts():
                 
                 pdfmetrics.registerFont(TTFont('CzechFont', dejavu_path))
                 font_registered = True
-                print("✅ Stažen a registrován DejaVu Sans font")
+                print("[OK] Stažen a registrován DejaVu Sans font")
                 
             except Exception as e:
-                print(f"⚠️ Nepodařilo se stáhnout DejaVu font: {e}")
+                print(f"[WARNING] Nepodařilo se stáhnout DejaVu font: {e}")
         
         return font_registered
         
     except Exception as e:
-        print(f"❌ Chyba při registraci fontů: {e}")
+        print(f"[ERROR] Chyba při registraci fontů: {e}")
         return False
 
 
@@ -378,7 +407,7 @@ def vygenerovat_zalohu_pdf(stredisko_id, rok, mesic):
         styles = getSampleStyleSheet()
         font_registered = False  # Inicializace proměnné
         
-        # ✅ REGISTRUJ ČESKÉ FONTY
+        # [OK] REGISTRUJ ČESKÉ FONTY
         try:
             # Pokus o registraci českých fontů
             from reportlab.pdfbase.ttfonts import TTFont
@@ -413,7 +442,7 @@ def vygenerovat_zalohu_pdf(stredisko_id, rok, mesic):
             # Fallback - použij základní fonty s UTF-8
             pass
         
-        # ✅ HLAVIČKA - STEJNÁ JAKO HTML
+        # [OK] HLAVIČKA - STEJNÁ JAKO HTML
         hlavicka_data = [
             [
                 # Levá strana - dodavatel
@@ -463,7 +492,7 @@ def vygenerovat_zalohu_pdf(stredisko_id, rok, mesic):
         story.append(hlavicka_table)
         story.append(Spacer(1, 20))
         
-        # ✅ DODACÍ A PLATEBNÍ PODMÍNKY
+        # [OK] DODACÍ A PLATEBNÍ PODMÍNKY
         podmínky_data = [
             ['Dodací a platební podmínky', '', ''],
             ['Datum splatnosti', 'Datum vystavení', 'Forma úhrady'],
@@ -490,7 +519,7 @@ def vygenerovat_zalohu_pdf(stredisko_id, rok, mesic):
         story.append(podmínky_table)
         story.append(Spacer(1, 20))
         
-        # ✅ ZÁLOHOVÁ ČÁSTKA
+        # [OK] ZÁLOHOVÁ ČÁSTKA
         if zaloha and zaloha.zaloha:
             sazba_dph = 0.21  # 21% DPH
             zaloha_vc_dph = float(zaloha.zaloha)
@@ -524,13 +553,13 @@ def vygenerovat_zalohu_pdf(stredisko_id, rok, mesic):
             story.append(Paragraph(f"<b>K platbě celkem Kč {zaloha_vc_dph:.2f}</b>", styles['Title']))
             story.append(Spacer(1, 15))
         
-        # ✅ VYSTAVOVATEL
+        # [OK] VYSTAVOVATEL
         if vystavovatel:
             story.append(Paragraph(f"<b>Vystavil:</b> {vystavovatel.jmeno_vystavitele if vystavovatel.jmeno_vystavitele else ''}", styles['Normal']))
             story.append(Paragraph(f"<b>Telefon:</b> {vystavovatel.telefon_vystavitele if vystavovatel.telefon_vystavitele else ''}", styles['Normal']))
             story.append(Paragraph(f"<b>Email:</b> {vystavovatel.email_vystavitele if vystavovatel.email_vystavitele else ''}", styles['Normal']))
         
-        # ✅ GENERUJ PDF
+        # [OK] GENERUJ PDF
         doc.build(story)
         
         pdf = buffer.getvalue()
@@ -543,7 +572,7 @@ def vygenerovat_zalohu_pdf(stredisko_id, rok, mesic):
         return response
         
     except Exception as e:
-        flash(f"❌ Chyba při generování PDF: {str(e)}")
+        flash(f"[ERROR] Chyba při generování PDF: {str(e)}")
         return redirect(url_for('fakturace.fakturace', stredisko_id=stredisko_id))
 
 # Nahraď existující route v print.py:
@@ -664,7 +693,7 @@ def vygenerovat_prilohu1_pdf(stredisko_id, rok, mesic):
             if om:  # Pouze pokud najdeme odpovídající odběrné místo
                 odecty.append((odecet, om))
 
-        # ✅ REGISTRACE FONTŮ
+        # [OK] REGISTRACE FONTŮ
         font_registered = False
         try:
             from reportlab.pdfbase.ttfonts import TTFont
@@ -687,7 +716,7 @@ def vygenerovat_prilohu1_pdf(stredisko_id, rok, mesic):
         except:
             pass
 
-        # ✅ FUNKCE PRO VYTVOŘENÍ STORY (obsahu)
+        # [OK] FUNKCE PRO VYTVOŘENÍ STORY (obsahu)
         def create_story():
             story = []
             styles = getSampleStyleSheet()
@@ -775,7 +804,7 @@ def vygenerovat_prilohu1_pdf(stredisko_id, rok, mesic):
             
             return story
 
-        # ✅ 1. PRŮCHOD - zjistíme počet stránek
+        # [OK] 1. PRŮCHOD - zjistíme počet stránek
         temp_buffer = io.BytesIO()
         temp_doc = SimpleDocTemplate(temp_buffer, pagesize=A4, 
                                   rightMargin=15*mm, leftMargin=15*mm,
@@ -792,7 +821,7 @@ def vygenerovat_prilohu1_pdf(stredisko_id, rok, mesic):
             # Fallback - odhad počtu stránek
             total_pages = max(1, len(odecty) // 3)  # Odhad: 3 OM na stránku
         
-        # ✅ 2. PRŮCHOD - vytvoříme finální PDF se stránkováním
+        # [OK] 2. PRŮCHOD - vytvoříme finální PDF se stránkováním
         buffer = io.BytesIO()
         
         # Globální proměnná pro počet stránek
@@ -835,7 +864,7 @@ def vygenerovat_prilohu1_pdf(stredisko_id, rok, mesic):
         return response
         
     except Exception as e:
-        flash(f"❌ Chyba při generování PDF: {str(e)}")
+        flash(f"[ERROR] Chyba při generování PDF: {str(e)}")
         return redirect(url_for('fakturace.fakturace', stredisko_id=stredisko_id))
     
 
@@ -934,7 +963,7 @@ def vygenerovat_prilohu2_html(stredisko_id, rok, mesic):
             'jednotkova_cena_dan': jednotkova_cena_dan
         })
 
-    # ✅ OPRAVA: Renderuj template s UTF-8 kódováním
+    # [OK] OPRAVA: Renderuj template s UTF-8 kódováním
     try:
         html_content = render_template("print/priloha2.html", 
                             stredisko=stredisko,
@@ -1033,7 +1062,7 @@ def _get_priloha2_pdf_bytes(stredisko_id, rok, mesic):
         return html_doc.write_pdf()
         
     except Exception as e:
-        print(f"❌ Chyba v _get_priloha2_pdf_bytes: {e}")
+        print(f"[ERROR] Chyba v _get_priloha2_pdf_bytes: {e}")
         raise
 
 
@@ -1151,19 +1180,19 @@ def vygenerovat_prilohu2_pdf(stredisko_id, rok, mesic):
             response.headers['Content-Type'] = 'application/pdf'
             response.headers['Content-Disposition'] = f'inline; filename=priloha2_{rok}_{mesic:02d}.pdf'
             
-            print(f"✅ WeasyPrint PDF příloha 2 vygenerována, velikost: {len(pdf_bytes)} bytes")
+            print(f"[OK] WeasyPrint PDF příloha 2 vygenerována, velikost: {len(pdf_bytes)} bytes")
             return response
             
         except ImportError:
             # Fallback pokud WeasyPrint není dostupný
-            print("⚠️ WeasyPrint není dostupný, vracím HTML")
+            print("[WARNING] WeasyPrint není dostupný, vracím HTML")
             response = make_response(html_content)
             response.headers['Content-Type'] = 'text/html; charset=utf-8'
             response.headers['Content-Disposition'] = f'inline; filename=priloha2_{rok}_{mesic:02d}.pdf'
             return response
         
     except Exception as e:
-        print(f"❌ Chyba při generování PDF přílohy 2: {e}")
+        print(f"[ERROR] Chyba při generování PDF přílohy 2: {e}")
         import traceback
         traceback.print_exc()
         return f"Chyba při generování přílohy 2: {e}", 500
@@ -1194,7 +1223,7 @@ def vygenerovat_prilohu2_pdf_backup(stredisko_id, rok, mesic):
         from models import InfoVystavovatele
         vystavovatel = InfoVystavovatele.query.filter_by(stredisko_id=stredisko_id).first()
 
-        # ✅ REGISTRACE FONTŮ
+        # [OK] REGISTRACE FONTŮ
         font_registered = False
         try:
             from reportlab.pdfbase.ttfonts import TTFont
@@ -1220,7 +1249,7 @@ def vygenerovat_prilohu2_pdf_backup(stredisko_id, rok, mesic):
         base_font = 'CzechFont' if font_registered else 'Helvetica'
         bold_font = 'CzechFont' if font_registered else 'Helvetica-Bold'
 
-        # ✅ FUNKCE PRO VYTVOŘENÍ STORY (obsahu) - ROZŠÍŘENO
+        # [OK] FUNKCE PRO VYTVOŘENÍ STORY (obsahu) - ROZŠÍŘENO
         def create_story():
             story = []
             
@@ -1259,7 +1288,7 @@ def vygenerovat_prilohu2_pdf_backup(stredisko_id, rok, mesic):
             from reportlab.platypus import KeepTogether
             
             for i, (vypocet, om) in enumerate(vypocty_om):
-                # ✅ NAČTI CENY Z DATABÁZE
+                # [OK] NAČTI CENY Z DATABÁZE
                 from models import Odecet, CenaDodavatel, CenaDistribuce
                 
                 # Načti odečet
@@ -1286,7 +1315,7 @@ def vygenerovat_prilohu2_pdf_backup(stredisko_id, rok, mesic):
                     jistic=om.kategorie_jistice_om
                 ).first()
                 
-                # ✅ DYNAMICKÉ JEDNOTKOVÉ CENY Z DATABÁZE
+                # [OK] DYNAMICKÉ JEDNOTKOVÉ CENY Z DATABÁZE
                 # Fallback hodnoty pokud nenajdeme ceny v DB
                 cena_mesicni_plat = float(ceny_dodavatel.mesicni_plat) if ceny_dodavatel and ceny_dodavatel.mesicni_plat else 190.00
                 cena_elektrinu_vt = float(ceny_dodavatel.platba_za_elektrinu_vt) if ceny_dodavatel and ceny_dodavatel.platba_za_elektrinu_vt else 3009.00
@@ -1351,7 +1380,7 @@ def vygenerovat_prilohu2_pdf_backup(stredisko_id, rok, mesic):
                     mnozstvi_staly_plat = '1'
                     jednotka_staly_plat = '1'  # kus
 
-                # ✅ TABULKA S DYNAMICKÝMI CENAMI
+                # [OK] TABULKA S DYNAMICKÝMI CENAMI
                 data_table = [
                     ['', 'Množství', 'MJ', 'Jednotková cena', 'Celková cena'],
                     ['Dodávka elektřiny', '', '', '', ''],
@@ -1388,7 +1417,7 @@ def vygenerovat_prilohu2_pdf_backup(stredisko_id, rok, mesic):
                 if i < len(vypocty_om) - 1:
                     story.append(Spacer(1, 15))
             
-            # ✅ NOVÁ SEKCE - DŮLEŽITÉ INFORMACE
+            # [OK] NOVÁ SEKCE - DŮLEŽITÉ INFORMACE
             from reportlab.platypus import PageBreak
             story.append(PageBreak())
             
@@ -1436,7 +1465,7 @@ def vygenerovat_prilohu2_pdf_backup(stredisko_id, rok, mesic):
             story.append(Paragraph("<b>Reklamace, řešení sporů</b>", bold_style))
             story.append(Spacer(1, 5))
             
-            # ✅ DYNAMICKÉ ÚDAJE Z DATABÁZE
+            # [OK] DYNAMICKÉ ÚDAJE Z DATABÁZE
             vystavovatel_email = vystavovatel.email_vystavitele if vystavovatel and vystavovatel.email_vystavitele else 'email@vystavovatel.cz'
             dodavatel_nazev = data['dodavatel'].nazev_sro if data['dodavatel'] and data['dodavatel'].nazev_sro else 'Your energy, s.r.o.'
             dodavatel_adresa1 = data['dodavatel'].adresa_radek_1 if data['dodavatel'] and data['dodavatel'].adresa_radek_1 else 'Italská 2584/69'
@@ -1506,7 +1535,7 @@ def vygenerovat_prilohu2_pdf_backup(stredisko_id, rok, mesic):
             
             return story
 
-        # ✅ 1. PRŮCHOD - zjistíme počet stránek
+        # [OK] 1. PRŮCHOD - zjistíme počet stránek
         temp_buffer = io.BytesIO()
         temp_doc = SimpleDocTemplate(temp_buffer, pagesize=A4)
         temp_story = create_story()
@@ -1521,7 +1550,7 @@ def vygenerovat_prilohu2_pdf_backup(stredisko_id, rok, mesic):
             # Fallback - odhad počtu stránek
             total_pages = max(1, len(vypocty_om) // 2 + 2)  # +2 pro důležité informace
         
-        # ✅ 2. PRŮCHOD - vytvoříme finální PDF se stránkováním
+        # [OK] 2. PRŮCHOD - vytvoříme finální PDF se stránkováním
         buffer = io.BytesIO()
         
         # Globální proměnná pro počet stránek
@@ -1564,7 +1593,7 @@ def vygenerovat_prilohu2_pdf_backup(stredisko_id, rok, mesic):
         return response
 
     except Exception as e:
-        flash(f"❌ Chyba při generování PDF: {str(e)}")
+        flash(f"[ERROR] Chyba při generování PDF: {str(e)}")
         return redirect(url_for('fakturace.fakturace', stredisko_id=stredisko_id))    
 
 @print_bp.route("/<int:stredisko_id>/<int:rok>-<int:mesic>/kompletni/pdf")
@@ -1591,9 +1620,9 @@ def vygenerovat_kompletni_pdf(stredisko_id, rok, mesic):
             faktura_pdf = create_pdf_reader(io.BytesIO(faktura_bytes))
             for page in faktura_pdf.pages:
                 add_page_to_writer(merger, page)
-            print(f"✅ Přidána faktura - {len(faktura_pdf.pages)} stránek")
+            print(f"[OK] Přidána faktura - {len(faktura_pdf.pages)} stránek")
         except Exception as e:
-            print(f"❌ Chyba při generování faktury: {e}")
+            print(f"[ERROR] Chyba při generování faktury: {e}")
             return f"Chyba při generování faktury: {e}", 500
         
         # 2. ZÍSKEJ PDF PŘÍLOHU 1
@@ -1603,9 +1632,9 @@ def vygenerovat_kompletni_pdf(stredisko_id, rok, mesic):
                 priloha1_pdf = create_pdf_reader(io.BytesIO(priloha1_response.data))
                 for page in priloha1_pdf.pages:
                     add_page_to_writer(merger, page)
-                print(f"✅ Přidána příloha 1 - {len(priloha1_pdf.pages)} stránek")
+                print(f"[OK] Přidána příloha 1 - {len(priloha1_pdf.pages)} stránek")
         except Exception as e:
-            print(f"❌ Chyba při generování přílohy 1: {e}")
+            print(f"[ERROR] Chyba při generování přílohy 1: {e}")
             return f"Chyba při generování přílohy 1: {e}", 500
         
         # 3. ZÍSKEJ PDF PŘÍLOHU 2 (WeasyPrint verze)
@@ -1617,12 +1646,12 @@ def vygenerovat_kompletni_pdf(stredisko_id, rok, mesic):
             priloha2_pdf = create_pdf_reader(io.BytesIO(priloha2_pdf_bytes))
             for page in priloha2_pdf.pages:
                 add_page_to_writer(merger, page)
-            print(f"✅ Přidána příloha 2 (WeasyPrint) - {len(priloha2_pdf.pages)} stránek")
+            print(f"[OK] Přidána příloha 2 (WeasyPrint) - {len(priloha2_pdf.pages)} stránek")
             
         except ImportError:
-            print(f"⚠️ WeasyPrint není dostupný - příloha 2 přeskočena")
+            print(f"[WARNING] WeasyPrint není dostupný - příloha 2 přeskočena")
         except Exception as e:
-            print(f"❌ Chyba při generování přílohy 2: {e}")
+            print(f"[ERROR] Chyba při generování přílohy 2: {e}")
             # Pokračujeme bez přílohy 2
         
         # 4. VYTVOŘ FINÁLNÍ PDF
@@ -1638,9 +1667,9 @@ def vygenerovat_kompletni_pdf(stredisko_id, rok, mesic):
         response.headers['Content-Type'] = 'application/pdf'
         response.headers['Content-Disposition'] = f'inline; filename=kompletni_faktura_{rok}_{mesic:02d}.pdf'
         
-        flash(f"✅ Kompletní PDF bylo úspěšně vygenerováno")
+        flash(f"[OK] Kompletní PDF bylo úspěšně vygenerováno")
         return response
         
     except Exception as e:
-        flash(f"❌ Chyba při generování kompletního PDF: {str(e)}")
+        flash(f"[ERROR] Chyba při generování kompletního PDF: {str(e)}")
         return redirect(url_for('fakturace.fakturace', stredisko_id=stredisko_id))
