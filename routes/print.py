@@ -1,4 +1,4 @@
-from flask import Blueprint, render_template, render_template_string, request, redirect, url_for, session, flash, make_response
+from flask import Blueprint, render_template, render_template_string, request, redirect, url_for, session, flash, make_response, send_file
 from models import db, Stredisko, Faktura, ZalohovaFaktura, InfoDodavatele, InfoOdberatele, InfoVystavovatele, VypocetOM, OdberneMisto, Odečet, ObdobiFakturace
 # Alias pro zpětnou kompatibilitu s kódem bez diakritiky
 Odecet = Odečet
@@ -45,8 +45,8 @@ def get_faktura_data(stredisko_id, rok, mesic):
     odberatel = InfoOdberatele.query.filter_by(stredisko_id=stredisko_id).first()
     vystavovatel = InfoVystavovatele.query.filter_by(stredisko_id=stredisko_id).first()
     
-    # Načti výpočty
-    vypocty = VypocetOM.query.filter(VypocetOM.id > 0)\
+    # Načti výpočty pro dané období
+    vypocty = VypocetOM.query.filter(VypocetOM.obdobi_id == obdobi.id)\
         .join(OdberneMisto)\
         .filter(OdberneMisto.stredisko_id == stredisko_id)\
         .all()
@@ -214,229 +214,53 @@ def vygenerovat_fakturu_html(stredisko_id, rok, mesic):
 
 # V print.py - oprava pouze design části stávající funkce
 
-@print_bp.route("/<int:stredisko_id>/<int:rok>-<int:mesic>/faktura/pdf")
-def vygenerovat_fakturu_pdf(stredisko_id, rok, mesic):
-    """Generuje PDF fakturu identickou s HTML verzí"""
+def _get_faktura_pdf_bytes(stredisko_id, rok, mesic):
+    """Pomocná funkce - vrací PDF faktury jako bytes"""
     data, error = get_faktura_data(stredisko_id, rok, mesic)
     if error:
-        return error
+        raise Exception(f"Chyba při načítání dat faktury: {error}")
     
+    # Vygeneruj HTML obsah pomocí šablony
+    html_content = render_template("print/faktura.html", 
+                                 stredisko=data['stredisko'],
+                                 obdobi=data['obdobi'],
+                                 faktura=data['faktura'],
+                                 zaloha=data['zaloha'],
+                                 dodavatel=data['dodavatel'],
+                                 odberatel=data['odberatel'],
+                                 rekapitulace=data['rekapitulace'],
+                                 zaklad_bez_dph=data['zaklad_bez_dph'],
+                                 castka_dph=data['castka_dph'],
+                                 celkem_vc_dph=data['celkem_vc_dph'],
+                                 zaloha_celkem_vc_dph=data['zaloha_celkem_vc_dph'],
+                                 zaloha_hodnota=data['zaloha_hodnota'],
+                                 zaloha_dph=data['zaloha_dph'],
+                                 k_platbe=data['k_platbe'],
+                                 sazba_dph=data['sazba_dph'],
+                                 sazba_dph_procenta=data['sazba_dph_procenta'])
+
+    # Použij WeasyPrint pro konverzi HTML→PDF
+    from weasyprint import HTML
+    html_doc = HTML(string=html_content)
+    return html_doc.write_pdf()
+
+
+@print_bp.route("/<int:stredisko_id>/<int:rok>-<int:mesic>/faktura/pdf")
+def vygenerovat_fakturu_pdf(stredisko_id, rok, mesic):
+    """Generuje PDF fakturu z HTML šablony pomocí WeasyPrint"""
     try:
-        buffer = io.BytesIO()
+        pdf_bytes = _get_faktura_pdf_bytes(stredisko_id, rok, mesic)
         
-        # ✅ STEJNÉ NASTAVENÍ JAKO PŮVODNĚ
-        doc = SimpleDocTemplate(buffer, pagesize=A4, 
-                              rightMargin=20*mm, leftMargin=20*mm,
-                              topMargin=20*mm, bottomMargin=20*mm)
-        
-        story = []
-        styles = getSampleStyleSheet()
-        font_registered = False
-        
-        # ✅ STEJNÁ REGISTRACE FONTŮ JAKO PŮVODNĚ
-        try:
-            from reportlab.pdfbase.ttfonts import TTFont
-            import os
-            font_paths = [
-                'C:/Windows/Fonts/arial.ttf',
-                'C:/Windows/Fonts/calibri.ttf',
-                '/System/Library/Fonts/Arial.ttf',
-                '/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf'
-            ]
-            
-            for font_path in font_paths:
-                if os.path.exists(font_path):
-                    try:
-                        pdfmetrics.registerFont(TTFont('CzechFont', font_path))
-                        font_registered = True
-                        break
-                    except:
-                        continue
-            
-            if font_registered:
-                styles['Normal'].fontName = 'CzechFont'
-                styles['Heading1'].fontName = 'CzechFont'
-                styles['Heading2'].fontName = 'CzechFont'
-                styles['Title'].fontName = 'CzechFont'
-        except:
-            pass
-        
-        # ✅ HLAVIČKA - STEJNÁ STRUKTURA, JINÝ DESIGN
-        hlavicka_data = [
-            [
-                # Levá strana - dodavatel
-                [
-                    Paragraph("<b>FAKTURA - DAŇOVÝ DOKLAD</b>", styles['Heading1']),
-                    Paragraph(f"<b>{data['dodavatel'].nazev_sro if data['dodavatel'] else 'Your energy, s.r.o.'}</b>", styles['Normal']),
-                    Paragraph(f"{data['dodavatel'].adresa_radek_1 if data['dodavatel'] else 'Italská 2584/69'}", styles['Normal']),
-                    Paragraph(f"{data['dodavatel'].adresa_radek_2 if data['dodavatel'] else '120 00 Praha 2 - Vinohrady'}", styles['Normal']),
-                    Paragraph(f"<b>DIČ</b> {data['dodavatel'].dic_sro if data['dodavatel'] else 'CZ24833851'}", styles['Normal']),
-                    Paragraph(f"<b>IČO</b> {data['dodavatel'].ico_sro if data['dodavatel'] else '24833851'}", styles['Normal']),
-                    Paragraph("", styles['Normal']),
-                    Paragraph(f"<b>Banka:</b> {data['dodavatel'].banka if data['dodavatel'] else 'Bankovní účet Raiffeisenbank a.s. CZK'}", styles['Normal']),
-                    Paragraph(f"<b>Č.úč.</b> {data['dodavatel'].cislo_uctu if data['dodavatel'] else '5041011366/5500'}", styles['Normal']),
-                    Paragraph(f"<b>IBAN</b> {data['dodavatel'].iban if data['dodavatel'] else 'CZ1055000000005041011366'}", styles['Normal']),
-                    Paragraph(f"<b>SWIFT/BIC</b> {data['dodavatel'].swift if data['dodavatel'] else 'RZBCCZPP'}", styles['Normal']),
-                ],
-                # Pravá strana - faktura info + odběratel
-                [
-                    Paragraph(f"<b>Číslo {data['faktura'].cislo_faktury if data['faktura'] else ''}</b>", styles['Heading2']),
-                    Paragraph("", styles['Normal']),
-                    Paragraph(f"<b>konst. symbol</b> {data['faktura'].konstantni_symbol if data['faktura'] else ''}", styles['Normal']),
-                    Paragraph(f"<b>VS</b> {data['faktura'].variabilni_symbol if data['faktura'] else ''}", styles['Normal']),
-                    Paragraph("", styles['Normal']),
-                    Paragraph("Objednávka:", styles['Normal']),
-                    Paragraph("", styles['Normal']),
-                    # Odběratel box
-                    Paragraph("<b>Odběratel:</b>", styles['Normal']),
-                    Paragraph(f"<b>{data['odberatel'].nazev_sro if data['odberatel'] else ''}</b>", styles['Normal']),
-                    Paragraph(f"{data['odberatel'].adresa_radek_1 if data['odberatel'] else ''}", styles['Normal']),
-                    Paragraph(f"{data['odberatel'].adresa_radek_2 if data['odberatel'] else ''}", styles['Normal']),
-                    Paragraph(f"<b>IČO:</b> {data['odberatel'].ico_sro if data['odberatel'] else ''}", styles['Normal']),
-                    Paragraph(f"<b>DIČ:</b> {data['odberatel'].dic_sro if data['odberatel'] else ''}", styles['Normal']),
-                    Paragraph("", styles['Normal']),
-                    Paragraph(f"<b>Středisko:</b> {data['stredisko'].stredisko} {data['stredisko'].nazev_strediska}", styles['Normal']),
-                    Paragraph(f"{data['stredisko'].stredisko_mail if data['stredisko'].stredisko_mail else 'info@yourenergy.cz'}", styles['Normal']),
-                ]
-            ]
-        ]
-        
-        hlavicka_table = Table(hlavicka_data, colWidths=[250, 250])
-        hlavicka_table.setStyle(TableStyle([
-            ('VALIGN', (0, 0), (-1, -1), 'TOP'),
-            ('LEFTPADDING', (0, 0), (-1, -1), 0),
-            ('RIGHTPADDING', (0, 0), (-1, -1), 0),
-            ('FONTNAME', (0, 0), (-1, -1), 'CzechFont' if font_registered else 'Helvetica'),
-            # ✅ PŘIDÁME RÁMEČEK KOLEM ODBĚRATELE
-            ('BOX', (1, 0), (1, 0), 1, colors.black),
-            ('LEFTPADDING', (1, 0), (1, 0), 8),
-            ('RIGHTPADDING', (1, 0), (1, 0), 8),
-            ('TOPPADDING', (1, 0), (1, 0), 8),
-            ('BOTTOMPADDING', (1, 0), (1, 0), 8),
-        ]))
-        
-        story.append(hlavicka_table)
-        story.append(Spacer(1, 20))
-        
-        # ✅ PODMÍNKY - BEZ BAREV, POUZE ČÁRY
-        podmínky_data = [
-            ['Dodací a platební podmínky', '', ''],
-            ['Datum splatnosti', 'Datum vystavení', 'Datum zdanit. plnění'],
-            [
-                data['faktura'].datum_splatnosti.strftime('%d.%m.%Y') if data['faktura'] and data['faktura'].datum_splatnosti else '',
-                data['faktura'].datum_vystaveni.strftime('%d.%m.%Y') if data['faktura'] and data['faktura'].datum_vystaveni else '',
-                data['faktura'].datum_zdanitelneho_plneni.strftime('%d.%m.%Y') if data['faktura'] and data['faktura'].datum_zdanitelneho_plneni else ''
-            ],
-            ['Forma úhrady', 'Popis dodávky', ''],
-            [
-                data['faktura'].forma_uhrady if data['faktura'] else '',
-                data['faktura'].popis_dodavky if data['faktura'] else f"Vyúčtování {data['obdobi'].rok}{data['obdobi'].mesic:02d}",
-                ''
-            ]
-        ]
-        
-        podmínky_table = Table(podmínky_data, colWidths=[150, 150, 150])
-        podmínky_table.setStyle(TableStyle([
-            # ✅ BEZ BAREV - POUZE ČÁRY A BOLD
-            ('GRID', (0, 0), (-1, -1), 0.5, colors.black),
-            ('FONTNAME', (0, 0), (-1, 0), 'CzechFont' if font_registered else 'Helvetica-Bold'),  # První řádek bold
-            ('FONTNAME', (0, 1), (-1, 1), 'CzechFont' if font_registered else 'Helvetica-Bold'),  # Druhý řádek bold
-            ('FONTNAME', (0, 3), (-1, 3), 'CzechFont' if font_registered else 'Helvetica-Bold'),  # Čtvrtý řádek bold
-            ('ALIGN', (0, 0), (-1, -1), 'LEFT'),
-            ('FONTSIZE', (0, 0), (-1, -1), 9),
-            ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
-            ('FONTNAME', (0, 2), (-1, 2), 'CzechFont' if font_registered else 'Helvetica'),  # Data normální
-            ('FONTNAME', (0, 4), (-1, 4), 'CzechFont' if font_registered else 'Helvetica'),  # Data normální
-        ]))
-        
-        story.append(podmínky_table)
-        story.append(Spacer(1, 15))
-        
-        # ✅ REKAPITULACE - BEZ BAREV
-        rekapitulace = data['rekapitulace']
-        sazba_dph = data['sazba_dph']
-        sazba_dph_procenta = int(sazba_dph * 100)
-        
-        rekapitulace_data = [
-            ['Rekapitulace', 'Základ daně', 'Sazba DPH', 'Částka DPH', 'Celkem vč. DPH'],
-            ['Měsíční plat (za jistič)', f"{rekapitulace['platba_za_jistic']:.2f}", f"{sazba_dph_procenta}", f"{rekapitulace['platba_za_jistic'] * sazba_dph:.2f}", f"{rekapitulace['platba_za_jistic'] * (1 + sazba_dph):.2f}"],
-            ['Plat za elektřinu ve VT', f"{rekapitulace['distribuce_vt']:.2f}", f"{sazba_dph_procenta}", f"{rekapitulace['distribuce_vt'] * sazba_dph:.2f}", f"{rekapitulace['distribuce_vt'] * (1 + sazba_dph):.2f}"],
-            ['Plat za elektřinu ve NT', f"{rekapitulace['distribuce_nt']:.2f}", f"{sazba_dph_procenta}", f"{rekapitulace['distribuce_nt'] * sazba_dph:.2f}", f"{rekapitulace['distribuce_nt'] * (1 + sazba_dph):.2f}"],
-            ['Cena za systémové služby', f"{rekapitulace['systemove_sluzby']:.2f}", f"{sazba_dph_procenta}", f"{rekapitulace['systemove_sluzby'] * sazba_dph:.2f}", f"{rekapitulace['systemove_sluzby'] * (1 + sazba_dph):.2f}"],
-            ['Podpora elekt. z podporovaných zdrojů energie', f"{rekapitulace['poze_minimum']:.2f}", f"{sazba_dph_procenta}", f"{rekapitulace['poze_minimum'] * sazba_dph:.2f}", f"{rekapitulace['poze_minimum'] * (1 + sazba_dph):.2f}"],
-            ['Poplatek za nesíťovou infrastrukturu', f"{rekapitulace['nesitova_infrastruktura']:.2f}", f"{sazba_dph_procenta}", f"{rekapitulace['nesitova_infrastruktura'] * sazba_dph:.2f}", f"{rekapitulace['nesitova_infrastruktura'] * (1 + sazba_dph):.2f}"],
-            ['Stálý plat (dodavatel)', f"{rekapitulace['mesicni_plat']:.2f}", f"{sazba_dph_procenta}", f"{rekapitulace['mesicni_plat'] * sazba_dph:.2f}", f"{rekapitulace['mesicni_plat'] * (1 + sazba_dph):.2f}"],
-            ['Plat za silovou elektřinu v VT (dodavatel)', f"{rekapitulace['elektrinu_vt']:.2f}", f"{sazba_dph_procenta}", f"{rekapitulace['elektrinu_vt'] * sazba_dph:.2f}", f"{rekapitulace['elektrinu_vt'] * (1 + sazba_dph):.2f}"],
-            ['Plat za silovou elektřinu v NT (dodavatel)', f"{rekapitulace['elektrinu_nt']:.2f}", f"{sazba_dph_procenta}", f"{rekapitulace['elektrinu_nt'] * sazba_dph:.2f}", f"{rekapitulace['elektrinu_nt'] * (1 + sazba_dph):.2f}"],
-            ['Daň', f"{rekapitulace['dan_z_elektriny']:.2f}", f"{sazba_dph_procenta}", f"{rekapitulace['dan_z_elektriny'] * sazba_dph:.2f}", f"{rekapitulace['dan_z_elektriny'] * (1 + sazba_dph):.2f}"],
-            ['Dofakturace / Bonus', f"{rekapitulace['dofakturace_bonus']:.2f}", f"{sazba_dph_procenta}", f"{rekapitulace['dofakturace_bonus'] * sazba_dph:.2f}", f"{rekapitulace['dofakturace_bonus'] * (1 + sazba_dph):.2f}"],
-            ['CELKEM ZA DOKLAD', f"{data['zaklad_bez_dph']:.2f}", '', f"{data['castka_dph']:.2f}", f"{data['celkem_vc_dph']:.2f}"],
-            ['Zaplaceno zálohou', f"{-data['zaloha_hodnota']:.2f}", f"{sazba_dph_procenta}", f"{-data['zaloha_dph']:.2f}", f"{-data['zaloha_celkem_vc_dph']:.2f}"],
-        ]
-        
-        rekapitulace_table = Table(rekapitulace_data, colWidths=[180, 80, 60, 80, 80])
-        rekapitulace_table.setStyle(TableStyle([
-            # ✅ BEZ BAREV - POUZE ČÁRY A BOLD
-            ('GRID', (0, 0), (-1, -1), 0.5, colors.black),
-            ('FONTNAME', (0, 0), (-1, 0), 'CzechFont' if font_registered else 'Helvetica-Bold'),  # Hlavička bold
-            ('FONTNAME', (0, 12), (-1, 12), 'CzechFont' if font_registered else 'Helvetica-Bold'),  # CELKEM bold
-            ('ALIGN', (1, 1), (-1, -1), 'RIGHT'),  # Čísla vpravo
-            ('ALIGN', (0, 0), (0, -1), 'LEFT'),   # Názvy vlevo
-            ('FONTSIZE', (0, 0), (-1, -1), 9),
-            ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
-            ('FONTNAME', (0, 1), (-1, 11), 'CzechFont' if font_registered else 'Helvetica'),  # Data normální
-            ('FONTNAME', (0, 13), (-1, 13), 'CzechFont' if font_registered else 'Helvetica'),  # Záloha normální
-        ]))
-        
-        story.append(rekapitulace_table)
-        story.append(Spacer(1, 20))
-        
-        # ✅ K PLATBĚ
-        story.append(Paragraph(f"<b>K platbě celkem Kč {data['k_platbe']:.2f}</b>", styles['Title']))
-        story.append(Spacer(1, 15))
-        
-        # ✅ REKAPITULACE DPH - BEZ BAREV
-        dph_data = [
-            ['Rekapitulace DPH', '', '', ''],
-            ['Sazba DPH', 'Základ daně', 'DPH', 'Celkem'],
-            ['Základní sazba 21 %', f"{data['k_platbe'] / (1 + sazba_dph):.2f}", f"{data['k_platbe'] * sazba_dph / (1 + sazba_dph):.2f}", f"{data['k_platbe']:.2f}"],
-        ]
-        
-        dph_table = Table(dph_data, colWidths=[120, 80, 80, 80])
-        dph_table.setStyle(TableStyle([
-            # ✅ BEZ BAREV
-            ('GRID', (0, 0), (-1, -1), 0.5, colors.black),
-            ('FONTNAME', (0, 0), (-1, 0), 'CzechFont' if font_registered else 'Helvetica-Bold'),
-            ('FONTNAME', (0, 1), (-1, 1), 'CzechFont' if font_registered else 'Helvetica-Bold'),
-            ('ALIGN', (1, 1), (-1, -1), 'RIGHT'),
-            ('FONTSIZE', (0, 0), (-1, -1), 9),
-            ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
-            ('FONTNAME', (0, 2), (-1, 2), 'CzechFont' if font_registered else 'Helvetica'),
-        ]))
-        
-        story.append(dph_table)
-        story.append(Spacer(1, 20))
-        
-        # ✅ FOOTER
-        story.append(Paragraph("Rozpis jednotlivých položek faktury je uveden na následující straně.", styles['Normal']))
-        story.append(Paragraph(f"<b>FAKTURA:</b> {data['faktura'].cislo_faktury if data['faktura'] else '270325044'} &nbsp;&nbsp;&nbsp;&nbsp; Strana: 1 / 22", styles['Normal']))
-        
-        # ✅ GENERUJ PDF
-        doc.build(story)
-        
-        pdf = buffer.getvalue()
-        buffer.close()
-        
-        response = make_response(pdf)
-        response.headers['Content-Type'] = 'application/pdf'
-        response.headers['Content-Disposition'] = f'inline; filename=faktura_{rok}_{mesic:02d}.pdf'
-        
-        return response
+        return send_file(
+            io.BytesIO(pdf_bytes),
+            mimetype='application/pdf',
+            as_attachment=True,
+            download_name=f'faktura_{stredisko_id}_{rok}_{mesic:02d}.pdf'
+        )
         
     except Exception as e:
-        flash(f"❌ Chyba při generování PDF: {str(e)}")
-        return redirect(url_for('fakturace.fakturace', stredisko_id=stredisko_id))
-    
+        return f"Chyba při generování PDF faktury: {str(e)}", 500
+
 
 @print_bp.route("/<int:stredisko_id>/<int:rok>-<int:mesic>/zalohova/html")
 def vygenerovat_zalohu_html(stredisko_id, rok, mesic):
@@ -466,6 +290,7 @@ def vygenerovat_zalohu_html(stredisko_id, rok, mesic):
                           dodavatel=dodavatel,
                           odberatel=odberatel,
                           vystavovatel=vystavovatel)
+
 
 @print_bp.route("/<int:stredisko_id>/<int:rok>-<int:mesic>/zalohova/pdf")
 def vygenerovat_zalohu_pdf(stredisko_id, rok, mesic):
@@ -1709,13 +1534,12 @@ def vygenerovat_kompletni_pdf(stredisko_id, rok, mesic):
         
         # 1. ZÍSKEJ PDF FAKTURU
         try:
-            # Zavolej interně funkci pro generování faktury
-            faktura_response = vygenerovat_fakturu_pdf(stredisko_id, rok, mesic)
-            if hasattr(faktura_response, 'data'):
-                faktura_pdf = PdfReader(io.BytesIO(faktura_response.data))
-                for page in faktura_pdf.pages:
-                    merger.add_page(page)
-                print(f"✅ Přidána faktura - {len(faktura_pdf.pages)} stránek")
+            # Zavolej pomocnou funkci pro získání PDF bytes
+            faktura_bytes = _get_faktura_pdf_bytes(stredisko_id, rok, mesic)
+            faktura_pdf = PdfReader(io.BytesIO(faktura_bytes))
+            for page in faktura_pdf.pages:
+                merger.add_page(page)
+            print(f"✅ Přidána faktura - {len(faktura_pdf.pages)} stránek")
         except Exception as e:
             print(f"❌ Chyba při generování faktury: {e}")
             return f"Chyba při generování faktury: {e}", 500

@@ -1,6 +1,6 @@
 from flask import session, redirect
 from models import (Stredisko, Faktura, ZalohovaFaktura, 
-                   InfoDodavatele, InfoOdberatele, VypocetOM, OdberneMisto, Odečet)
+                   InfoDodavatele, InfoOdberatele, VypocetOM, OdberneMisto, Odečet, ObdobiFakturace)
 from reportlab.pdfgen import canvas
 from reportlab.lib.pagesizes import A4
 from reportlab.lib.units import mm
@@ -20,15 +20,24 @@ def get_faktura_data(stredisko_id, rok, mesic):
     if stredisko.user_id != session["user_id"]:
         return None, ("Nepovolený přístup", 403)
 
-    # Zatím není implementováno ObdobiFakturace
-    # Placeholder implementation
-    faktura = Faktura.query.filter_by(stredisko_id=stredisko_id).first()
-    zaloha = ZalohovaFaktura.query.filter_by(stredisko_id=stredisko_id).first()
+    # Najdi období fakturace
+    obdobi = ObdobiFakturace.query.filter_by(
+        stredisko_id=stredisko_id, rok=rok, mesic=mesic
+    ).first()
+    
+    if not obdobi:
+        return None, (f"Období {rok}/{mesic:02d} pro středisko {stredisko_id} neexistuje.", 404)
+    
+    faktura = Faktura.query.filter_by(stredisko_id=stredisko_id, obdobi_id=obdobi.id).first()
+    zaloha = ZalohovaFaktura.query.filter_by(stredisko_id=stredisko_id, obdobi_id=obdobi.id).first()
     dodavatel = InfoDodavatele.query.filter_by(stredisko_id=stredisko_id).first()
     odberatel = InfoOdberatele.query.filter_by(stredisko_id=stredisko_id).first()
     
-    # Načti výpočty
-    vypocty = VypocetOM.query.join(OdberneMisto).filter(OdberneMisto.stredisko_id == stredisko_id).all()
+    # Načti výpočty pro konkrétní období
+    vypocty = VypocetOM.query.join(OdberneMisto).filter(
+        OdberneMisto.stredisko_id == stredisko_id,
+        VypocetOM.obdobi_id == obdobi.id
+    ).all()
 
     if not vypocty:
         return None, ("Nejsou k dispozici výpočty pro vybrané období.", 400)
@@ -76,7 +85,7 @@ def get_faktura_data(stredisko_id, rok, mesic):
 
     return {
         'stredisko': stredisko,
-        'obdobi': None,  # zatím neimplementováno
+        'obdobi': obdobi,
         'faktura': faktura,
         'zaloha': zaloha,
         'dodavatel': dodavatel,
