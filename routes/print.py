@@ -299,33 +299,83 @@ def vygenerovat_fakturu_html(stredisko_id, rok, mesic):
 
 def _get_faktura_pdf_bytes(stredisko_id, rok, mesic):
     """Pomocná funkce - vrací PDF faktury jako bytes"""
-    data, error = get_faktura_data(stredisko_id, rok, mesic)
-    if error:
-        raise Exception(f"Chyba při načítání dat faktury: {error}")
+    print(f"[DEBUG] Začínám generování PDF faktury pro středisko {stredisko_id}, období {rok}/{mesic}")
     
-    # Vygeneruj HTML obsah pomocí šablony
-    html_content = render_template("print/faktura.html", 
-                                 stredisko=data['stredisko'],
-                                 obdobi=data['obdobi'],
-                                 faktura=data['faktura'],
-                                 zaloha=data['zaloha'],
-                                 dodavatel=data['dodavatel'],
-                                 odberatel=data['odberatel'],
-                                 rekapitulace=data['rekapitulace'],
-                                 zaklad_bez_dph=data['zaklad_bez_dph'],
-                                 castka_dph=data['castka_dph'],
-                                 celkem_vc_dph=data['celkem_vc_dph'],
-                                 zaloha_celkem_vc_dph=data['zaloha_celkem_vc_dph'],
-                                 zaloha_hodnota=data['zaloha_hodnota'],
-                                 zaloha_dph=data['zaloha_dph'],
-                                 k_platbe=data['k_platbe'],
-                                 sazba_dph=data['sazba_dph'],
-                                 sazba_dph_procenta=data['sazba_dph_procenta'])
+    try:
+        data, error = get_faktura_data(stredisko_id, rok, mesic)
+        if error:
+            raise Exception(f"Chyba při načítání dat faktury: {error}")
+        print("[DEBUG] Data faktury úspěšně načtena")
+        
+        # Vygeneruj HTML obsah pomocí šablony
+        html_content = render_template("print/faktura.html", 
+                                     stredisko=data['stredisko'],
+                                     obdobi=data['obdobi'],
+                                     faktura=data['faktura'],
+                                     zaloha=data['zaloha'],
+                                     dodavatel=data['dodavatel'],
+                                     odberatel=data['odberatel'],
+                                     rekapitulace=data['rekapitulace'],
+                                     zaklad_bez_dph=data['zaklad_bez_dph'],
+                                     castka_dph=data['castka_dph'],
+                                     celkem_vc_dph=data['celkem_vc_dph'],
+                                     zaloha_celkem_vc_dph=data['zaloha_celkem_vc_dph'],
+                                     zaloha_hodnota=data['zaloha_hodnota'],
+                                     zaloha_dph=data['zaloha_dph'],
+                                     k_platbe=data['k_platbe'],
+                                     sazba_dph=data['sazba_dph'],
+                                     sazba_dph_procenta=data['sazba_dph_procenta'])
+        print(f"[DEBUG] HTML šablona vygenerována, délka: {len(html_content)} znaků")
 
-    # Použij WeasyPrint pro konverzi HTML→PDF
-    from weasyprint import HTML
-    html_doc = HTML(string=html_content)
-    return html_doc.write_pdf()
+        # Použij WeasyPrint pro konverzi HTML→PDF
+        try:
+            from weasyprint import HTML
+            print("[DEBUG] WeasyPrint úspěšně importován")
+            
+            html_doc = HTML(string=html_content)
+            print("[DEBUG] HTML dokument vytvořen")
+            
+            # Zkusit vygenerovat PDF s workaroundem pro PyPDF2 problémy
+            try:
+                pdf_bytes = html_doc.write_pdf()
+                print(f"[DEBUG] PDF úspěšně vygenerováno, velikost: {len(pdf_bytes)} bytů")
+                return pdf_bytes
+            except Exception as pdf_error:
+                if 'PDF.__init__()' in str(pdf_error) and 'positional argument' in str(pdf_error):
+                    print("[WARNING] Detekován problém s PyPDF2 verzí, zkouším workaround...")
+                    # Workaround - dočasně patchnout PyPDF2 pokud je problém
+                    try:
+                        import sys
+                        # Zkusit reimport s upravenou cestou
+                        if 'PyPDF2' in sys.modules:
+                            del sys.modules['PyPDF2']
+                        if 'pypdf' in sys.modules:
+                            del sys.modules['pypdf']
+                            
+                        # Znovu zkusit generování
+                        pdf_bytes = html_doc.write_pdf()
+                        print(f"[DEBUG] PDF vygenerováno po workaroundu, velikost: {len(pdf_bytes)} bytů")
+                        return pdf_bytes
+                    except Exception as workaround_error:
+                        print(f"[ERROR] Workaround neuspěšný: {workaround_error}")
+                        raise pdf_error
+                else:
+                    raise pdf_error
+            
+        except ImportError as import_error:
+            print(f"[ERROR] WeasyPrint import chyba: {import_error}")
+            raise import_error
+        except Exception as weasy_error:
+            print(f"[ERROR] WeasyPrint chyba: {weasy_error}")
+            import traceback
+            traceback.print_exc()
+            raise weasy_error
+            
+    except Exception as e:
+        print(f"[ERROR] Obecná chyba v _get_faktura_pdf_bytes: {e}")
+        import traceback
+        traceback.print_exc()
+        raise e
 
 
 @print_bp.route("/<int:stredisko_id>/<int:rok>-<int:mesic>/faktura/pdf")
@@ -1057,12 +1107,50 @@ def _get_priloha2_pdf_bytes(stredisko_id, rok, mesic):
                             stredisko=stredisko, obdobi=obdobi, faktura=faktura, 
                             dodavatel=dodavatel, vypocty_data=vypocty_data)
 
-        from weasyprint import HTML
-        html_doc = HTML(string=html_content)
-        return html_doc.write_pdf()
+        try:
+            from weasyprint import HTML
+            print("[DEBUG] WeasyPrint pro přílohu 2 úspěšně importován")
+            
+            html_doc = HTML(string=html_content)
+            print("[DEBUG] HTML dokument přílohy 2 vytvořen")
+            
+            # Zkusit vygenerovat PDF s workaroundem pro PyPDF2 problémy
+            try:
+                pdf_bytes = html_doc.write_pdf()
+                print(f"[DEBUG] PDF přílohy 2 úspěšně vygenerováno, velikost: {len(pdf_bytes)} bytů")
+                return pdf_bytes
+            except Exception as pdf_error:
+                if 'PDF.__init__()' in str(pdf_error) and 'positional argument' in str(pdf_error):
+                    print("[WARNING] Detekován problém s PyPDF2 verzí v příloze 2, zkouším workaround...")
+                    # Workaround - dočasně patchnout PyPDF2 pokud je problém
+                    try:
+                        import sys
+                        # Zkusit reimport s upravenou cestou
+                        if 'PyPDF2' in sys.modules:
+                            del sys.modules['PyPDF2']
+                        if 'pypdf' in sys.modules:
+                            del sys.modules['pypdf']
+                            
+                        # Znovu zkusit generování
+                        pdf_bytes = html_doc.write_pdf()
+                        print(f"[DEBUG] PDF přílohy 2 vygenerováno po workaroundu, velikost: {len(pdf_bytes)} bytů")
+                        return pdf_bytes
+                    except Exception as workaround_error:
+                        print(f"[ERROR] Workaround pro přílohu 2 neuspěšný: {workaround_error}")
+                        raise pdf_error
+                else:
+                    raise pdf_error
+            
+        except Exception as weasy_error:
+            print(f"[ERROR] WeasyPrint chyba v příloze 2: {weasy_error}")
+            import traceback
+            traceback.print_exc()
+            raise weasy_error
         
     except Exception as e:
         print(f"[ERROR] Chyba v _get_priloha2_pdf_bytes: {e}")
+        import traceback
+        traceback.print_exc()
         raise
 
 
