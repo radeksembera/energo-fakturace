@@ -55,7 +55,24 @@ def close_pdf_writer(writer):
     """Kompatibilní funkce pro zatvorenie PDF writera"""
     if hasattr(writer, 'close'):
         writer.close()
-    # Staršie verzie nemusia mať close() metódu 
+    # Staršie verzie nemusia mať close() metódu
+
+def create_pdf_reader(stream):
+    """Kompatibilní funkce pro vytvorenie PdfReader"""
+    try:
+        # Skús najnovšiu syntax (pypdf, PyPDF2 3.x+)
+        return PdfReader(stream)
+    except Exception as e:
+        # Ak to nepôjde, skús starú syntax
+        if 'takes 1 positional argument' in str(e):
+            # Pre starú PyPDF2 verziu možno potrebujeme iný approach
+            if hasattr(PdfReader, '__init__'):
+                # Skús volať bez argumentov a potom nastaviť stream
+                reader = PdfReader()
+                if hasattr(reader, 'stream'):
+                    reader.stream = stream
+                return reader
+        raise e  # Prehoď originálnu chybu 
 
 print_bp = Blueprint("print", __name__, template_folder="templates")
 
@@ -769,7 +786,7 @@ def vygenerovat_prilohu1_pdf(stredisko_id, rok, mesic):
         # Vypočítáme počet stránek
         temp_buffer.seek(0)
         try:
-            reader = PdfReader(temp_buffer)
+            reader = create_pdf_reader(temp_buffer)
             total_pages = len(reader.pages)
         except:
             # Fallback - odhad počtu stránek
@@ -1498,7 +1515,7 @@ def vygenerovat_prilohu2_pdf_backup(stredisko_id, rok, mesic):
         # Vypočítáme počet stránek z velikosti temp dokumentu
         temp_buffer.seek(0)
         try:
-            reader = PdfReader(temp_buffer)
+            reader = create_pdf_reader(temp_buffer)
             total_pages = len(reader.pages)
         except:
             # Fallback - odhad počtu stránek
@@ -1571,7 +1588,7 @@ def vygenerovat_kompletni_pdf(stredisko_id, rok, mesic):
         try:
             # Zavolej pomocnou funkci pro získání PDF bytes
             faktura_bytes = _get_faktura_pdf_bytes(stredisko_id, rok, mesic)
-            faktura_pdf = PdfReader(io.BytesIO(faktura_bytes))
+            faktura_pdf = create_pdf_reader(io.BytesIO(faktura_bytes))
             for page in faktura_pdf.pages:
                 add_page_to_writer(merger, page)
             print(f"✅ Přidána faktura - {len(faktura_pdf.pages)} stránek")
@@ -1583,7 +1600,7 @@ def vygenerovat_kompletni_pdf(stredisko_id, rok, mesic):
         try:
             priloha1_response = vygenerovat_prilohu1_pdf(stredisko_id, rok, mesic)
             if hasattr(priloha1_response, 'data'):
-                priloha1_pdf = PdfReader(io.BytesIO(priloha1_response.data))
+                priloha1_pdf = create_pdf_reader(io.BytesIO(priloha1_response.data))
                 for page in priloha1_pdf.pages:
                     add_page_to_writer(merger, page)
                 print(f"✅ Přidána příloha 1 - {len(priloha1_pdf.pages)} stránek")
@@ -1597,7 +1614,7 @@ def vygenerovat_kompletni_pdf(stredisko_id, rok, mesic):
             priloha2_pdf_bytes = _get_priloha2_pdf_bytes(stredisko_id, rok, mesic)
             
             # Přidej PDF stránky do mergeru
-            priloha2_pdf = PdfReader(io.BytesIO(priloha2_pdf_bytes))
+            priloha2_pdf = create_pdf_reader(io.BytesIO(priloha2_pdf_bytes))
             for page in priloha2_pdf.pages:
                 add_page_to_writer(merger, page)
             print(f"✅ Přidána příloha 2 (WeasyPrint) - {len(priloha2_pdf.pages)} stránek")
