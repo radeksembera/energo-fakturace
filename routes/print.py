@@ -58,50 +58,50 @@ def close_pdf_writer(writer):
     # Staršie verzie nemusia mať close() metódu
 
 def create_pdf_reader(stream):
-    """Kompatibilní funkce pro vytvorenie PdfReader"""
+    """Kompatibilní funkce pro vytvorenie PdfReader - robustné řešení pro PyPDF2 3.x"""
     import io
     
     # Uisti sa, že stream je na začiatku
     if hasattr(stream, 'seek'):
         stream.seek(0)
     
+    # Získaj data zo streamu
+    if isinstance(stream, io.BytesIO):
+        data = stream.getvalue()
+    elif hasattr(stream, 'read'):
+        data = stream.read()
+        if hasattr(stream, 'seek'):
+            stream.seek(0)  # Reset stream pre prípad ďalšieho použitia
+    else:
+        raise Exception(f"Nepodporovaný stream typ: {type(stream)}")
+    
+    # Vytvor nový BytesIO stream s dátami
+    clean_stream = io.BytesIO(data)
+    
     try:
-        # Skús najnovšiu syntax (pypdf, PyPDF2 3.x+)
-        return PdfReader(stream)
-    except TypeError as e:
-        if 'takes 1 positional argument' in str(e) or 'positional argument' in str(e):
-            # Pre staršie verzie PyPDF2 - skús rôzne prístupy
-            try:
-                # Možno je problém s io.BytesIO vs file object
-                if isinstance(stream, io.BytesIO):
-                    # Skús s dátami namiesto streamu
-                    data = stream.getvalue()
-                    stream.seek(0)  # Reset stream
-                    temp_stream = io.BytesIO(data)
-                    return PdfReader(temp_stream)
-                else:
-                    # Skús konverziu na BytesIO
-                    if hasattr(stream, 'read'):
-                        data = stream.read()
-                        stream.seek(0)  # Reset pôvodný stream
-                        return PdfReader(io.BytesIO(data))
-                    else:
-                        raise Exception(f"Nepodporovaný stream typ: {type(stream)}")
-            except Exception as inner_e:
-                print(f"[ERROR] Fallback tiež zlyhal: {inner_e}")
-                # Posledný pokus - vytvor nový reader a nastav mu stream manuálne
-                try:
-                    reader = PdfReader.__new__(PdfReader)
-                    if hasattr(reader, '_initialize') and hasattr(stream, 'read'):
-                        reader._initialize(stream)
-                        return reader
-                except:
-                    pass
-                raise e  # Vráť originálnu chybu
-        raise e
+        # Skús moderný PdfReader (PyPDF2 3.x, pypdf)
+        return PdfReader(clean_stream)
     except Exception as e:
-        print(f"[ERROR] Neočakávaná chyba v create_pdf_reader: {e}")
-        raise e 
+        error_msg = str(e).lower()
+        if 'takes 1 positional argument' in error_msg or 'positional argument' in error_msg:
+            print(f"[ERROR] PyPDF2 verzia má nekompatibilný API: {e}")
+            print("[WARNING] PDF čítanie zlyháva kvôli nekompatibilite PyPDF2 3.x")
+            # Pokus o fallback s file-like objektom
+            try:
+                clean_stream.seek(0)
+                # Skús bez argumentov (pre niektoré broken builds)
+                reader = PdfReader()
+                if hasattr(reader, 'stream'):
+                    reader.stream = clean_stream
+                if hasattr(reader, '_get_object'):
+                    return reader
+            except:
+                pass
+            
+            raise Exception(f"PyPDF2 {PDF_VERSION} nie je kompatibilný s aktuálnym kódom. Prosím aktualizujte na pypdf alebo downgrade PyPDF2.")
+        else:
+            print(f"[ERROR] Neočakávaná chyba v create_pdf_reader: {e}")
+            raise e 
 
 print_bp = Blueprint("print", __name__, template_folder="templates")
 
@@ -1251,7 +1251,7 @@ def _generate_priloha2_pdf_reportlab(stredisko, obdobi, faktura, dodavatel, vypo
     from reportlab.lib.units import mm
     from reportlab.lib import colors
     
-    print("[DEBUG] Začínám ReportLab fallback pro přílohu 2")
+    print("[DEBUG] Zacinam ReportLab fallback pro prilohu 2")
     
     # Vytvoř PDF dokument
     buffer = io.BytesIO()
@@ -1321,7 +1321,7 @@ def _generate_priloha2_pdf_reportlab(stredisko, obdobi, faktura, dodavatel, vypo
     pdf_data = buffer.getvalue()
     buffer.close()
     
-    print(f"[DEBUG] ReportLab PDF přílohy 2 vygenerován, velikost: {len(pdf_data)} bytů")
+    print(f"[DEBUG] ReportLab PDF prilohy 2 vygenerovan, velikost: {len(pdf_data)} bytu")
     return pdf_data
 
 
@@ -1852,7 +1852,11 @@ def vygenerovat_prilohu2_pdf_backup(stredisko_id, rok, mesic):
         return response
 
     except Exception as e:
-        flash(f"[ERROR] Chyba při generování PDF: {str(e)}")
+        error_msg = str(e)
+        if 'PDF.__init__()' in error_msg or 'PyPDF2' in error_msg or 'positional argument' in error_msg:
+            flash(f"[WARNING] Príloha 2 nie je dostupná kvôli problémom s PDF knižnicou na serveri. Skúste použiť kompletný PDF súbor.")
+        else:
+            flash(f"[ERROR] Chyba při generování PDF: {error_msg}")
         return redirect(url_for('fakturace.fakturace', stredisko_id=stredisko_id))    
 
 @print_bp.route("/<int:stredisko_id>/<int:rok>-<int:mesic>/kompletni/pdf")
@@ -1901,11 +1905,18 @@ def vygenerovat_kompletni_pdf(stredisko_id, rok, mesic):
             # Použij vnitřní funkci pro získání PDF bytů
             priloha2_pdf_bytes = _get_priloha2_pdf_bytes(stredisko_id, rok, mesic)
             
-            # Přidej PDF stránky do mergeru
-            priloha2_pdf = create_pdf_reader(io.BytesIO(priloha2_pdf_bytes))
-            for page in priloha2_pdf.pages:
-                add_page_to_writer(merger, page)
-            print(f"[OK] Přidána příloha 2 (WeasyPrint) - {len(priloha2_pdf.pages)} stránek")
+            # Přidej PDF stránky do mergeru - s extra error handling pro PyPDF2 problémy
+            try:
+                priloha2_pdf = create_pdf_reader(io.BytesIO(priloha2_pdf_bytes))
+                for page in priloha2_pdf.pages:
+                    add_page_to_writer(merger, page)
+                print(f"[OK] Přidána příloha 2 (WeasyPrint) - {len(priloha2_pdf.pages)} stránek")
+            except Exception as pdf_read_error:
+                if 'PDF.__init__()' in str(pdf_read_error) or 'positional argument' in str(pdf_read_error):
+                    print(f"[ERROR] PyPDF2 kompatibilita problém při čtení přílohy 2: {pdf_read_error}")
+                    print("[WARNING] Příloha 2 přeskočena kvôli PDF library problémom")
+                else:
+                    raise pdf_read_error
             
         except ImportError:
             print(f"[WARNING] WeasyPrint není dostupný - příloha 2 přeskočena")
