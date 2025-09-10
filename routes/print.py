@@ -341,24 +341,13 @@ def _get_faktura_pdf_bytes(stredisko_id, rok, mesic):
                 print(f"[DEBUG] PDF úspěšně vygenerováno, velikost: {len(pdf_bytes)} bytů")
                 return pdf_bytes
             except Exception as pdf_error:
-                if 'PDF.__init__()' in str(pdf_error) and 'positional argument' in str(pdf_error):
-                    print("[WARNING] Detekován problém s PyPDF2 verzí, zkouším workaround...")
-                    # Workaround - dočasně patchnout PyPDF2 pokud je problém
-                    try:
-                        import sys
-                        # Zkusit reimport s upravenou cestou
-                        if 'PyPDF2' in sys.modules:
-                            del sys.modules['PyPDF2']
-                        if 'pypdf' in sys.modules:
-                            del sys.modules['pypdf']
-                            
-                        # Znovu zkusit generování
-                        pdf_bytes = html_doc.write_pdf()
-                        print(f"[DEBUG] PDF vygenerováno po workaroundu, velikost: {len(pdf_bytes)} bytů")
-                        return pdf_bytes
-                    except Exception as workaround_error:
-                        print(f"[ERROR] Workaround neuspěšný: {workaround_error}")
-                        raise pdf_error
+                error_msg = str(pdf_error).lower()
+                if ('pdf.__init__()' in error_msg and 'positional argument' in error_msg) or \
+                   ('pypdf' in error_msg) or ('pyPDF2' in error_msg):
+                    print(f"[WARNING] Detekován problém s PDF knihovnou: {pdf_error}")
+                    print("[INFO] WeasyPrint má problém s PDF knihovnou, přepínám na ReportLab fallback...")
+                    # Místo workaroundu rovnou přepneme na ReportLab
+                    raise ImportError("WeasyPrint PDF problem - forcing ReportLab fallback")
                 else:
                     raise pdf_error
             
@@ -367,15 +356,120 @@ def _get_faktura_pdf_bytes(stredisko_id, rok, mesic):
             raise import_error
         except Exception as weasy_error:
             print(f"[ERROR] WeasyPrint chyba: {weasy_error}")
-            import traceback
-            traceback.print_exc()
-            raise weasy_error
+            # Fallback na ReportLab pokud WeasyPrint selže
+            print("[WARNING] WeasyPrint selhává, zkouším fallback s ReportLab...")
+            try:
+                return _generate_faktura_pdf_reportlab(data)
+            except Exception as reportlab_error:
+                print(f"[ERROR] Fallback ReportLab také selhal: {reportlab_error}")
+                # Vrátíme původní WeasyPrint chybu
+                raise weasy_error
             
     except Exception as e:
         print(f"[ERROR] Obecná chyba v _get_faktura_pdf_bytes: {e}")
         import traceback
         traceback.print_exc()
         raise e
+
+
+def _generate_faktura_pdf_reportlab(data):
+    """Fallback funkce pro generování PDF faktury pomocí ReportLab"""
+    import io
+    from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle
+    from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
+    from reportlab.lib.pagesizes import A4
+    from reportlab.lib.units import mm
+    from reportlab.lib import colors
+    
+    print("[DEBUG] Začínám ReportLab fallback pro fakturu")
+    
+    # Vytvoř PDF dokument
+    buffer = io.BytesIO()
+    doc = SimpleDocTemplate(buffer, pagesize=A4, 
+                          rightMargin=20*mm, leftMargin=20*mm,
+                          topMargin=20*mm, bottomMargin=20*mm)
+    
+    story = []
+    styles = getSampleStyleSheet()
+    
+    # Nadpis
+    title_style = ParagraphStyle(
+        'CustomTitle',
+        parent=styles['Heading1'],
+        fontSize=18,
+        spaceAfter=30,
+        alignment=1  # Center
+    )
+    story.append(Paragraph("FAKTURA", title_style))
+    story.append(Spacer(1, 20))
+    
+    # Informace o faktuře
+    if data['faktura']:
+        story.append(Paragraph(f"<b>Číslo faktury:</b> {data['faktura'].cislo_faktury}", styles['Normal']))
+        story.append(Paragraph(f"<b>Datum splatnosti:</b> {data['faktura'].datum_splatnosti}", styles['Normal']))
+        story.append(Spacer(1, 20))
+    
+    # Informace o dodavateli a odběrateli
+    if data['dodavatel']:
+        story.append(Paragraph("<b>Dodavatel:</b>", styles['Heading2']))
+        story.append(Paragraph(f"{data['dodavatel'].nazev}", styles['Normal']))
+        if data['dodavatel'].adresa:
+            story.append(Paragraph(f"{data['dodavatel'].adresa}", styles['Normal']))
+        if data['dodavatel'].ico:
+            story.append(Paragraph(f"IČO: {data['dodavatel'].ico}", styles['Normal']))
+        story.append(Spacer(1, 15))
+    
+    if data['odberatel']:
+        story.append(Paragraph("<b>Odběratel:</b>", styles['Heading2']))
+        story.append(Paragraph(f"{data['odberatel'].nazev}", styles['Normal']))
+        if data['odberatel'].adresa:
+            story.append(Paragraph(f"{data['odberatel'].adresa}", styles['Normal']))
+        if data['odberatel'].ico:
+            story.append(Paragraph(f"IČO: {data['odberatel'].ico}", styles['Normal']))
+        story.append(Spacer(1, 20))
+    
+    # Rekapitulace
+    story.append(Paragraph("<b>Rekapitulace:</b>", styles['Heading2']))
+    
+    # Tabulka rekapitulace
+    rekapitulace_data = [['Položka', 'Částka bez DPH']]
+    
+    for key, value in data['rekapitulace'].items():
+        if value != 0:  # Zobraz pouze nenulové položky
+            # Převeď klíč na čitelný název
+            nazev = key.replace('_', ' ').title()
+            rekapitulace_data.append([nazev, f"{value:.2f} Kč"])
+    
+    rekapitulace_data.append(['', ''])  # Prázdný řádek
+    rekapitulace_data.append(['Základ bez DPH', f"{data['zaklad_bez_dph']:.2f} Kč"])
+    rekapitulace_data.append(['DPH 21%', f"{data['castka_dph']:.2f} Kč"])
+    rekapitulace_data.append(['CELKEM s DPH', f"{data['celkem_vc_dph']:.2f} Kč"])
+    
+    if data['zaloha_celkem_vc_dph'] > 0:
+        rekapitulace_data.append(['Záloha', f"-{data['zaloha_celkem_vc_dph']:.2f} Kč"])
+        rekapitulace_data.append(['K PLATBĚ', f"{data['k_platbe']:.2f} Kč"])
+    
+    table = Table(rekapitulace_data)
+    table.setStyle(TableStyle([
+        ('BACKGROUND', (0, 0), (-1, 0), colors.grey),
+        ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
+        ('ALIGN', (0, 0), (-1, -1), 'LEFT'),
+        ('ALIGN', (1, 0), (1, -1), 'RIGHT'),
+        ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+        ('FONTSIZE', (0, 0), (-1, 0), 12),
+        ('BOTTOMPADDING', (0, 0), (-1, 0), 12),
+        ('BACKGROUND', (0, 1), (-1, -1), colors.beige),
+        ('GRID', (0, 0), (-1, -1), 1, colors.black)
+    ]))
+    story.append(table)
+    
+    # Vytvoř PDF
+    doc.build(story)
+    pdf_data = buffer.getvalue()
+    buffer.close()
+    
+    print(f"[DEBUG] ReportLab PDF vygenerován, velikost: {len(pdf_data)} bytů")
+    return pdf_data
 
 
 @print_bp.route("/<int:stredisko_id>/<int:rok>-<int:mesic>/faktura/pdf")
@@ -1120,38 +1214,115 @@ def _get_priloha2_pdf_bytes(stredisko_id, rok, mesic):
                 print(f"[DEBUG] PDF přílohy 2 úspěšně vygenerováno, velikost: {len(pdf_bytes)} bytů")
                 return pdf_bytes
             except Exception as pdf_error:
-                if 'PDF.__init__()' in str(pdf_error) and 'positional argument' in str(pdf_error):
-                    print("[WARNING] Detekován problém s PyPDF2 verzí v příloze 2, zkouším workaround...")
-                    # Workaround - dočasně patchnout PyPDF2 pokud je problém
-                    try:
-                        import sys
-                        # Zkusit reimport s upravenou cestou
-                        if 'PyPDF2' in sys.modules:
-                            del sys.modules['PyPDF2']
-                        if 'pypdf' in sys.modules:
-                            del sys.modules['pypdf']
-                            
-                        # Znovu zkusit generování
-                        pdf_bytes = html_doc.write_pdf()
-                        print(f"[DEBUG] PDF přílohy 2 vygenerováno po workaroundu, velikost: {len(pdf_bytes)} bytů")
-                        return pdf_bytes
-                    except Exception as workaround_error:
-                        print(f"[ERROR] Workaround pro přílohu 2 neuspěšný: {workaround_error}")
-                        raise pdf_error
+                error_msg = str(pdf_error).lower()
+                if ('pdf.__init__()' in error_msg and 'positional argument' in error_msg) or \
+                   ('pypdf' in error_msg) or ('pyPDF2' in error_msg):
+                    print(f"[WARNING] Detekován problém s PDF knihovnou v příloze 2: {pdf_error}")
+                    print("[INFO] WeasyPrint má problém s PDF knihovnou, přepínám na ReportLab fallback...")
+                    # Místo workaroundu rovnou přepneme na ReportLab
+                    raise ImportError("WeasyPrint PDF problem in priloha2 - forcing ReportLab fallback")
                 else:
                     raise pdf_error
             
-        except Exception as weasy_error:
+        except (Exception, ImportError) as weasy_error:
             print(f"[ERROR] WeasyPrint chyba v příloze 2: {weasy_error}")
-            import traceback
-            traceback.print_exc()
-            raise weasy_error
+            # Fallback na ReportLab pokud WeasyPrint selže
+            print("[WARNING] WeasyPrint selhává pro přílohu 2, zkouším fallback s ReportLab...")
+            try:
+                return _generate_priloha2_pdf_reportlab(stredisko, obdobi, faktura, dodavatel, vypocty_data)
+            except Exception as reportlab_error:
+                print(f"[ERROR] Fallback ReportLab pro přílohu 2 také selhal: {reportlab_error}")
+                # Vrátíme původní WeasyPrint chybu
+                raise weasy_error
         
     except Exception as e:
         print(f"[ERROR] Chyba v _get_priloha2_pdf_bytes: {e}")
         import traceback
         traceback.print_exc()
         raise
+
+
+def _generate_priloha2_pdf_reportlab(stredisko, obdobi, faktura, dodavatel, vypocty_data):
+    """Fallback funkce pro generování PDF přílohy 2 pomocí ReportLab"""
+    import io
+    from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle
+    from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
+    from reportlab.lib.pagesizes import A4
+    from reportlab.lib.units import mm
+    from reportlab.lib import colors
+    
+    print("[DEBUG] Začínám ReportLab fallback pro přílohu 2")
+    
+    # Vytvoř PDF dokument
+    buffer = io.BytesIO()
+    doc = SimpleDocTemplate(buffer, pagesize=A4, 
+                          rightMargin=15*mm, leftMargin=15*mm,
+                          topMargin=20*mm, bottomMargin=20*mm)
+    
+    story = []
+    styles = getSampleStyleSheet()
+    
+    # Nadpis
+    title_style = ParagraphStyle(
+        'CustomTitle',
+        parent=styles['Heading1'],
+        fontSize=16,
+        spaceAfter=20,
+        alignment=1  # Center
+    )
+    story.append(Paragraph("PŘÍLOHA Č. 2", title_style))
+    story.append(Paragraph("Rozpis položek za odběrná místa", styles['Heading2']))
+    story.append(Spacer(1, 20))
+    
+    # Informace o období
+    story.append(Paragraph(f"<b>Středisko:</b> {stredisko.nazev}", styles['Normal']))
+    story.append(Paragraph(f"<b>Období:</b> {obdobi.rok}/{obdobi.mesic:02d}", styles['Normal']))
+    story.append(Spacer(1, 15))
+    
+    # Tabulka s výpočty
+    table_data = [['OM', 'Spotřeba VT', 'Spotřeba NT', 'Celkem za OM']]
+    
+    for data_row in vypocty_data[:10]:  # Omez na 10 řádků kvůli místě
+        om = data_row['om']
+        celkem_om = data_row['celkem_om']
+        spotreba_vt = data_row.get('spotreba_vt_mwh', 0)
+        spotreba_nt = data_row.get('spotreba_nt_mwh', 0)
+        
+        table_data.append([
+            str(om.cislo_om) if om.cislo_om else 'N/A',
+            f"{spotreba_vt:.3f} MWh",
+            f"{spotreba_nt:.3f} MWh", 
+            f"{celkem_om:.2f} Kč"
+        ])
+    
+    if len(vypocty_data) > 10:
+        table_data.append(['...', '...', '...', '...'])
+        table_data.append([f'Celkem {len(vypocty_data)} odběrných míst', '', '', ''])
+    
+    table = Table(table_data)
+    table.setStyle(TableStyle([
+        ('BACKGROUND', (0, 0), (-1, 0), colors.grey),
+        ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
+        ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
+        ('ALIGN', (3, 0), (3, -1), 'RIGHT'),
+        ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+        ('FONTSIZE', (0, 0), (-1, 0), 10),
+        ('BOTTOMPADDING', (0, 0), (-1, 0), 12),
+        ('BACKGROUND', (0, 1), (-1, -1), colors.beige),
+        ('GRID', (0, 0), (-1, -1), 1, colors.black)
+    ]))
+    story.append(table)
+    
+    story.append(Spacer(1, 20))
+    story.append(Paragraph("<i>Poznámka: Toto je zjednodušená verze přílohy 2 vygenerovaná pomocí ReportLab fallback.</i>", styles['Normal']))
+    
+    # Vytvoř PDF
+    doc.build(story)
+    pdf_data = buffer.getvalue()
+    buffer.close()
+    
+    print(f"[DEBUG] ReportLab PDF přílohy 2 vygenerován, velikost: {len(pdf_data)} bytů")
+    return pdf_data
 
 
 @print_bp.route("/<int:stredisko_id>/<int:rok>-<int:mesic>/priloha2/pdf")
