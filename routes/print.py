@@ -1279,25 +1279,32 @@ def vygenerovat_priloha2_pdf(stredisko_id, rok, mesic):
     if not session.get("user_id"):
         return redirect("/login")
 
-    stredisko = Stredisko.query.get_or_404(stredisko_id)
-    if stredisko.user_id != session["user_id"]:
-        return "Nepovolený přístup", 403
+    try:
+        stredisko = Stredisko.query.get_or_404(stredisko_id)
+        if stredisko.user_id != session["user_id"]:
+            return "Nepovolený přístup", 403
 
-    # Jednoduše vrátíme text místo PDF - pro testování
-    return f"""
-    <html>
-    <head><title>Test Příloha 2</title></head>
-    <body>
-        <h1>TEST PŘÍLOHA 2</h1>
-        <p>Středisko ID: {stredisko_id}</p>
-        <p>Období: {rok}/{mesic:02d}</p>
-        <p>Středisko: {stredisko.nazev}</p>
-        <p>Pokud vidíte tuto stránku, route funguje správně.</p>
-        <p>Teď postupně přidáme PDF funkcionalitu.</p>
-    </body>
-    </html>
-    """
+        # Jednoduše vrátíme text místo PDF - pro testování
+        return f"""
+        <html>
+        <head><title>Test Příloha 2</title></head>
+        <body>
+            <h1>TEST PŘÍLOHA 2</h1>
+            <p>Středisko ID: {stredisko_id}</p>
+            <p>Období: {rok}/{mesic:02d}</p>
+            <p>Středisko: {stredisko.nazev}</p>
+            <p>Pokud vidíte tuto stránku, route funguje správně.</p>
+            <p>Teď postupně přidáme PDF funkcionalitu.</p>
+        </body>
+        </html>
+        """
+    except Exception as e:
+        return f"CHYBA v příloze 2: {str(e)}"
 
+@print_bp.route("/<int:stredisko_id>/<int:rok>-<int:mesic>/priloha2/test")
+def test_priloha2_route(stredisko_id, rok, mesic):
+    """ÚPLNĚ JEDNODUCHÝ TEST - bez databáze"""
+    return f"TEST ROUTE WORKS: stredisko={stredisko_id}, rok={rok}, mesic={mesic}"
 
 @print_bp.route("/<int:stredisko_id>/<int:rok>-<int:mesic>/priloha2_backup/pdf")
 def vygenerovat_prilohu2_pdf_backup(stredisko_id, rok, mesic):
