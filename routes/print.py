@@ -1275,7 +1275,7 @@ def _generate_priloha2_pdf_reportlab(stredisko, obdobi, faktura, dodavatel, vypo
 
 @print_bp.route("/<int:stredisko_id>/<int:rok>-<int:mesic>/priloha2/pdf")
 def priloha2_pdf_nova(stredisko_id, rok, mesic):
-    """MINIMÁLNÍ TEST VERZE - pouze text"""
+    """Generování PDF přílohy 2 s daty z databáze"""
     if not session.get("user_id"):
         return redirect("/login")
 
@@ -1284,36 +1284,119 @@ def priloha2_pdf_nova(stredisko_id, rok, mesic):
         if stredisko.user_id != session["user_id"]:
             return "Nepovolený přístup", 403
 
-        # Vytvoříme jednoduché PDF pomocí ReportLab (jako v našem testu)
-        from reportlab.platypus import SimpleDocTemplate, Paragraph
-        from reportlab.lib.styles import getSampleStyleSheet
+        # Najdi období
+        obdobi = Obdobi.query.filter_by(rok=rok, mesic=mesic).first()
+        if not obdobi:
+            return "Období nenalezeno", 404
+            
+        # Načti data z databáze
+        vypocty_om = db.session.query(VypocetOM, OdberneMisto)\
+            .join(OdberneMisto, VypocetOM.odberne_misto_id == OdberneMisto.id)\
+            .filter(VypocetOM.obdobi_id == obdobi.id)\
+            .filter(OdberneMisto.stredisko_id == stredisko_id)\
+            .order_by(OdberneMisto.cislo_om)\
+            .all()
+
+        if not vypocty_om:
+            return "Nejsou výpočty pro vybrané období", 404
+
+        # Generování PDF s daty
+        from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle
+        from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
         from reportlab.lib.pagesizes import A4
+        from reportlab.lib.units import mm
+        from reportlab.lib import colors
         import io
         
-        # Vytvoř PDF buffer
         buffer = io.BytesIO()
-        doc = SimpleDocTemplate(buffer, pagesize=A4)
+        doc = SimpleDocTemplate(buffer, pagesize=A4, 
+                              rightMargin=15*mm, leftMargin=15*mm,
+                              topMargin=20*mm, bottomMargin=20*mm)
         
-        # Vytvoř story
         story = []
         styles = getSampleStyleSheet()
         
-        story.append(Paragraph(f"PŘÍLOHA 2 - {stredisko.nazev_strediska}", styles['Title']))
-        story.append(Paragraph(f"Období: {rok}/{mesic:02d}", styles['Heading2']))
-        story.append(Paragraph("Rozpis položek za odběrná místa", styles['Normal']))
-        story.append(Paragraph("(Jednoduchá PDF verze)", styles['Normal']))
+        # Nadpis
+        title_style = ParagraphStyle(
+            'CustomTitle',
+            parent=styles['Heading1'],
+            fontSize=16,
+            spaceAfter=20,
+            alignment=1  # Center
+        )
+        story.append(Paragraph("PŘÍLOHA Č. 2", title_style))
+        story.append(Paragraph("Rozpis položek za odběrná místa", styles['Heading2']))
+        story.append(Spacer(1, 20))
         
-        # Vygeneruj PDF
+        # Informace o období
+        story.append(Paragraph(f"<b>Středisko:</b> {stredisko.nazev_strediska}", styles['Normal']))
+        story.append(Paragraph(f"<b>Období:</b> {rok}/{mesic:02d}", styles['Normal']))
+        story.append(Spacer(1, 15))
+        
+        # Tabulka s výpočty
+        table_data = [['OM', 'Spotřeba VT', 'Spotřeba NT', 'Celkem za OM']]
+        
+        for vypocet, om in vypocty_om:
+            # Vypočítej minimum z POZE
+            poze_minimum = min(float(vypocet.poze_dle_jistice or 0), float(vypocet.poze_dle_spotreby or 0))
+            
+            # Celková suma za OM
+            celkem_om = (
+                float(vypocet.mesicni_plat or 0) +
+                float(vypocet.platba_za_elektrinu_vt or 0) +
+                float(vypocet.platba_za_elektrinu_nt or 0) +
+                float(vypocet.platba_za_jistic or 0) +
+                float(vypocet.platba_za_distribuci_vt or 0) +
+                float(vypocet.platba_za_distribuci_nt or 0) +
+                float(vypocet.systemove_sluzby or 0) +
+                poze_minimum +
+                float(vypocet.nesitova_infrastruktura or 0) +
+                float(vypocet.dan_z_elektriny or 0)
+            )
+            
+            # Načti odečty pro spotřeby
+            odecet = Odecet.query.filter_by(
+                odberne_misto_id=om.id, 
+                obdobi_id=obdobi.id
+            ).first()
+            
+            spotreba_vt = float(odecet.spotreba_vt or 0) if odecet else 0
+            spotreba_nt = float(odecet.spotreba_nt or 0) if odecet else 0
+            
+            table_data.append([
+                str(om.cislo_om) if om.cislo_om else 'N/A',
+                f"{spotreba_vt:.3f} MWh",
+                f"{spotreba_nt:.3f} MWh", 
+                f"{celkem_om:.2f} Kč"
+            ])
+        
+        table = Table(table_data)
+        table.setStyle(TableStyle([
+            ('BACKGROUND', (0, 0), (-1, 0), colors.grey),
+            ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
+            ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
+            ('ALIGN', (3, 0), (3, -1), 'RIGHT'),
+            ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+            ('FONTSIZE', (0, 0), (-1, 0), 10),
+            ('BOTTOMPADDING', (0, 0), (-1, 0), 12),
+            ('BACKGROUND', (0, 1), (-1, -1), colors.beige),
+            ('GRID', (0, 0), (-1, -1), 1, colors.black)
+        ]))
+        story.append(table)
+        
+        story.append(Spacer(1, 20))
+        story.append(Paragraph(f"<b>Celkem odběrných míst:</b> {len(vypocty_om)}", styles['Normal']))
+        
         doc.build(story)
         pdf_data = buffer.getvalue()
         buffer.close()
         
-        # Vráť PDF response
         response = make_response(pdf_data)
         response.headers['Content-Type'] = 'application/pdf'
-        response.headers['Content-Disposition'] = f'inline; filename=priloha2_{rok}_{mesic:02d}.pdf'
+        response.headers['Content-Disposition'] = f'inline; filename=priloha2_{stredisko.nazev_strediska}_{rok}_{mesic:02d}.pdf'
         
         return response
+        
     except Exception as e:
         return f"CHYBA v příloze 2: {str(e)}"
 
