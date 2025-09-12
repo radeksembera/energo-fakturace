@@ -1285,7 +1285,7 @@ def priloha2_pdf_nova(stredisko_id, rok, mesic):
             return "Nepovolený přístup", 403
 
         # Najdi období
-        obdobi = Obdobi.query.filter_by(rok=rok, mesic=mesic).first()
+        obdobi = ObdobiFakturace.query.filter_by(rok=rok, mesic=mesic).first()
         if not obdobi:
             return "Období nenalezeno", 404
             
