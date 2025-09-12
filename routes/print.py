@@ -1274,7 +1274,7 @@ def _generate_priloha2_pdf_reportlab(stredisko, obdobi, faktura, dodavatel, vypo
 
 
 @print_bp.route("/<int:stredisko_id>/<int:rok>-<int:mesic>/priloha2/pdf")
-def vygenerovat_priloha2_pdf(stredisko_id, rok, mesic):
+def priloha2_pdf_nova(stredisko_id, rok, mesic):
     """MINIMÁLNÍ TEST VERZE - pouze text"""
     if not session.get("user_id"):
         return redirect("/login")
