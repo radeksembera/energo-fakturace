@@ -1284,20 +1284,36 @@ def priloha2_pdf_nova(stredisko_id, rok, mesic):
         if stredisko.user_id != session["user_id"]:
             return "Nepovolený přístup", 403
 
-        # Jednoduše vrátíme text místo PDF - pro testování
-        return f"""
-        <html>
-        <head><title>Test Příloha 2</title></head>
-        <body>
-            <h1>TEST PŘÍLOHA 2</h1>
-            <p>Středisko ID: {stredisko_id}</p>
-            <p>Období: {rok}/{mesic:02d}</p>
-            <p>Středisko: {stredisko.nazev_strediska}</p>
-            <p>Pokud vidíte tuto stránku, route funguje správně.</p>
-            <p>Teď postupně přidáme PDF funkcionalitu.</p>
-        </body>
-        </html>
-        """
+        # Vytvoříme jednoduché PDF pomocí ReportLab (jako v našem testu)
+        from reportlab.platypus import SimpleDocTemplate, Paragraph
+        from reportlab.lib.styles import getSampleStyleSheet
+        from reportlab.lib.pagesizes import A4
+        import io
+        
+        # Vytvoř PDF buffer
+        buffer = io.BytesIO()
+        doc = SimpleDocTemplate(buffer, pagesize=A4)
+        
+        # Vytvoř story
+        story = []
+        styles = getSampleStyleSheet()
+        
+        story.append(Paragraph(f"PŘÍLOHA 2 - {stredisko.nazev_strediska}", styles['Title']))
+        story.append(Paragraph(f"Období: {rok}/{mesic:02d}", styles['Heading2']))
+        story.append(Paragraph("Rozpis položek za odběrná místa", styles['Normal']))
+        story.append(Paragraph("(Jednoduchá PDF verze)", styles['Normal']))
+        
+        # Vygeneruj PDF
+        doc.build(story)
+        pdf_data = buffer.getvalue()
+        buffer.close()
+        
+        # Vráť PDF response
+        response = make_response(pdf_data)
+        response.headers['Content-Type'] = 'application/pdf'
+        response.headers['Content-Disposition'] = f'inline; filename=priloha2_{rok}_{mesic:02d}.pdf'
+        
+        return response
     except Exception as e:
         return f"CHYBA v příloze 2: {str(e)}"
 
