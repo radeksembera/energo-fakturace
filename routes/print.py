@@ -1207,7 +1207,7 @@ def _generate_priloha2_pdf_reportlab(stredisko, obdobi, faktura, dodavatel, vypo
     story.append(Spacer(1, 20))
     
     # Informace o období
-    story.append(Paragraph(f"<b>Středisko:</b> {stredisko.nazev}", styles['Normal']))
+    story.append(Paragraph(f"<b>Středisko:</b> {stredisko.nazev_strediska}", styles['Normal']))
     story.append(Paragraph(f"<b>Období:</b> {obdobi.rok}/{obdobi.mesic:02d}", styles['Normal']))
     story.append(Spacer(1, 15))
     
@@ -1292,7 +1292,7 @@ def priloha2_pdf_nova(stredisko_id, rok, mesic):
             <h1>TEST PŘÍLOHA 2</h1>
             <p>Středisko ID: {stredisko_id}</p>
             <p>Období: {rok}/{mesic:02d}</p>
-            <p>Středisko: {stredisko.nazev}</p>
+            <p>Středisko: {stredisko.nazev_strediska}</p>
             <p>Pokud vidíte tuto stránku, route funguje správně.</p>
             <p>Teď postupně přidáme PDF funkcionalitu.</p>
         </body>
