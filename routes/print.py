@@ -1302,8 +1302,11 @@ def priloha2_pdf_nova(stredisko_id, rok, mesic):
         if not vypocty_om:
             return "Nejsou výpočty pro vybrané období", 404
 
-        # Generování PDF s daty
-        from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle
+        # Načti fakturu pro období
+        faktura = Faktura.query.filter_by(stredisko_id=stredisko_id, obdobi_id=obdobi.id).first()
+        
+        # Generování PDF podle HTML šablony
+        from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle, PageBreak
         from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
         from reportlab.lib.pagesizes import A4
         from reportlab.lib.units import mm
@@ -1312,35 +1315,61 @@ def priloha2_pdf_nova(stredisko_id, rok, mesic):
         
         buffer = io.BytesIO()
         doc = SimpleDocTemplate(buffer, pagesize=A4, 
-                              rightMargin=15*mm, leftMargin=15*mm,
+                              rightMargin=40*mm, leftMargin=40*mm,
                               topMargin=20*mm, bottomMargin=20*mm)
         
         story = []
         styles = getSampleStyleSheet()
         
-        # Nadpis
-        title_style = ParagraphStyle(
-            'CustomTitle',
-            parent=styles['Heading1'],
-            fontSize=16,
-            spaceAfter=20,
-            alignment=1  # Center
+        # Vlastní styly
+        section_style = ParagraphStyle(
+            'SectionTitle',
+            parent=styles['Heading3'],
+            fontSize=11,
+            fontName='Helvetica-Bold',
+            spaceAfter=5,
+            spaceBefore=20
         )
-        story.append(Paragraph("PŘÍLOHA Č. 2", title_style))
-        story.append(Paragraph("Rozpis položek za odběrná místa", styles['Heading2']))
-        story.append(Spacer(1, 20))
         
-        # Informace o období
-        story.append(Paragraph(f"<b>Středisko:</b> {stredisko.nazev_strediska}", styles['Normal']))
-        story.append(Paragraph(f"<b>Období:</b> {rok}/{mesic:02d}", styles['Normal']))
-        story.append(Spacer(1, 15))
+        total_style = ParagraphStyle(
+            'Total',
+            parent=styles['Normal'],
+            fontSize=15,
+            fontName='Helvetica-Bold',
+            alignment=2,  # Right align
+            spaceAfter=20,
+            spaceBefore=10
+        )
         
-        # Tabulka s výpočty
-        table_data = [['OM', 'Spotřeba VT', 'Spotřeba NT', 'Celkem za OM']]
-        
-        for vypocet, om in vypocty_om:
-            # Vypočítej minimum z POZE
+        # Pro každé odběrné místo vytvoř vlastní stránku
+        for i, (vypocet, om) in enumerate(vypocty_om):
+            if i > 0:  # Přidej page break před každé další OM
+                story.append(PageBreak())
+            
+            # Načti odečet pro spotřeby
+            odecet = Odecet.query.filter_by(
+                stredisko_id=stredisko_id,
+                obdobi_id=obdobi.id,
+                oznaceni=om.cislo_om.zfill(7) if om.cislo_om else None
+            ).first()
+            
+            spotreba_vt = float(odecet.spotreba_vt or 0) if odecet else 0
+            spotreba_nt = float(odecet.spotreba_nt or 0) if odecet else 0
+            spotreba_vt_mwh = spotreba_vt / 1000  # Převod na MWh
+            spotreba_nt_mwh = spotreba_nt / 1000
+            celkova_spotreba_mwh = spotreba_vt_mwh + spotreba_nt_mwh
+            
+            # Výpočet jednotkových cen (zjednodušeno)
+            jednotkova_cena_elektriny_vt = float(vypocet.platba_za_elektrinu_vt or 0) / spotreba_vt_mwh if spotreba_vt_mwh > 0 else 0
+            jednotkova_cena_elektriny_nt = float(vypocet.platba_za_elektrinu_nt or 0) / spotreba_nt_mwh if spotreba_nt_mwh > 0 else 0
+            jednotkova_cena_distribuce_vt = float(vypocet.platba_za_distribuci_vt or 0) / spotreba_vt_mwh if spotreba_vt_mwh > 0 else 0
+            jednotkova_cena_distribuce_nt = float(vypocet.platba_za_distribuci_nt or 0) / spotreba_nt_mwh if spotreba_nt_mwh > 0 else 0
+            jednotkova_cena_systemove_sluzby = float(vypocet.systemove_sluzby or 0) / celkova_spotreba_mwh if celkova_spotreba_mwh > 0 else 0
+            jednotkova_cena_dan = float(vypocet.dan_z_elektriny or 0) / celkova_spotreba_mwh if celkova_spotreba_mwh > 0 else 0
+            
+            # POZE minimum
             poze_minimum = min(float(vypocet.poze_dle_jistice or 0), float(vypocet.poze_dle_spotreby or 0))
+            jednotkova_cena_poze = poze_minimum / celkova_spotreba_mwh if celkova_spotreba_mwh > 0 else 0
             
             # Celková suma za OM
             celkem_om = (
@@ -1356,39 +1385,78 @@ def priloha2_pdf_nova(stredisko_id, rok, mesic):
                 float(vypocet.dan_z_elektriny or 0)
             )
             
-            # Načti odečty pro spotřeby
-            odecet = Odecet.query.filter_by(
-                stredisko_id=stredisko_id,
-                obdobi_id=obdobi.id,
-                oznaceni=om.cislo_om.zfill(7) if om.cislo_om else None
-            ).first()
+            # Informace o odběrném místě
+            story.append(Paragraph(f"<b>Odběrné místo:</b> {om.cislo_om} {om.nazev_om or ''}", styles['Normal']))
+            story.append(Paragraph(f"{stredisko.adresa or 'Nádražní 762/32, Praha 5 - Smíchov, PSČ 150 00'}", styles['Normal']))
+            story.append(Paragraph(f"<b>EAN:</b> {om.ean_om or '859182403280020114'}", styles['Normal']))
+            story.append(Spacer(1, 10))
             
-            spotreba_vt = float(odecet.spotreba_vt or 0) if odecet else 0
-            spotreba_nt = float(odecet.spotreba_nt or 0) if odecet else 0
+            # Další informace
+            fakturace_od = faktura.fakturace_od.strftime('%d.%m.%Y') if faktura and faktura.fakturace_od else '01.06.2025'
+            fakturace_do = faktura.fakturace_do.strftime('%d.%m.%Y') if faktura and faktura.fakturace_do else '30.06.2025'
             
-            table_data.append([
-                str(om.cislo_om) if om.cislo_om else 'N/A',
-                f"{spotreba_vt:.3f} MWh",
-                f"{spotreba_nt:.3f} MWh", 
-                f"{celkem_om:.2f} Kč"
-            ])
-        
-        table = Table(table_data)
-        table.setStyle(TableStyle([
-            ('BACKGROUND', (0, 0), (-1, 0), colors.grey),
-            ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
-            ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
-            ('ALIGN', (3, 0), (3, -1), 'RIGHT'),
-            ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
-            ('FONTSIZE', (0, 0), (-1, 0), 10),
-            ('BOTTOMPADDING', (0, 0), (-1, 0), 12),
-            ('BACKGROUND', (0, 1), (-1, -1), colors.beige),
-            ('GRID', (0, 0), (-1, -1), 1, colors.black)
-        ]))
-        story.append(table)
-        
-        story.append(Spacer(1, 20))
-        story.append(Paragraph(f"<b>Celkem odběrných míst:</b> {len(vypocty_om)}", styles['Normal']))
+            story.append(Paragraph(f"<b>Distribuční sazba:</b> {om.distribucni_sazba_om or 'N/A'}", styles['Normal']))
+            story.append(Paragraph(f"<b>Kategorie hlavního jističe:</b> {om.kategorie_jistice_om or 'N/A'}", styles['Normal']))
+            story.append(Paragraph(f"<b>Hodnota hlavního jističe [A]:</b> {om.hodnota_jistice_om or 'N/A'}", styles['Normal']))
+            story.append(Paragraph(f"<b>Období fakturace:</b> {fakturace_od} - {fakturace_do}", styles['Normal']))
+            story.append(Spacer(1, 15))
+            
+            # Dodávka elektřiny
+            story.append(Paragraph("Dodávka elektřiny", section_style))
+            table_data = [
+                ['Stálý plat', '1', '1', f"{float(vypocet.mesicni_plat or 0):.2f}", f"{float(vypocet.mesicni_plat or 0):.2f}"],
+                ['Plat za silovou elektřinu v VT', f"{spotreba_vt_mwh:.4f}", 'MWh', f"{jednotkova_cena_elektriny_vt:.2f}", f"{float(vypocet.platba_za_elektrinu_vt or 0):.2f}"],
+                ['Plat za silovou elektřinu v NT', f"{spotreba_nt_mwh:.4f}", 'MWh', f"{jednotkova_cena_elektriny_nt:.2f}", f"{float(vypocet.platba_za_elektrinu_nt or 0):.2f}"]
+            ]
+            
+            table = Table(table_data, colWidths=[80*mm, 20*mm, 15*mm, 25*mm, 25*mm])
+            table.setStyle(TableStyle([
+                ('ALIGN', (1, 0), (-1, -1), 'RIGHT'),
+                ('FONTSIZE', (0, 0), (-1, -1), 9),
+                ('TOPPADDING', (0, 0), (-1, -1), 3),
+                ('BOTTOMPADDING', (0, 0), (-1, -1), 3)
+            ]))
+            story.append(table)
+            
+            # Distribuční služby
+            story.append(Paragraph("Distribuční služby", section_style))
+            table_data = [
+                ['Měsíční plat', '1', '1', f"{float(vypocet.platba_za_jistic or 0):.2f}", f"{float(vypocet.platba_za_jistic or 0):.2f}"],
+                ['Plat za elektřinu ve VT', f"{spotreba_vt_mwh:.4f}", 'MWh', f"{jednotkova_cena_distribuce_vt:.2f}", f"{float(vypocet.platba_za_distribuci_vt or 0):.2f}"],
+                ['Plat za elektřinu ve NT', f"{spotreba_nt_mwh:.4f}", 'MWh', f"{jednotkova_cena_distribuce_nt:.2f}", f"{float(vypocet.platba_za_distribuci_nt or 0):.2f}"],
+                ['Cena za systémové služby', f"{celkova_spotreba_mwh:.4f}", 'MWh', f"{jednotkova_cena_systemove_sluzby:.2f}", f"{float(vypocet.systemove_sluzby or 0):.2f}"],
+                ['Podpora elekt. z podporovaných zdrojů energie', f"{celkova_spotreba_mwh:.4f}", 'MWh', f"{jednotkova_cena_poze:.2f}", f"{poze_minimum:.2f}"],
+                ['Poplatek za nesíťovou infrastrukturu', '1', '1', f"{float(vypocet.nesitova_infrastruktura or 0):.2f}", f"{float(vypocet.nesitova_infrastruktura or 0):.2f}"]
+            ]
+            
+            table = Table(table_data, colWidths=[80*mm, 20*mm, 15*mm, 25*mm, 25*mm])
+            table.setStyle(TableStyle([
+                ('ALIGN', (1, 0), (-1, -1), 'RIGHT'),
+                ('FONTSIZE', (0, 0), (-1, -1), 9),
+                ('TOPPADDING', (0, 0), (-1, -1), 3),
+                ('BOTTOMPADDING', (0, 0), (-1, -1), 3)
+            ]))
+            story.append(table)
+            
+            # Daň
+            story.append(Paragraph("Daň", section_style))
+            table_data = [
+                ['Daň', f"{celkova_spotreba_mwh:.4f}", 'MWh', f"{jednotkova_cena_dan:.2f}", f"{float(vypocet.dan_z_elektriny or 0):.2f}"]
+            ]
+            
+            table = Table(table_data, colWidths=[80*mm, 20*mm, 15*mm, 25*mm, 25*mm])
+            table.setStyle(TableStyle([
+                ('ALIGN', (1, 0), (-1, -1), 'RIGHT'),
+                ('FONTSIZE', (0, 0), (-1, -1), 9),
+                ('TOPPADDING', (0, 0), (-1, -1), 3),
+                ('BOTTOMPADDING', (0, 0), (-1, -1), 3)
+            ]))
+            story.append(table)
+            
+            # Čára a celkem
+            story.append(Spacer(1, 10))
+            story.append(Paragraph("<hr/>", styles['Normal']))
+            story.append(Paragraph(f"Celkem: {celkem_om:.2f} Kč", total_style))
         
         doc.build(story)
         pdf_data = buffer.getvalue()
