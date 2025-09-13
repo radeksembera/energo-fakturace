@@ -1358,8 +1358,9 @@ def priloha2_pdf_nova(stredisko_id, rok, mesic):
             
             # Načti odečty pro spotřeby
             odecet = Odecet.query.filter_by(
-                odberne_misto_id=om.id, 
-                obdobi_id=obdobi.id
+                stredisko_id=stredisko_id,
+                obdobi_id=obdobi.id,
+                oznaceni=om.cislo_om.zfill(7) if om.cislo_om else None
             ).first()
             
             spotreba_vt = float(odecet.spotreba_vt or 0) if odecet else 0
