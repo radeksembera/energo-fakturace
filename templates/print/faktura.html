@@ -340,7 +340,7 @@
             <div class="col-12">
                 <div class="text-center text-muted">
                     <p class="mb-2">Rozpis jednotlivých položek faktury je uveden na následující straně.</p>
-                    <p class="mb-3"><strong>FAKTURA:</strong> {{ faktura.cislo_faktury if faktura else '270325044' }} &nbsp;&nbsp;&nbsp;&nbsp; Strana: 1 / 22</p>
+                    <p class="mb-3"><strong>FAKTURA:</strong> {{ faktura.cislo_faktury if faktura else '270325044' }}</p>
                     <div class="mt-4">
                         <a href="{{ url_for('fakturace.fakturace', stredisko_id=stredisko.id, obdobi_id=obdobi.id) }}" 
                            class="btn btn-secondary">

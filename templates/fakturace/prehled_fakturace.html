@@ -140,44 +140,6 @@
                 </h5>
             </div>
             <div class="card-body p-4">
-                <!-- HTML dokumenty -->
-                <div class="mb-4">
-                    <h6 class="mb-3">
-                        <i class="bi bi-globe icon-info me-2"></i>
-                        HTML dokumenty
-                    </h6>
-                    <div class="row">
-                        <div class="col-md-6 col-lg-3 mb-3">
-                            <a href="{{ url_for('print.vygenerovat_zalohu_html', stredisko_id=stredisko.id, rok=vybrane_obdobi.rok, mesic=vybrane_obdobi.mesic) }}" 
-                               class="btn btn-outline-info w-100" target="_blank">
-                                <i class="bi bi-cash-coin me-2"></i>
-                                HTML záloha
-                            </a>
-                        </div>
-                        <div class="col-md-6 col-lg-3 mb-3">
-                            <a href="{{ url_for('print.vygenerovat_fakturu_html', stredisko_id=stredisko.id, rok=vybrane_obdobi.rok, mesic=vybrane_obdobi.mesic) }}" 
-                               class="btn btn-outline-info w-100" target="_blank">
-                                <i class="bi bi-receipt me-2"></i>
-                                HTML faktura
-                            </a>
-                        </div>
-                        <div class="col-md-6 col-lg-3 mb-3">
-                            <a href="{{ url_for('print.vygenerovat_prilohu1_html', stredisko_id=stredisko.id, rok=vybrane_obdobi.rok, mesic=vybrane_obdobi.mesic) }}" 
-                               class="btn btn-outline-info w-100" target="_blank">
-                                <i class="bi bi-clipboard-data me-2"></i>
-                                HTML příloha 1
-                            </a>
-                        </div>
-                        <div class="col-md-6 col-lg-3 mb-3">
-                            <a href="{{ url_for('print.vygenerovat_prilohu2_html', stredisko_id=stredisko.id, rok=vybrane_obdobi.rok, mesic=vybrane_obdobi.mesic) }}" 
-                               class="btn btn-outline-info w-100" target="_blank">
-                                <i class="bi bi-bar-chart me-2"></i>
-                                HTML příloha 2
-                            </a>
-                        </div>
-                    </div>
-                </div>
-
                 <!-- PDF dokumenty -->
                 <div class="mb-4">
                     <h6 class="mb-3">
@@ -185,13 +147,6 @@
                         PDF dokumenty
                     </h6>
                     <div class="row">
-                        <div class="col-md-6 col-lg-3 mb-3">
-                            <a href="{{ url_for('print.vygenerovat_zalohu_pdf', stredisko_id=stredisko.id, rok=vybrane_obdobi.rok, mesic=vybrane_obdobi.mesic) }}" 
-                            class="btn btn-outline-danger w-100" target="_blank">
-                                <i class="bi bi-cash-coin me-2"></i>
-                                PDF záloha
-                            </a>
-                        </div>
                         <div class="col-md-6 col-lg-3 mb-3">
                             <a href="{{ url_for('print.vygenerovat_fakturu_pdf', stredisko_id=stredisko.id, rok=vybrane_obdobi.rok, mesic=vybrane_obdobi.mesic) }}" 
                             class="btn btn-outline-danger w-100" target="_blank">
@@ -213,6 +168,13 @@
                                 PDF příloha 2
                             </a>
                         </div>
+                        <div class="col-md-6 col-lg-3 mb-3">
+                            <a href="{{ url_for('print.vygenerovat_zalohu_pdf', stredisko_id=stredisko.id, rok=vybrane_obdobi.rok, mesic=vybrane_obdobi.mesic) }}" 
+                            class="btn btn-outline-danger w-100" target="_blank">
+                                <i class="bi bi-cash-coin me-2"></i>
+                                PDF záloha
+                            </a>
+                        </div>
                         <!-- ✅ NOVÉ TLAČÍTKO PRO KOMPLETNÍ PDF -->
                         <div class="col-12 mt-2">
                             <a href="{{ url_for('print.vygenerovat_kompletni_pdf', stredisko_id=stredisko.id, rok=vybrane_obdobi.rok, mesic=vybrane_obdobi.mesic) }}" 
@@ -224,18 +186,41 @@
                     </div>
                 </div>
 
-                <!-- Hromadné akce -->
-                <div class="text-center pt-4 border-top">
-                    <h6 class="mb-3">Hromadné akce</h6>
-                    <div class="d-flex justify-content-center gap-3 flex-wrap">
-                        <button class="btn btn-success" onclick="generateAllHTML()">
-                            <i class="bi bi-globe me-2"></i>
-                            Generovat všechny HTML
-                        </button>
-                        <button class="btn btn-danger" onclick="generateAllPDF()">
-                            <i class="bi bi-file-earmark-pdf me-2"></i>
-                            Generovat všechny PDF
-                        </button>
+                <!-- HTML dokumenty -->
+                <div class="mb-4">
+                    <h6 class="mb-3">
+                        <i class="bi bi-globe icon-info me-2"></i>
+                        HTML dokumenty
+                    </h6>
+                    <div class="row">
+                        <div class="col-md-6 col-lg-3 mb-3">
+                            <a href="{{ url_for('print.vygenerovat_fakturu_html', stredisko_id=stredisko.id, rok=vybrane_obdobi.rok, mesic=vybrane_obdobi.mesic) }}" 
+                               class="btn btn-outline-info w-100" target="_blank">
+                                <i class="bi bi-receipt me-2"></i>
+                                HTML faktura
+                            </a>
+                        </div>
+                        <div class="col-md-6 col-lg-3 mb-3">
+                            <a href="{{ url_for('print.vygenerovat_prilohu1_html', stredisko_id=stredisko.id, rok=vybrane_obdobi.rok, mesic=vybrane_obdobi.mesic) }}" 
+                               class="btn btn-outline-info w-100" target="_blank">
+                                <i class="bi bi-clipboard-data me-2"></i>
+                                HTML příloha 1
+                            </a>
+                        </div>
+                        <div class="col-md-6 col-lg-3 mb-3">
+                            <a href="{{ url_for('print.vygenerovat_prilohu2_html', stredisko_id=stredisko.id, rok=vybrane_obdobi.rok, mesic=vybrane_obdobi.mesic) }}" 
+                               class="btn btn-outline-info w-100" target="_blank">
+                                <i class="bi bi-bar-chart me-2"></i>
+                                HTML příloha 2
+                            </a>
+                        </div>
+                        <div class="col-md-6 col-lg-3 mb-3">
+                            <a href="{{ url_for('print.vygenerovat_zalohu_html', stredisko_id=stredisko.id, rok=vybrane_obdobi.rok, mesic=vybrane_obdobi.mesic) }}" 
+                               class="btn btn-outline-info w-100" target="_blank">
+                                <i class="bi bi-cash-coin me-2"></i>
+                                HTML záloha
+                            </a>
+                        </div>
                     </div>
                 </div>
             </div>

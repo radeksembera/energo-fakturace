@@ -1311,7 +1311,31 @@ def priloha2_pdf_nova(stredisko_id, rok, mesic):
         from reportlab.lib.pagesizes import A4
         from reportlab.lib.units import mm
         from reportlab.lib import colors
+        from reportlab.pdfbase import pdfmetrics
+        from reportlab.pdfbase.ttfonts import TTFont
         import io
+        import os
+        
+        # Registrace českého fontu
+        font_registered = False
+        try:
+            font_paths = [
+                'C:/Windows/Fonts/arial.ttf',
+                'C:/Windows/Fonts/calibri.ttf',
+                '/System/Library/Fonts/Arial.ttf',
+                '/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf'
+            ]
+            
+            for font_path in font_paths:
+                if os.path.exists(font_path):
+                    try:
+                        pdfmetrics.registerFont(TTFont('CzechFont', font_path))
+                        font_registered = True
+                        break
+                    except:
+                        continue
+        except:
+            pass
         
         buffer = io.BytesIO()
         doc = SimpleDocTemplate(buffer, pagesize=A4, 
@@ -1321,12 +1345,22 @@ def priloha2_pdf_nova(stredisko_id, rok, mesic):
         story = []
         styles = getSampleStyleSheet()
         
+        # Nastav český font pro základní styly
+        base_font = 'CzechFont' if font_registered else 'Helvetica'
+        bold_font = 'CzechFont' if font_registered else 'Helvetica-Bold'
+        
+        if font_registered:
+            styles['Normal'].fontName = base_font
+            styles['Heading1'].fontName = base_font
+            styles['Heading2'].fontName = base_font
+            styles['Heading3'].fontName = base_font
+        
         # Vlastní styly
         section_style = ParagraphStyle(
             'SectionTitle',
             parent=styles['Heading3'],
             fontSize=11,
-            fontName='Helvetica-Bold',
+            fontName=bold_font,
             spaceAfter=5,
             spaceBefore=20
         )
@@ -1335,7 +1369,7 @@ def priloha2_pdf_nova(stredisko_id, rok, mesic):
             'Total',
             parent=styles['Normal'],
             fontSize=15,
-            fontName='Helvetica-Bold',
+            fontName=bold_font,
             alignment=2,  # Right align
             spaceAfter=20,
             spaceBefore=10
@@ -1412,6 +1446,7 @@ def priloha2_pdf_nova(stredisko_id, rok, mesic):
             table = Table(table_data, colWidths=[80*mm, 20*mm, 15*mm, 25*mm, 25*mm])
             table.setStyle(TableStyle([
                 ('ALIGN', (1, 0), (-1, -1), 'RIGHT'),
+                ('FONTNAME', (0, 0), (-1, -1), base_font),
                 ('FONTSIZE', (0, 0), (-1, -1), 9),
                 ('TOPPADDING', (0, 0), (-1, -1), 3),
                 ('BOTTOMPADDING', (0, 0), (-1, -1), 3)
@@ -1432,6 +1467,7 @@ def priloha2_pdf_nova(stredisko_id, rok, mesic):
             table = Table(table_data, colWidths=[80*mm, 20*mm, 15*mm, 25*mm, 25*mm])
             table.setStyle(TableStyle([
                 ('ALIGN', (1, 0), (-1, -1), 'RIGHT'),
+                ('FONTNAME', (0, 0), (-1, -1), base_font),
                 ('FONTSIZE', (0, 0), (-1, -1), 9),
                 ('TOPPADDING', (0, 0), (-1, -1), 3),
                 ('BOTTOMPADDING', (0, 0), (-1, -1), 3)
@@ -1447,6 +1483,7 @@ def priloha2_pdf_nova(stredisko_id, rok, mesic):
             table = Table(table_data, colWidths=[80*mm, 20*mm, 15*mm, 25*mm, 25*mm])
             table.setStyle(TableStyle([
                 ('ALIGN', (1, 0), (-1, -1), 'RIGHT'),
+                ('FONTNAME', (0, 0), (-1, -1), base_font),
                 ('FONTSIZE', (0, 0), (-1, -1), 9),
                 ('TOPPADDING', (0, 0), (-1, -1), 3),
                 ('BOTTOMPADDING', (0, 0), (-1, -1), 3)
