@@ -1919,17 +1919,15 @@ def vygenerovat_kompletni_pdf(stredisko_id, rok, mesic):
             print(f"[ERROR] Chyba při generování přílohy 1: {e}")
             return f"Chyba při generování přílohy 1: {e}", 500
         
-        # 3. ZÍSKEJ PDF PŘÍLOHU 2 (WeasyPrint verze)
+        # 3. ZÍSKEJ PDF PŘÍLOHU 2 (ReportLab verze)
         try:
-            # Použij vnitřní funkci pro získání PDF bytů
-            priloha2_pdf_bytes = _get_priloha2_pdf_bytes(stredisko_id, rok, mesic)
-            
-            # Přidej PDF stránky do mergeru - s extra error handling pro PyPDF2 problémy
-            try:
-                priloha2_pdf = create_pdf_reader(io.BytesIO(priloha2_pdf_bytes))
+            # Použij novou ReportLab funkci místo WeasyPrint
+            priloha2_response = priloha2_pdf_nova(stredisko_id, rok, mesic)
+            if hasattr(priloha2_response, 'data'):
+                priloha2_pdf = create_pdf_reader(io.BytesIO(priloha2_response.data))
                 for page in priloha2_pdf.pages:
                     add_page_to_writer(merger, page)
-                print(f"[OK] Přidána příloha 2 (WeasyPrint) - {len(priloha2_pdf.pages)} stránek")
+                print(f"[OK] Přidána příloha 2 (ReportLab) - {len(priloha2_pdf.pages)} stránek")
             except Exception as pdf_read_error:
                 if 'PDF.__init__()' in str(pdf_read_error) or 'positional argument' in str(pdf_read_error):
                     print(f"[ERROR] PyPDF2 kompatibilita problém při čtení přílohy 2: {pdf_read_error}")
