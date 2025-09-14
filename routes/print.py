@@ -383,19 +383,23 @@ def _generate_faktura_pdf_reportlab(data):
     if data['dodavatel']:
         story.append(Paragraph("<b>Dodavatel:</b>", styles['Heading2']))
         story.append(Paragraph(f"{data['dodavatel'].nazev_sro}", styles['Normal']))
-        if data['dodavatel'].adresa:
-            story.append(Paragraph(f"{data['dodavatel'].adresa}", styles['Normal']))
-        if data['dodavatel'].ico:
-            story.append(Paragraph(f"IČO: {data['dodavatel'].ico}", styles['Normal']))
+        if data['dodavatel'].adresa_radek_1:
+            story.append(Paragraph(f"{data['dodavatel'].adresa_radek_1}", styles['Normal']))
+        if data['dodavatel'].adresa_radek_2:
+            story.append(Paragraph(f"{data['dodavatel'].adresa_radek_2}", styles['Normal']))
+        if data['dodavatel'].ico_sro:
+            story.append(Paragraph(f"IČO: {data['dodavatel'].ico_sro}", styles['Normal']))
         story.append(Spacer(1, 15))
     
     if data['odberatel']:
         story.append(Paragraph("<b>Odběratel:</b>", styles['Heading2']))
         story.append(Paragraph(f"{data['odberatel'].nazev_sro}", styles['Normal']))
-        if data['odberatel'].adresa:
-            story.append(Paragraph(f"{data['odberatel'].adresa}", styles['Normal']))
-        if data['odberatel'].ico:
-            story.append(Paragraph(f"IČO: {data['odberatel'].ico}", styles['Normal']))
+        if data['odberatel'].adresa_radek_1:
+            story.append(Paragraph(f"{data['odberatel'].adresa_radek_1}", styles['Normal']))
+        if data['odberatel'].adresa_radek_2:
+            story.append(Paragraph(f"{data['odberatel'].adresa_radek_2}", styles['Normal']))
+        if data['odberatel'].ico_sro:
+            story.append(Paragraph(f"IČO: {data['odberatel'].ico_sro}", styles['Normal']))
         story.append(Spacer(1, 20))
     
     # Rekapitulace
