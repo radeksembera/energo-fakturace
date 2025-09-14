@@ -327,10 +327,10 @@ def _get_faktura_pdf_bytes(stredisko_id, rok, mesic):
                                      sazba_dph_procenta=data['sazba_dph_procenta'])
         print(f"[DEBUG] HTML šablona vygenerována, délka: {len(html_content)} znaků")
 
-        # Používej přímo ReportLab místo WeasyPrint (kvůli PyPDF2 kompatibilitě)
-        print("[INFO] Generuji PDF pomocí ReportLab (bez WeasyPrint)")
+        # Používej přímo jednoduchý ReportLab přístup (jako u přílohy 2)
+        print("[INFO] Generuji PDF pomocí ReportLab podle HTML šablony")
         try:
-            return _generate_faktura_pdf_reportlab(data)
+            return _generate_simple_faktura_pdf(data)
         except Exception as reportlab_error:
             print(f"[ERROR] ReportLab generování selhalo: {reportlab_error}")
             raise reportlab_error
@@ -341,6 +341,204 @@ def _get_faktura_pdf_bytes(stredisko_id, rok, mesic):
         traceback.print_exc()
         raise e
 
+
+def _generate_simple_faktura_pdf(data):
+    """Jednoduchá funkce pro generování PDF faktury podle HTML šablony"""
+    from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle
+    from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
+    from reportlab.lib.pagesizes import A4
+    from reportlab.lib.units import mm
+    from reportlab.lib import colors
+    from reportlab.pdfbase import pdfmetrics
+    from reportlab.pdfbase.ttfonts import TTFont
+    import io
+    import os
+    
+    # Registrace českého fontu
+    font_registered = False
+    try:
+        font_paths = [
+            'C:/Windows/Fonts/arial.ttf',
+            'C:/Windows/Fonts/calibri.ttf',
+            '/System/Library/Fonts/Arial.ttf',
+            '/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf'
+        ]
+        
+        for font_path in font_paths:
+            if os.path.exists(font_path):
+                try:
+                    pdfmetrics.registerFont(TTFont('CzechFont', font_path))
+                    font_registered = True
+                    break
+                except:
+                    continue
+    except:
+        pass
+    
+    buffer = io.BytesIO()
+    doc = SimpleDocTemplate(buffer, pagesize=A4, 
+                          rightMargin=20*mm, leftMargin=20*mm,
+                          topMargin=20*mm, bottomMargin=20*mm)
+    
+    story = []
+    styles = getSampleStyleSheet()
+    
+    # Nastav český font
+    base_font = 'CzechFont' if font_registered else 'Helvetica'
+    bold_font = 'CzechFont' if font_registered else 'Helvetica-Bold'
+    
+    if font_registered:
+        styles['Normal'].fontName = base_font
+        styles['Heading1'].fontName = bold_font
+        styles['Heading2'].fontName = bold_font
+        styles['Title'].fontName = bold_font
+    
+    # Vlastní styly
+    title_style = ParagraphStyle(
+        'CustomTitle',
+        parent=styles['Title'],
+        fontSize=24,
+        fontName=bold_font,
+        textColor=colors.blue,
+        spaceAfter=5
+    )
+    
+    subtitle_style = ParagraphStyle(
+        'Subtitle',
+        parent=styles['Normal'],
+        fontSize=12,
+        fontName=base_font,
+        textColor=colors.grey,
+        spaceAfter=15
+    )
+    
+    # Hlavička faktury
+    story.append(Paragraph("FAKTURA", title_style))
+    story.append(Paragraph("DAŇOVÝ DOKLAD", subtitle_style))
+    
+    # Dodavatel a odběratel v tabulce vedle sebe
+    header_data = [
+        [
+            # Levý sloupec - Dodavatel
+            [
+                Paragraph(f"<b>{data['dodavatel'].nazev_sro if data['dodavatel'] else 'Your energy, s.r.o.'}</b>", styles['Normal']),
+                Paragraph(f"{data['dodavatel'].adresa_radek_1 if data['dodavatel'] else 'Italská 2584/69'}", styles['Normal']),
+                Paragraph(f"{data['dodavatel'].adresa_radek_2 if data['dodavatel'] else '120 00 Praha 2 - Vinohrady'}", styles['Normal']),
+                Paragraph(f"<b>DIČ:</b> {data['dodavatel'].dic_sro if data['dodavatel'] else 'CZ24833851'}", styles['Normal']),
+                Paragraph(f"<b>IČO:</b> {data['dodavatel'].ico_sro if data['dodavatel'] else '24833851'}", styles['Normal']),
+                Spacer(1, 5),
+                Paragraph(f"<b>Banka:</b> {data['dodavatel'].banka if data['dodavatel'] else 'Raiffeisenbank a.s. CZK'}", styles['Normal']),
+                Paragraph(f"<b>Č.úč.:</b> {data['dodavatel'].cislo_uctu if data['dodavatel'] else '5041011366/5500'}", styles['Normal']),
+                Paragraph(f"<b>IBAN:</b> {data['dodavatel'].iban if data['dodavatel'] else 'CZ1055000000005041011366'}", styles['Normal']),
+                Paragraph(f"<b>SWIFT/BIC:</b> {data['dodavatel'].swift if data['dodavatel'] else 'RZBCCZPP'}", styles['Normal'])
+            ],
+            # Pravý sloupec - Faktura info a odběratel
+            [
+                Paragraph(f"<b>Faktura č. {data['faktura'].cislo_faktury if data['faktura'] else ''}</b>", styles['Heading2']),
+                Paragraph(f"<b>Konst. symbol:</b> {data['faktura'].konstantni_symbol if data['faktura'] else ''}", styles['Normal']),
+                Paragraph(f"<b>VS:</b> {data['faktura'].variabilni_symbol if data['faktura'] else ''}", styles['Normal']),
+                Spacer(1, 10),
+                Paragraph("<b>Odběratel:</b>", styles['Normal']),
+                Paragraph(f"<b>{data['odberatel'].nazev_sro if data['odberatel'] else ''}</b>", styles['Normal']),
+                Paragraph(f"{data['odberatel'].adresa_radek_1 if data['odberatel'] else ''}", styles['Normal']),
+                Paragraph(f"{data['odberatel'].adresa_radek_2 if data['odberatel'] else ''}", styles['Normal']),
+                Paragraph(f"<b>IČO:</b> {data['odberatel'].ico_sro if data['odberatel'] else ''}", styles['Normal']),
+                Paragraph(f"<b>DIČ:</b> {data['odberatel'].dic_sro if data['odberatel'] else ''}", styles['Normal']),
+                Spacer(1, 10),
+                Paragraph(f"<b>Středisko:</b> {data['stredisko'].stredisko} {data['stredisko'].nazev_strediska}", styles['Normal']),
+                Paragraph(f"{data['stredisko'].stredisko_mail if data['stredisko'].stredisko_mail else 'info@yourenergy.cz'}", styles['Normal'])
+            ]
+        ]
+    ]
+    
+    header_table = Table(header_data, colWidths=[90*mm, 90*mm])
+    header_table.setStyle(TableStyle([
+        ('ALIGN', (0, 0), (0, 0), 'LEFT'),
+        ('ALIGN', (1, 0), (1, 0), 'RIGHT'),
+        ('VALIGN', (0, 0), (-1, -1), 'TOP'),
+        ('FONTNAME', (0, 0), (-1, -1), base_font)
+    ]))
+    story.append(header_table)
+    story.append(Spacer(1, 20))
+    
+    # Dodací a platební podmínky
+    story.append(Paragraph("Dodací a platební podmínky", styles['Heading2']))
+    
+    podminkz_data = [
+        ['Datum vystavení:', data['faktura'].datum_vystaveni.strftime('%d.%m.%Y') if data['faktura'] and data['faktura'].datum_vystaveni else ''],
+        ['Datum zdanitelného plnění:', data['faktura'].datum_zdanitelneho_plneni.strftime('%d.%m.%Y') if data['faktura'] and data['faktura'].datum_zdanitelneho_plneni else ''],
+        ['Datum splatnosti:', data['faktura'].datum_splatnosti.strftime('%d.%m.%Y') if data['faktura'] and data['faktura'].datum_splatnosti else ''],
+        ['Forma úhrady:', data['faktura'].forma_uhrady if data['faktura'] else 'Bezhotovostní platba'],
+        ['Způsob dopravy:', 'Přenos po datové síti'],
+        ['Místo plnění:', data['stredisko'].nazev_strediska if data['stredisko'] else '']
+    ]
+    
+    podminky_table = Table(podminkz_data, colWidths=[60*mm, 120*mm])
+    podminky_table.setStyle(TableStyle([
+        ('ALIGN', (0, 0), (0, -1), 'LEFT'),
+        ('ALIGN', (1, 0), (1, -1), 'LEFT'),
+        ('FONTNAME', (0, 0), (0, -1), bold_font),
+        ('FONTNAME', (1, 0), (1, -1), base_font),
+        ('FONTSIZE', (0, 0), (-1, -1), 9),
+        ('TOPPADDING', (0, 0), (-1, -1), 3),
+        ('BOTTOMPADDING', (0, 0), (-1, -1), 3)
+    ]))
+    story.append(podminky_table)
+    story.append(Spacer(1, 20))
+    
+    # Rekapitulace
+    story.append(Paragraph("Rekapitulace", styles['Heading2']))
+    
+    # Tabulka rekapitulace
+    rekap_data = [['Položka', 'Částka bez DPH', 'DPH', 'Částka s DPH']]
+    
+    # Přidej položky z rekapitulace
+    for key, value in data['rekapitulace'].items():
+        if value != 0:  # Pouze nenulové položky
+            nazev = key.replace('_', ' ').title()
+            dph_castka = value * (data['sazba_dph'] - 1)  # DPH část
+            s_dph = value * data['sazba_dph']  # S DPH
+            rekap_data.append([
+                nazev,
+                f"{value:.2f} Kč",
+                f"{dph_castka:.2f} Kč", 
+                f"{s_dph:.2f} Kč"
+            ])
+    
+    # Součtové řádky
+    rekap_data.append(['', '', '', ''])  # Prázdný řádek
+    rekap_data.append(['CELKEM', f"{data['zaklad_bez_dph']:.2f} Kč", f"{data['castka_dph']:.2f} Kč", f"{data['celkem_vc_dph']:.2f} Kč"])
+    
+    if data['zaloha_celkem_vc_dph'] > 0:
+        rekap_data.append(['Uhrazené zálohy', '', '', f"-{data['zaloha_celkem_vc_dph']:.2f} Kč"])
+        rekap_data.append(['K PLATBĚ', '', '', f"{data['k_platbe']:.2f} Kč"])
+    
+    rekap_table = Table(rekap_data, colWidths=[80*mm, 35*mm, 35*mm, 35*mm])
+    rekap_table.setStyle(TableStyle([
+        ('BACKGROUND', (0, 0), (-1, 0), colors.lightgrey),
+        ('FONTNAME', (0, 0), (-1, 0), bold_font),
+        ('FONTNAME', (0, -3), (-1, -1), bold_font),  # Poslední 3 řádky tučně
+        ('ALIGN', (1, 0), (-1, -1), 'RIGHT'),
+        ('ALIGN', (0, 0), (0, -1), 'LEFT'),
+        ('GRID', (0, 0), (-1, -1), 1, colors.black),
+        ('FONTSIZE', (0, 0), (-1, -1), 9),
+        ('TOPPADDING', (0, 0), (-1, -1), 4),
+        ('BOTTOMPADDING', (0, 0), (-1, -1), 4),
+        ('FONTNAME', (0, 0), (-1, -1), base_font)
+    ]))
+    story.append(rekap_table)
+    story.append(Spacer(1, 20))
+    
+    # Poznámka na konci
+    story.append(Paragraph("Rozpis jednotlivých položek faktury je uveden na následující straně.", styles['Normal']))
+    story.append(Paragraph(f"<b>FAKTURA:</b> {data['faktura'].cislo_faktury if data['faktura'] else ''}", styles['Normal']))
+    
+    # Vytvoř PDF
+    doc.build(story)
+    pdf_data = buffer.getvalue()
+    buffer.close()
+    
+    return pdf_data
 
 def _generate_faktura_pdf_reportlab(data):
     """Fallback funkce pro generování PDF faktury pomocí ReportLab"""
