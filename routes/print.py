@@ -327,43 +327,13 @@ def _get_faktura_pdf_bytes(stredisko_id, rok, mesic):
                                      sazba_dph_procenta=data['sazba_dph_procenta'])
         print(f"[DEBUG] HTML šablona vygenerována, délka: {len(html_content)} znaků")
 
-        # Použij WeasyPrint pro konverzi HTML→PDF
+        # Používej přímo ReportLab místo WeasyPrint (kvůli PyPDF2 kompatibilitě)
+        print("[INFO] Generuji PDF pomocí ReportLab (bez WeasyPrint)")
         try:
-            from weasyprint import HTML
-            print("[DEBUG] WeasyPrint úspěšně importován")
-            
-            html_doc = HTML(string=html_content)
-            print("[DEBUG] HTML dokument vytvořen")
-            
-            # Zkusit vygenerovat PDF s workaroundem pro PyPDF2 problémy
-            try:
-                pdf_bytes = html_doc.write_pdf()
-                print(f"[DEBUG] PDF úspěšně vygenerováno, velikost: {len(pdf_bytes)} bytů")
-                return pdf_bytes
-            except Exception as pdf_error:
-                error_msg = str(pdf_error).lower()
-                if ('pdf.__init__()' in error_msg and 'positional argument' in error_msg) or \
-                   ('pypdf' in error_msg) or ('pyPDF2' in error_msg):
-                    print(f"[WARNING] Detekován problém s PDF knihovnou: {pdf_error}")
-                    print("[INFO] WeasyPrint má problém s PDF knihovnou, přepínám na ReportLab fallback...")
-                    # Místo workaroundu rovnou přepneme na ReportLab
-                    raise ImportError("WeasyPrint PDF problem - forcing ReportLab fallback")
-                else:
-                    raise pdf_error
-            
-        except ImportError as import_error:
-            print(f"[ERROR] WeasyPrint import chyba: {import_error}")
-            raise import_error
-        except Exception as weasy_error:
-            print(f"[ERROR] WeasyPrint chyba: {weasy_error}")
-            # Fallback na ReportLab pokud WeasyPrint selže
-            print("[WARNING] WeasyPrint selhává, zkouším fallback s ReportLab...")
-            try:
-                return _generate_faktura_pdf_reportlab(data)
-            except Exception as reportlab_error:
-                print(f"[ERROR] Fallback ReportLab také selhal: {reportlab_error}")
-                # Vrátíme původní WeasyPrint chybu
-                raise weasy_error
+            return _generate_faktura_pdf_reportlab(data)
+        except Exception as reportlab_error:
+            print(f"[ERROR] ReportLab generování selhalo: {reportlab_error}")
+            raise reportlab_error
             
     except Exception as e:
         print(f"[ERROR] Obecná chyba v _get_faktura_pdf_bytes: {e}")
@@ -1296,7 +1266,8 @@ def priloha2_pdf_nova(stredisko_id, rok, mesic):
             .join(OdberneMisto, VypocetOM.odberne_misto_id == OdberneMisto.id)\
             .filter(VypocetOM.obdobi_id == obdobi.id)\
             .filter(OdberneMisto.stredisko_id == stredisko_id)\
-            .order_by(OdberneMisto.cislo_om)\
+            .distinct(OdberneMisto.id)\
+            .order_by(OdberneMisto.id, OdberneMisto.cislo_om)\
             .all()
 
         if not vypocty_om:
@@ -1494,6 +1465,83 @@ def priloha2_pdf_nova(stredisko_id, rok, mesic):
             story.append(Spacer(1, 10))
             story.append(Paragraph("<hr/>", styles['Normal']))
             story.append(Paragraph(f"Celkem: {celkem_om:.2f} Kč", total_style))
+        
+        # Přidej další důležité informace na konec dokumentu (VEN z for cyklu)
+        story.append(PageBreak())
+        
+        # Nadpis pro další informace
+        info_title_style = ParagraphStyle(
+            'InfoTitle',
+            parent=styles['Heading1'],
+            fontSize=18,
+            fontName=bold_font,
+            spaceAfter=20,
+            spaceBefore=20,
+            alignment=1  # Center
+        )
+        
+        info_heading_style = ParagraphStyle(
+            'InfoHeading',
+            parent=styles['Heading2'],
+            fontSize=12,
+            fontName=bold_font,
+            spaceAfter=10,
+            spaceBefore=15
+        )
+        
+        story.append(Paragraph("Další důležité informace", info_title_style))
+        
+        # 1. Podíl zdrojů energie
+        story.append(Paragraph("Podíl jednotlivých zdrojů nebo původů energie na celkové směsi paliv dodavatele v roce 2024", info_heading_style))
+        
+        energy_table_data = [
+            ['Původ elektřiny', '% podíl'],
+            ['Uhelné elektrárny (uhlí)', '44,69'],
+            ['Jaderné elektrárny (jádro)', '42,82'],
+            ['Podíl elektřiny vyrobené ze zemního plynu', '5,79'],
+            ['Obnovitelné zdroje energie (OZE)', '6,4'],
+            ['Druhotné zdroje', '0,16'],
+            ['Ostatní zdroje', '0,14'],
+            ['celkem', '100']
+        ]
+        
+        energy_table = Table(energy_table_data, colWidths=[120*mm, 30*mm])
+        energy_table.setStyle(TableStyle([
+            ('BACKGROUND', (0, 0), (-1, 0), colors.lightgrey),
+            ('TEXTCOLOR', (0, 0), (-1, 0), colors.black),
+            ('ALIGN', (0, 0), (-1, -1), 'LEFT'),
+            ('ALIGN', (1, 0), (1, -1), 'RIGHT'),
+            ('FONTNAME', (0, 0), (-1, 0), bold_font),
+            ('FONTNAME', (0, 0), (-1, -1), base_font),
+            ('FONTSIZE', (0, 0), (-1, -1), 9),
+            ('TOPPADDING', (0, 0), (-1, -1), 6),
+            ('BOTTOMPADDING', (0, 0), (-1, -1), 6),
+            ('GRID', (0, 0), (-1, -1), 1, colors.black),
+            ('BACKGROUND', (0, -1), (-1, -1), colors.lightgrey),
+            ('FONTNAME', (0, -1), (-1, -1), bold_font)
+        ]))
+        story.append(energy_table)
+        story.append(Spacer(1, 15))
+        
+        # 2. Informace o dopadech na životní prostředí
+        story.append(Paragraph("Informace o dopadech výroby elektřiny na životní prostředí", info_heading_style))
+        story.append(Paragraph("Informace o dopadech výroby elektřiny na životní prostředí jsou dostupné na internetových stránkách Ministerstva životního prostředí www.mzp.cz.", styles['Normal']))
+        story.append(Spacer(1, 10))
+        
+        # 3. Reklamace
+        story.append(Paragraph("Reklamace, řešení sporů", info_heading_style))
+        story.append(Paragraph("Zákazník může k vyúčtování dodávek elektřiny a souvisejících služeb uplatnit reklamaci na adrese fakturace@venergie.cz nebo na adrese Východočeská energie s.r.o., V Celnici 1040/5, 110 00 Praha 1, ve lhůtě 30 dnů ode dne doručení. V případě vzniku sporu mezi zákazníkem a dodavatelem může zákazník podat návrh na rozhodnutí tohoto sporu podle § 17 odst. 7 energetického zákona, přitom musí postupovat podle správního řádu.", styles['Normal']))
+        story.append(Spacer(1, 10))
+        
+        # 4. Změna dodavatele
+        story.append(Paragraph("Změna dodavatele", info_heading_style))
+        story.append(Paragraph("Zákazníci a spotřebitelé mají právo zvolit si a bezplatně změnit svého dodavatele. Každý zákazník se podpisem smlouvy zavázal dodržet její podmínky. Pokud je smlouva uzavřena na dobu určitou, je zákazník povinen tento závazek dodržet. Při ukončení smluvního vztahu je tedy nutné postupovat dle smlouvy, dodatku a všeobecných obchodních podmínek, které jsou nedílnou součástí každé smlouvy. Před změnou dodavatele je vhodné si zjistit, zda je změna dodavatele výhodná, a to nejen srovnáním ceny, ale i Obchodních podmínek dodavatele. Pro nezávislé porovnání cenových nabídek dodavatelů můžete využít například kalkulačku Energetického regulačního úřadu, kterou naleznete na adrese www.eru.cz.", styles['Normal']))
+        story.append(Spacer(1, 10))
+        
+        # 5. Kontaktní údaje
+        story.append(Paragraph("Důležité kontaktní údaje", info_heading_style))
+        story.append(Paragraph("<b>Energetický regulační úřad</b>", styles['Normal']))
+        story.append(Paragraph("adresa sídla: Masarykovo náměstí 5, 586 01 Jihlava<br/>telefonní číslo: 564 578 666 – ústředna<br/>adresa webových stránek: www.eru.cz<br/>adresa elektronické podatelny: podatelna@eru.cz", styles['Normal']))
         
         doc.build(story)
         pdf_data = buffer.getvalue()
