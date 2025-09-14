@@ -382,7 +382,7 @@ def _generate_faktura_pdf_reportlab(data):
     # Informace o dodavateli a odběrateli
     if data['dodavatel']:
         story.append(Paragraph("<b>Dodavatel:</b>", styles['Heading2']))
-        story.append(Paragraph(f"{data['dodavatel'].nazev}", styles['Normal']))
+        story.append(Paragraph(f"{data['dodavatel'].nazev_sro}", styles['Normal']))
         if data['dodavatel'].adresa:
             story.append(Paragraph(f"{data['dodavatel'].adresa}", styles['Normal']))
         if data['dodavatel'].ico:
@@ -391,7 +391,7 @@ def _generate_faktura_pdf_reportlab(data):
     
     if data['odberatel']:
         story.append(Paragraph("<b>Odběratel:</b>", styles['Heading2']))
-        story.append(Paragraph(f"{data['odberatel'].nazev}", styles['Normal']))
+        story.append(Paragraph(f"{data['odberatel'].nazev_sro}", styles['Normal']))
         if data['odberatel'].adresa:
             story.append(Paragraph(f"{data['odberatel'].adresa}", styles['Normal']))
         if data['odberatel'].ico:
@@ -1638,7 +1638,7 @@ def vygenerovat_prilohu2_pdf_backup(stredisko_id, rok, mesic):
             story.append(Spacer(1, 10))
             
             # Company info
-            company_info = f"Dodavatel: {data['dodavatel'].nazev_sro if data['dodavatel'] else 'Your energy, s.r.o.'}, " \
+            company_info = f"Dodavatel: {data['dodavatel'].nazev_sro_sro if data['dodavatel'] else 'Your energy, s.r.o.'}, " \
                           f"{data['dodavatel'].adresa_radek_1 if data['dodavatel'] else 'Italská 2584/69'}, " \
                           f"{data['dodavatel'].adresa_radek_2 if data['dodavatel'] else '120 00 Praha 2 - Vinohrady'}, " \
                           f"DIČ {data['dodavatel'].dic_sro if data['dodavatel'] else 'CZ24833851'} " \
@@ -1830,7 +1830,7 @@ def vygenerovat_prilohu2_pdf_backup(stredisko_id, rok, mesic):
             
             # [OK] DYNAMICKÉ ÚDAJE Z DATABÁZE
             vystavovatel_email = vystavovatel.email_vystavitele if vystavovatel and vystavovatel.email_vystavitele else 'email@vystavovatel.cz'
-            dodavatel_nazev = data['dodavatel'].nazev_sro if data['dodavatel'] and data['dodavatel'].nazev_sro else 'Your energy, s.r.o.'
+            dodavatel_nazev = data['dodavatel'].nazev_sro_sro if data['dodavatel'] and data['dodavatel'].nazev_sro_sro else 'Your energy, s.r.o.'
             dodavatel_adresa1 = data['dodavatel'].adresa_radek_1 if data['dodavatel'] and data['dodavatel'].adresa_radek_1 else 'Italská 2584/69'
             dodavatel_adresa2 = data['dodavatel'].adresa_radek_2 if data['dodavatel'] and data['dodavatel'].adresa_radek_2 else '120 00 Praha 2 - Vinohrady'
             
