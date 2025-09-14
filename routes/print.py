@@ -1928,18 +1928,9 @@ def vygenerovat_kompletni_pdf(stredisko_id, rok, mesic):
                 for page in priloha2_pdf.pages:
                     add_page_to_writer(merger, page)
                 print(f"[OK] Přidána příloha 2 (ReportLab) - {len(priloha2_pdf.pages)} stránek")
-            except Exception as pdf_read_error:
-                if 'PDF.__init__()' in str(pdf_read_error) or 'positional argument' in str(pdf_read_error):
-                    print(f"[ERROR] PyPDF2 kompatibilita problém při čtení přílohy 2: {pdf_read_error}")
-                    print("[WARNING] Příloha 2 přeskočena kvôli PDF library problémom")
-                else:
-                    raise pdf_read_error
-            
-        except ImportError:
-            print(f"[WARNING] WeasyPrint není dostupný - příloha 2 přeskočena")
         except Exception as e:
             print(f"[ERROR] Chyba při generování přílohy 2: {e}")
-            # Pokračujeme bez přílohy 2
+            return f"Chyba při generování přílohy 2: {e}", 500
         
         # 4. VYTVOŘ FINÁLNÍ PDF
         output_buffer = io.BytesIO()
