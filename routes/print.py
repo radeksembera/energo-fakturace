@@ -393,65 +393,113 @@ def _generate_simple_faktura_pdf(data):
         styles['Heading2'].fontName = bold_font
         styles['Title'].fontName = bold_font
     
-    # Vlastní styly
+    # Vlastní styly podle HTML
     title_style = ParagraphStyle(
-        'CustomTitle',
+        'InvoiceTitle',
         parent=styles['Title'],
-        fontSize=24,
+        fontSize=36,  # 2.5rem
         fontName=bold_font,
-        textColor=colors.blue,
-        spaceAfter=5
+        textColor=colors.HexColor('#007bff'),  # Bootstrap primary blue
+        spaceAfter=5,
+        alignment=0  # Left align
     )
     
     subtitle_style = ParagraphStyle(
         'Subtitle',
         parent=styles['Normal'],
-        fontSize=12,
+        fontSize=14,  # 1.2rem
         fontName=base_font,
-        textColor=colors.grey,
-        spaceAfter=15
+        textColor=colors.HexColor('#6c757d'),  # Bootstrap muted
+        spaceAfter=20
     )
     
-    # Hlavička faktury
+    section_heading_style = ParagraphStyle(
+        'SectionHeading',
+        parent=styles['Heading2'],
+        fontSize=14,
+        fontName=bold_font,
+        textColor=colors.HexColor('#007bff'),
+        spaceAfter=12,
+        spaceBefore=20
+    )
+    
+    # Hlavička faktury s modrým ohraničením
     story.append(Paragraph("FAKTURA", title_style))
     story.append(Paragraph("DAŇOVÝ DOKLAD", subtitle_style))
     
-    # Dodavatel a odběratel v tabulce vedle sebe
+    # Simulace modrého ohraničení pomocí tabulky
+    divider_table = Table([['']],colWidths=[170*mm])
+    divider_table.setStyle(TableStyle([
+        ('LINEBELOW', (0, 0), (-1, -1), 3, colors.HexColor('#007bff')),
+        ('TOPPADDING', (0, 0), (-1, -1), 0),
+        ('BOTTOMPADDING', (0, 0), (-1, -1), 0)
+    ]))
+    story.append(divider_table)
+    story.append(Spacer(1, 20))
+    
+    # Dodavatel a pravá strana s detaily faktury
     header_data = [
         [
-            # Levý sloupec - Dodavatel
+            # Levý sloupec - Dodavatel (obyčejný text)
             [
                 Paragraph(f"<b>{data['dodavatel'].nazev_sro if data['dodavatel'] else 'Your energy, s.r.o.'}</b>", styles['Normal']),
                 Paragraph(f"{data['dodavatel'].adresa_radek_1 if data['dodavatel'] else 'Italská 2584/69'}", styles['Normal']),
                 Paragraph(f"{data['dodavatel'].adresa_radek_2 if data['dodavatel'] else '120 00 Praha 2 - Vinohrady'}", styles['Normal']),
                 Paragraph(f"<b>DIČ:</b> {data['dodavatel'].dic_sro if data['dodavatel'] else 'CZ24833851'}", styles['Normal']),
                 Paragraph(f"<b>IČO:</b> {data['dodavatel'].ico_sro if data['dodavatel'] else '24833851'}", styles['Normal']),
-                Spacer(1, 5),
-                Paragraph(f"<b>Banka:</b> {data['dodavatel'].banka if data['dodavatel'] else 'Raiffeisenbank a.s. CZK'}", styles['Normal']),
+                Spacer(1, 8),
+                Paragraph(f"<b>Banka:</b> {data['dodavatel'].banka if data['dodavatel'] else 'Bankovní účet Raiffeisenbank a.s. CZK'}", styles['Normal']),
                 Paragraph(f"<b>Č.úč.:</b> {data['dodavatel'].cislo_uctu if data['dodavatel'] else '5041011366/5500'}", styles['Normal']),
                 Paragraph(f"<b>IBAN:</b> {data['dodavatel'].iban if data['dodavatel'] else 'CZ1055000000005041011366'}", styles['Normal']),
                 Paragraph(f"<b>SWIFT/BIC:</b> {data['dodavatel'].swift if data['dodavatel'] else 'RZBCCZPP'}", styles['Normal'])
             ],
-            # Pravý sloupec - Faktura info a odběratel
+            # Pravý sloupec - šedý box s detaily faktury + bílý box s odběratelem
             [
-                Paragraph(f"<b>Faktura č. {data['faktura'].cislo_faktury if data['faktura'] else ''}</b>", styles['Heading2']),
-                Paragraph(f"<b>Konst. symbol:</b> {data['faktura'].konstantni_symbol if data['faktura'] else ''}", styles['Normal']),
-                Paragraph(f"<b>VS:</b> {data['faktura'].variabilni_symbol if data['faktura'] else ''}", styles['Normal']),
-                Spacer(1, 10),
-                Paragraph("<b>Odběratel:</b>", styles['Normal']),
-                Paragraph(f"<b>{data['odberatel'].nazev_sro if data['odberatel'] else ''}</b>", styles['Normal']),
-                Paragraph(f"{data['odberatel'].adresa_radek_1 if data['odberatel'] else ''}", styles['Normal']),
-                Paragraph(f"{data['odberatel'].adresa_radek_2 if data['odberatel'] else ''}", styles['Normal']),
-                Paragraph(f"<b>IČO:</b> {data['odberatel'].ico_sro if data['odberatel'] else ''}", styles['Normal']),
-                Paragraph(f"<b>DIČ:</b> {data['odberatel'].dic_sro if data['odberatel'] else ''}", styles['Normal']),
-                Spacer(1, 10),
+                # Šedý box s detaily faktury (simulace pomocí tabulky)
+                Table([
+                    [Paragraph(f"<b>Faktura č. {data['faktura'].cislo_faktury if data['faktura'] else ''}</b>", styles['Heading3'])],
+                    [Paragraph(f"<b>Konst. symbol:</b> {data['faktura'].konstantni_symbol if data['faktura'] else ''}", styles['Normal'])],
+                    [Paragraph(f"<b>VS:</b> {data['faktura'].variabilni_symbol if data['faktura'] else ''}", styles['Normal'])]
+                ], colWidths=[85*mm], style=TableStyle([
+                    ('BACKGROUND', (0, 0), (-1, -1), colors.HexColor('#f8f9fa')),
+                    ('LEFTPADDING', (0, 0), (-1, -1), 12),
+                    ('RIGHTPADDING', (0, 0), (-1, -1), 12),
+                    ('TOPPADDING', (0, 0), (-1, -1), 12),
+                    ('BOTTOMPADDING', (0, 0), (-1, -1), 12),
+                    ('LINEABOVE', (0, 0), (-1, 0), 4, colors.HexColor('#007bff')),  # Modrý levý okraj
+                    ('FONTNAME', (0, 0), (-1, -1), base_font)
+                ])),
+                
+                Spacer(1, 15),
+                
+                # Bílý box s odběratelem
+                Table([
+                    [Paragraph('<font color="#007bff"><b>Odběratel:</b></font>', styles['Normal'])],
+                    [Paragraph(f"<b>{data['odberatel'].nazev_sro if data['odberatel'] else ''}</b>", styles['Normal'])],
+                    [Paragraph(f"{data['odberatel'].adresa_radek_1 if data['odberatel'] else ''}", styles['Normal'])],
+                    [Paragraph(f"{data['odberatel'].adresa_radek_2 if data['odberatel'] else ''}", styles['Normal'])],
+                    [Paragraph(f"<b>IČO:</b> {data['odberatel'].ico_sro if data['odberatel'] else ''}", styles['Normal'])],
+                    [Paragraph(f"<b>DIČ:</b> {data['odberatel'].dic_sro if data['odberatel'] else ''}", styles['Normal'])]
+                ], colWidths=[85*mm], style=TableStyle([
+                    ('BOX', (0, 0), (-1, -1), 1, colors.HexColor('#dee2e6')),
+                    ('BACKGROUND', (0, 0), (-1, -1), colors.white),
+                    ('LEFTPADDING', (0, 0), (-1, -1), 15),
+                    ('RIGHTPADDING', (0, 0), (-1, -1), 15),
+                    ('TOPPADDING', (0, 0), (-1, -1), 15),
+                    ('BOTTOMPADDING', (0, 0), (-1, -1), 15),
+                    ('FONTNAME', (0, 0), (-1, -1), base_font)
+                ])),
+                
+                Spacer(1, 12),
+                
+                # Středisko info
                 Paragraph(f"<b>Středisko:</b> {data['stredisko'].stredisko} {data['stredisko'].nazev_strediska}", styles['Normal']),
                 Paragraph(f"{data['stredisko'].stredisko_mail if data['stredisko'].stredisko_mail else 'info@yourenergy.cz'}", styles['Normal'])
             ]
         ]
     ]
     
-    header_table = Table(header_data, colWidths=[90*mm, 90*mm])
+    header_table = Table(header_data, colWidths=[85*mm, 95*mm])
     header_table.setStyle(TableStyle([
         ('ALIGN', (0, 0), (0, 0), 'LEFT'),
         ('ALIGN', (1, 0), (1, 0), 'RIGHT'),
@@ -459,10 +507,10 @@ def _generate_simple_faktura_pdf(data):
         ('FONTNAME', (0, 0), (-1, -1), base_font)
     ]))
     story.append(header_table)
-    story.append(Spacer(1, 20))
+    story.append(Spacer(1, 25))
     
-    # Dodací a platební podmínky
-    story.append(Paragraph("Dodací a platební podmínky", styles['Heading2']))
+    # Dodací a platební podmínky s modrým nadpisem
+    story.append(Paragraph("Dodací a platební podmínky", section_heading_style))
     
     podminkz_data = [
         ['Datum vystavení:', data['faktura'].datum_vystaveni.strftime('%d.%m.%Y') if data['faktura'] and data['faktura'].datum_vystaveni else ''],
@@ -479,52 +527,79 @@ def _generate_simple_faktura_pdf(data):
         ('ALIGN', (1, 0), (1, -1), 'LEFT'),
         ('FONTNAME', (0, 0), (0, -1), bold_font),
         ('FONTNAME', (1, 0), (1, -1), base_font),
-        ('FONTSIZE', (0, 0), (-1, -1), 9),
-        ('TOPPADDING', (0, 0), (-1, -1), 3),
-        ('BOTTOMPADDING', (0, 0), (-1, -1), 3)
+        ('FONTSIZE', (0, 0), (-1, -1), 10),
+        ('TOPPADDING', (0, 0), (-1, -1), 4),
+        ('BOTTOMPADDING', (0, 0), (-1, -1), 4),
+        ('LEFTPADDING', (0, 0), (-1, -1), 0),
+        ('RIGHTPADDING', (0, 0), (-1, -1), 0)
     ]))
     story.append(podminky_table)
-    story.append(Spacer(1, 20))
+    story.append(Spacer(1, 25))
     
-    # Rekapitulace
-    story.append(Paragraph("Rekapitulace", styles['Heading2']))
+    # Rekapitulace s modrým nadpisem  
+    story.append(Paragraph("Rekapitulace", section_heading_style))
     
-    # Tabulka rekapitulace
-    rekap_data = [['Položka', 'Částka bez DPH', 'DPH', 'Částka s DPH']]
+    # Tabulka rekapitulace s modrými hlavičkami podle HTML
+    rekap_data = [['Rekapitulace', 'Základ daně', 'Sazba DPH', 'Částka DPH', 'Celkem vč. DPH']]
     
     # Přidej položky z rekapitulace
     for key, value in data['rekapitulace'].items():
         if value != 0:  # Pouze nenulové položky
-            nazev = key.replace('_', ' ').title()
-            dph_castka = value * (data['sazba_dph'] - 1)  # DPH část
-            s_dph = value * data['sazba_dph']  # S DPH
+            # Převeď klíče na čitelné názvy podle HTML
+            nazvy_map = {
+                'platba_za_jistic': 'Měsíční plat (za jistič)',
+                'distribuce_vt': 'Plat za elektřinu ve VT', 
+                'distribuce_nt': 'Plat za elektřinu ve NT',
+                'systemove_sluzby': 'Cena za systémové služby',
+                'poze': 'Podpora elektřiny z podporovaných zdrojů energie',
+                'nesitova_infrastruktura': 'Poplatek za nesíťovou infrastrukturu',
+                'dan_z_elektriny': 'Daň z elektřiny',
+                'platba_za_elektrinu_vt': 'Plat za elektřinu ve VT',
+                'platba_za_elektrinu_nt': 'Plat za elektřinu ve NT'
+            }
+            
+            nazev = nazvy_map.get(key, key.replace('_', ' ').title())
+            sazba_dph_procenta = int(data['sazba_dph'] * 100)
+            dph_castka = value * data['sazba_dph']  # DPH část
+            s_dph = value * (1 + data['sazba_dph'])  # S DPH
+            
             rekap_data.append([
                 nazev,
-                f"{value:.2f} Kč",
-                f"{dph_castka:.2f} Kč", 
-                f"{s_dph:.2f} Kč"
+                f"{value:.2f}",
+                f"{sazba_dph_procenta}",
+                f"{dph_castka:.2f}", 
+                f"{s_dph:.2f}"
             ])
     
     # Součtové řádky
-    rekap_data.append(['', '', '', ''])  # Prázdný řádek
-    rekap_data.append(['CELKEM', f"{data['zaklad_bez_dph']:.2f} Kč", f"{data['castka_dph']:.2f} Kč", f"{data['celkem_vc_dph']:.2f} Kč"])
+    rekap_data.append(['', '', '', '', ''])  # Prázdný řádek  
+    rekap_data.append(['CELKEM', f"{data['zaklad_bez_dph']:.2f}", '', f"{data['castka_dph']:.2f}", f"{data['celkem_vc_dph']:.2f}"])
     
     if data['zaloha_celkem_vc_dph'] > 0:
-        rekap_data.append(['Uhrazené zálohy', '', '', f"-{data['zaloha_celkem_vc_dph']:.2f} Kč"])
-        rekap_data.append(['K PLATBĚ', '', '', f"{data['k_platbe']:.2f} Kč"])
+        rekap_data.append(['Uhrazené zálohy', '', '', '', f"-{data['zaloha_celkem_vc_dph']:.2f}"])
+        rekap_data.append(['K PLATBĚ', '', '', '', f"{data['k_platbe']:.2f}"])
     
-    rekap_table = Table(rekap_data, colWidths=[80*mm, 35*mm, 35*mm, 35*mm])
+    rekap_table = Table(rekap_data, colWidths=[80*mm, 25*mm, 20*mm, 25*mm, 30*mm])
     rekap_table.setStyle(TableStyle([
-        ('BACKGROUND', (0, 0), (-1, 0), colors.lightgrey),
+        # Modrá hlavička podle HTML (#007bff)
+        ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#007bff')),
+        ('TEXTCOLOR', (0, 0), (-1, 0), colors.white),
         ('FONTNAME', (0, 0), (-1, 0), bold_font),
+        
+        # Obsah tabulky
+        ('FONTNAME', (0, 1), (-1, -1), base_font),
         ('FONTNAME', (0, -3), (-1, -1), bold_font),  # Poslední 3 řádky tučně
         ('ALIGN', (1, 0), (-1, -1), 'RIGHT'),
         ('ALIGN', (0, 0), (0, -1), 'LEFT'),
         ('GRID', (0, 0), (-1, -1), 1, colors.black),
         ('FONTSIZE', (0, 0), (-1, -1), 9),
-        ('TOPPADDING', (0, 0), (-1, -1), 4),
-        ('BOTTOMPADDING', (0, 0), (-1, -1), 4),
-        ('FONTNAME', (0, 0), (-1, -1), base_font)
+        ('TOPPADDING', (0, 0), (-1, -1), 6),
+        ('BOTTOMPADDING', (0, 0), (-1, -1), 6),
+        
+        # Zvýrazni finální řádky
+        ('BACKGROUND', (0, -2), (-1, -1), colors.HexColor('#007bff')),
+        ('TEXTCOLOR', (0, -2), (-1, -1), colors.white),
+        ('FONTSIZE', (0, -2), (-1, -1), 11)
     ]))
     story.append(rekap_table)
     story.append(Spacer(1, 20))
