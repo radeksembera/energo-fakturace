@@ -291,7 +291,7 @@ def vygenerovat_fakturu_html(stredisko_id, rok, mesic):
     if error:
         return error
     
-    return render_template("print/faktura.html", **data)
+    return render_template("print/weasyprint_faktura.html", **data)
 
 # ============== PDF FAKTURA ==============
 
@@ -308,7 +308,7 @@ def _get_faktura_pdf_bytes(stredisko_id, rok, mesic):
         print("[DEBUG] Data faktury úspěšně načtena")
         
         # Vygeneruj HTML obsah pomocí šablony
-        html_content = render_template("print/faktura.html", 
+        html_content = render_template("print/weasyprint_faktura.html", 
                                      stredisko=data['stredisko'],
                                      obdobi=data['obdobi'],
                                      faktura=data['faktura'],
@@ -327,12 +327,21 @@ def _get_faktura_pdf_bytes(stredisko_id, rok, mesic):
                                      sazba_dph_procenta=data['sazba_dph_procenta'])
         print(f"[DEBUG] HTML šablona vygenerována, délka: {len(html_content)} znaků")
 
-        # Používej přímo jednoduchý ReportLab přístup (jako u přílohy 2)
-        print("[INFO] Generuji PDF pomocí ReportLab podle HTML šablony")
+        # Používej přímou konverzi HTML -> PDF pomocí pdfkit nebo podobně
+        print("[INFO] Generuji PDF přímo z HTML šablony")
         try:
-            return _generate_simple_faktura_pdf(data)
+            # Zkus použít ReportLab s HTML obsahem jako základ
+            # Použij WeasyPrint pro konverzi HTML na PDF
+            from weasyprint import HTML, CSS
+            
+            # Vytvoř PDF z HTML pomocí WeasyPrint
+            html_doc = HTML(string=html_content)
+            pdf_bytes = html_doc.write_pdf()
+            
+            print(f"[SUCCESS] PDF faktury vygenerováno pomocí WeasyPrint, velikost: {len(pdf_bytes)} bytů")
+            return pdf_bytes
         except Exception as reportlab_error:
-            print(f"[ERROR] ReportLab generování selhalo: {reportlab_error}")
+            print(f"[ERROR] HTML -> PDF konverze selhala: {reportlab_error}")
             raise reportlab_error
             
     except Exception as e:
@@ -340,6 +349,7 @@ def _get_faktura_pdf_bytes(stredisko_id, rok, mesic):
         import traceback
         traceback.print_exc()
         raise e
+
 
 
 def _generate_simple_faktura_pdf(data):

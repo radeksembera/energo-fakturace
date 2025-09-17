@@ -1,5 +1,5 @@
 from flask import Blueprint, render_template, request, redirect, url_for, session, flash
-from models import db, User, Stredisko, OdberneMisto, VypocetOM, Odečet, ObdobiFakturace
+from models import db, User, Stredisko, OdberneMisto, VypocetOM, Odečet, ObdobiFakturace, CenaDistribuce, CenaDodavatel, ImportOdečtu, ZalohovaFaktura, Faktura
 from routes.auth import login_required
 from utils.helpers import safe_excel_string
 import pandas as pd
@@ -355,3 +355,84 @@ def smazat_odberne_misto(stredisko_id):
     db.session.commit()
     
     return {"status": "success", "message": f"Odběrné místo {cislo_om} bylo smazáno"}
+
+@strediska_bp.route("/<int:stredisko_id>/smazat", methods=["POST"])
+@login_required
+def smazat_stredisko(stredisko_id):
+    """Smaže středisko a všechna přináležející odběrná místa"""
+    has_access, error_response = check_stredisko_access(stredisko_id, 'write')
+    if not has_access:
+        flash("❌ Nemáte oprávnění smazat toto středisko.")
+        return redirect(url_for("strediska.spravovat_stredisko", stredisko_id=stredisko_id))
+
+    stredisko = Stredisko.query.get_or_404(stredisko_id)
+    
+    try:
+        # Zjisti počet odběrných míst před smazáním
+        odberna_mista = OdberneMisto.query.filter_by(stredisko_id=stredisko_id).all()
+        pocet_om = len(odberna_mista)
+        
+        # Smaž všechna odběrná místa tohoto střediska
+        for om in odberna_mista:
+            # Smaž také všechny odečty pro toto odběrné místo
+            odecty = Odečet.query.filter_by(odberne_misto_id=om.id).all()
+            for odecet in odecty:
+                db.session.delete(odecet)
+            
+            # Smaž všechny výpočty pro toto odběrné místo
+            vypocty = VypocetOM.query.filter_by(odberne_misto_id=om.id).all()
+            for vypocet in vypocty:
+                db.session.delete(vypocet)
+            
+            # Smaž odběrné místo
+            db.session.delete(om)
+        
+        # Smaž všechna období fakturace pro toto středisko (nejdříve závislé záznamy)
+        obdobi = ObdobiFakturace.query.filter_by(stredisko_id=stredisko_id).all()
+        for okres in obdobi:
+            # Smaž všechny záznamy odkazující na toto období fakturace
+            
+            # Faktury pro toto období
+            faktury = Faktura.query.filter_by(obdobi_id=okres.id).all()
+            for faktura in faktury:
+                db.session.delete(faktura)
+                
+            # Zálohové faktury pro toto období
+            zalohove_faktury = ZalohovaFaktura.query.filter_by(obdobi_id=okres.id).all()
+            for zalohova_faktura in zalohove_faktury:
+                db.session.delete(zalohova_faktura)
+                
+            # Import odečtů pro toto období
+            importy_odectu = ImportOdečtu.query.filter_by(obdobi_id=okres.id).all()
+            for import_odectu in importy_odectu:
+                db.session.delete(import_odectu)
+            
+            # Ceny dodavatele pro toto období
+            ceny_dodavatel = CenaDodavatel.query.filter_by(obdobi_id=okres.id).all()
+            for cena in ceny_dodavatel:
+                db.session.delete(cena)
+                
+            # Poznámka: CenaDistribuce nemá obdobi_id, ale stredisko_id - smaže se později
+            
+            # Teď už můžeme smazat období fakturace
+            db.session.delete(okres)
+        
+        # Smaž ceny distribuce pro toto středisko
+        ceny_distribuce = CenaDistribuce.query.filter_by(stredisko_id=stredisko_id).all()
+        for cena in ceny_distribuce:
+            db.session.delete(cena)
+        
+        # Smaž středisko
+        nazev_strediska = stredisko.nazev_strediska
+        db.session.delete(stredisko)
+        
+        # Commit všech změn
+        db.session.commit()
+        
+        flash(f"✅ Středisko '{nazev_strediska}' a {pocet_om} odběrných míst bylo úspěšně smazáno.")
+        return redirect(url_for("strediska.strediska"))
+        
+    except Exception as e:
+        db.session.rollback()
+        flash(f"❌ Chyba při mazání střediska: {str(e)}")
+        return redirect(url_for("strediska.spravovat_stredisko", stredisko_id=stredisko_id))

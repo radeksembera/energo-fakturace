@@ -127,7 +127,13 @@
                                               rows="3">{{ stredisko.poznamka or '' }}</textarea>
                                 </div>
                             </div>
-                            <div class="d-flex justify-content-end">
+                            <div class="d-flex justify-content-between">
+                                <button type="button" 
+                                        class="btn btn-danger" 
+                                        onclick="smazatStredisko({{ stredisko.id }}, '{{ stredisko.nazev_strediska }}')">
+                                    <i class="bi bi-trash me-2"></i>
+                                    Smazat středisko
+                                </button>
                                 <button type="submit" class="btn btn-primary-custom">
                                     <i class="bi bi-save me-2"></i>
                                     Uložit změny
@@ -341,11 +347,52 @@
         color: var(--secondary-color);
     }
 </style>
-{% endblock %}="flex-shrink-0">
-                                        <i class="bi bi-lightning-charge icon-warning" style="font-size: 1.5rem;"></i>
-                                    </div>
-                                    <div class="flex-grow-1 ms-3">
-                                        <h6 class="mb-1">Odběrná místa</h6>
-                                        <p class="mb-0 text-muted small">Správa a přehled všech odběrných míst</p>
-                                    </div>
-                                    <div class
+{% endblock %}
+
+{% block extra_js %}
+<script>
+function smazatStredisko(strediskoId, nazevStrediska) {
+    // První potvrzení
+    const prvniPotvrzeni = confirm(
+        `Opravdu chcete smazat středisko "${nazevStrediska}"?\n\n` +
+        'Tato akce také smaže všechna odběrná místa tohoto střediska a všechny související data.\n\n' +
+        'Klikněte na "OK" pro pokračování.'
+    );
+    
+    if (!prvniPotvrzeni) {
+        return; // Uživatel zrušil
+    }
+    
+    // Druhé potvrzení
+    const druhePotvrzeni = confirm(
+        `POTVRZENÍ SMAZÁNÍ\n\n` +
+        `Skutečně chcete trvale smazat středisko "${nazevStrediska}"?\n\n` +
+        'VAROVÁNÍ: Tato akce je nevratná!\n' +
+        'Budou smazána všechna data včetně odběrných míst, odečtů a výpočtů.\n\n' +
+        'Klikněte na "OK" pro definitivní smazání.'
+    );
+    
+    if (!druhePotvrzeni) {
+        return; // Uživatel zrušil
+    }
+    
+    // Vytvořit formulář a odeslat POST request
+    const form = document.createElement('form');
+    form.method = 'POST';
+    form.action = `/strediska/${strediskoId}/smazat`;
+    
+    // Přidat CSRF token pokud existuje
+    const csrfToken = document.querySelector('meta[name="csrf-token"]');
+    if (csrfToken) {
+        const csrfInput = document.createElement('input');
+        csrfInput.type = 'hidden';
+        csrfInput.name = 'csrf_token';
+        csrfInput.value = csrfToken.getAttribute('content');
+        form.appendChild(csrfInput);
+    }
+    
+    document.body.appendChild(form);
+    form.submit();
+}
+</script>
+{% endblock %}
