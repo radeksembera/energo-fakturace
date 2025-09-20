@@ -19,18 +19,11 @@ from flask import make_response
 from reportlab.platypus import BaseDocTemplate, PageTemplate, Frame
 from reportlab.platypus.doctemplate import PageTemplate
 
-# Import kompatibilní verze PDF knihovny
-try:
-    from pypdf import PdfReader, PdfWriter
-    PDF_VERSION = 'pypdf'
-except ImportError:
-    try:
-        from PyPDF2 import PdfReader, PdfWriter
-        PDF_VERSION = 'pyPDF2_new'
-    except ImportError:
-        # Fallback pro starší PyPDF2
-        from PyPDF2 import PdfFileReader as PdfReader, PdfFileWriter as PdfWriter
-        PDF_VERSION = 'pyPDF2_old'
+# Import kompatibilní verze PDF knihovny - DOČASNĚ VYPNUTO
+PDF_VERSION = 'disabled'
+PdfReader = None  
+PdfWriter = None
+print("[WARNING] PyPDF2/pypdf import temporarily disabled for server compatibility")
 
 # Kompatibilní wrapper funkce pro různé verze PDF knihoven
 def add_page_to_writer(writer, page):
