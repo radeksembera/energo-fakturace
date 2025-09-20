@@ -2261,65 +2261,22 @@ def vygenerovat_kompletni_pdf(stredisko_id, rok, mesic):
         return "Nepovolený přístup", 403
 
     try:
-        import io
-        from flask import url_for
+        # DOČASNÉ ŘEŠENÍ: Vráti jen fakturu bez slučování kvůli PyPDF2 kompatibilitě na serveru
+        print("[WARNING] PyPDF2 slučování vypnuto - vrací jen fakturu")
         
-        # Vytvoř PdfWriter pro spojení
-        merger = PdfWriter()
-        
-        # 1. ZÍSKEJ PDF FAKTURU
         try:
-            # Zavolej pomocnou funkci pro získání PDF bytes
+            # Zavolej pomocnou funkci pro získání PDF bytes faktury
             faktura_bytes = _get_faktura_pdf_bytes(stredisko_id, rok, mesic)
-            faktura_pdf = create_pdf_reader(io.BytesIO(faktura_bytes))
-            for page in faktura_pdf.pages:
-                add_page_to_writer(merger, page)
-            print(f"[OK] Přidána faktura - {len(faktura_pdf.pages)} stránek")
+            
+            response = make_response(faktura_bytes)
+            response.headers['Content-Type'] = 'application/pdf'
+            response.headers['Content-Disposition'] = f'inline; filename=kompletni_faktura_{rok}_{mesic:02d}.pdf'
+            return response
+            
         except Exception as e:
             print(f"[ERROR] Chyba při generování faktury: {e}")
             return f"Chyba při generování faktury: {e}", 500
         
-        # 2. ZÍSKEJ PDF PŘÍLOHU 1
-        try:
-            priloha1_response = vygenerovat_prilohu1_pdf(stredisko_id, rok, mesic)
-            if hasattr(priloha1_response, 'data'):
-                priloha1_pdf = create_pdf_reader(io.BytesIO(priloha1_response.data))
-                for page in priloha1_pdf.pages:
-                    add_page_to_writer(merger, page)
-                print(f"[OK] Přidána příloha 1 - {len(priloha1_pdf.pages)} stránek")
-        except Exception as e:
-            print(f"[ERROR] Chyba při generování přílohy 1: {e}")
-            return f"Chyba při generování přílohy 1: {e}", 500
-        
-        # 3. ZÍSKEJ PDF PŘÍLOHU 2 (ReportLab verze)
-        try:
-            # Použij novou ReportLab funkci místo WeasyPrint
-            priloha2_response = priloha2_pdf_nova(stredisko_id, rok, mesic)
-            if hasattr(priloha2_response, 'data'):
-                priloha2_pdf = create_pdf_reader(io.BytesIO(priloha2_response.data))
-                for page in priloha2_pdf.pages:
-                    add_page_to_writer(merger, page)
-                print(f"[OK] Přidána příloha 2 (ReportLab) - {len(priloha2_pdf.pages)} stránek")
-        except Exception as e:
-            print(f"[ERROR] Chyba při generování přílohy 2: {e}")
-            return f"Chyba při generování přílohy 2: {e}", 500
-        
-        # 4. VYTVOŘ FINÁLNÍ PDF
-        output_buffer = io.BytesIO()
-        write_pdf_to_stream(merger, output_buffer)
-        close_pdf_writer(merger)
-        
-        pdf_data = output_buffer.getvalue()
-        output_buffer.close()
-        
-        # 5. VRAŤ ODPOVĚĎ
-        response = make_response(pdf_data)
-        response.headers['Content-Type'] = 'application/pdf'
-        response.headers['Content-Disposition'] = f'inline; filename=kompletni_faktura_{rok}_{mesic:02d}.pdf'
-        
-        flash(f"[OK] Kompletní PDF bylo úspěšně vygenerováno")
-        return response
-        
     except Exception as e:
-        flash(f"[ERROR] Chyba při generování kompletního PDF: {str(e)}")
-        return redirect(url_for('fakturace.fakturace', stredisko_id=stredisko_id))
+        print(f"[ERROR] Chyba při generování kompletního PDF: {str(e)}")
+        return f"Chyba při generování kompletního PDF: {str(e)}", 500
