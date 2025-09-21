@@ -5,30 +5,80 @@ Odecet = Odečet
 from datetime import datetime
 import io
 
-# [OK] REPORTLAB IMPORTS
-from reportlab.pdfgen import canvas
-from reportlab.lib.pagesizes import A4
-from reportlab.lib.units import mm
-from reportlab.pdfbase import pdfmetrics
-from reportlab.pdfbase.ttfonts import TTFont
-from reportlab.lib.styles import getSampleStyleSheet
-from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph, Spacer
-from reportlab.lib import colors
 from file_helpers import get_faktury_path, get_faktura_filenames, check_faktury_exist
-from flask import make_response
-from reportlab.platypus import BaseDocTemplate, PageTemplate, Frame
-from reportlab.platypus.doctemplate import PageTemplate
 
-# WEASYPRINT IMPORT - IZOLOVANÝ
+# REPORTLAB IMPORTS - pouze pro funkce které je potřebují
+def _import_reportlab():
+    """Podmíněný import ReportLab pouze když je potřeba"""
+    from reportlab.pdfgen import canvas
+    from reportlab.lib.pagesizes import A4
+    from reportlab.lib.units import mm
+    from reportlab.pdfbase import pdfmetrics
+    from reportlab.pdfbase.ttfonts import TTFont
+    from reportlab.lib.styles import getSampleStyleSheet
+    from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph, Spacer, BaseDocTemplate, PageTemplate, Frame
+    from reportlab.lib import colors
+    return {
+        'canvas': canvas, 'A4': A4, 'mm': mm, 'pdfmetrics': pdfmetrics,
+        'TTFont': TTFont, 'getSampleStyleSheet': getSampleStyleSheet,
+        'SimpleDocTemplate': SimpleDocTemplate, 'Table': Table, 'TableStyle': TableStyle,
+        'Paragraph': Paragraph, 'Spacer': Spacer, 'colors': colors,
+        'BaseDocTemplate': BaseDocTemplate, 'PageTemplate': PageTemplate, 'Frame': Frame
+    }
+
+# WEASYPRINT IMPORT - SUBPROCESS PŘÍSTUP
 def _safe_weasyprint_convert(html_content):
-    """Bezpečné volání WeasyPrint v izolovaném prostředí"""
+    """Bezpečné volání WeasyPrint přes subprocess pro úplnou izolaci"""
+    import tempfile
+    import os
+    import subprocess
+
     try:
-        import weasyprint
-        # Úplně nový import bez alias
-        weasy_html = weasyprint.HTML(string=html_content, base_url='file://')
-        return weasy_html.write_pdf()
+        # Vytvoř dočasné soubory
+        with tempfile.NamedTemporaryFile(mode='w', suffix='.html', delete=False, encoding='utf-8') as html_file:
+            html_file.write(html_content)
+            html_file_path = html_file.name
+
+        with tempfile.NamedTemporaryFile(mode='wb', suffix='.pdf', delete=False) as pdf_file:
+            pdf_file_path = pdf_file.name
+
+        try:
+            # Spusť WeasyPrint jako externí proces
+            result = subprocess.run([
+                'python', '-c',
+                f'''
+import weasyprint
+weasyprint.HTML(filename="{html_file_path}").write_pdf("{pdf_file_path}")
+'''
+            ], capture_output=True, text=True, timeout=30)
+
+            if result.returncode != 0:
+                raise Exception(f"WeasyPrint subprocess failed: {result.stderr}")
+
+            # Načti vygenerované PDF
+            with open(pdf_file_path, 'rb') as pdf_file:
+                pdf_bytes = pdf_file.read()
+
+            return pdf_bytes
+
+        finally:
+            # Vyčisti dočasné soubory
+            try:
+                os.unlink(html_file_path)
+                os.unlink(pdf_file_path)
+            except:
+                pass
+
+    except subprocess.TimeoutExpired:
+        raise Exception("WeasyPrint subprocess timeout")
     except Exception as e:
-        raise Exception(f"WeasyPrint conversion failed: {e}")
+        # Fallback na přímé volání pokud subprocess selže
+        try:
+            import weasyprint
+            weasy_html = weasyprint.HTML(string=html_content, base_url='file://')
+            return weasy_html.write_pdf()
+        except Exception as fallback_error:
+            raise Exception(f"Both subprocess and direct WeasyPrint failed. Subprocess: {e}, Direct: {fallback_error}")
 
 try:
     import weasyprint
@@ -342,49 +392,19 @@ def _get_faktura_pdf_bytes(stredisko_id, rok, mesic):
                                      sazba_dph_procenta=data['sazba_dph_procenta'])
         print(f"[DEBUG] HTML šablona vygenerována, délka: {len(html_content)} znaků")
 
-        # Použij ReportLab místo WeasyPrint (stejně jako příloha 1)
-        print("[INFO] Generuji PDF faktury pomocí ReportLab")
-        try:
-            from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer
-            from reportlab.lib.styles import getSampleStyleSheet
-
-            # Použij ReportLab - stejně jako fungující příloha 1
-            buffer = io.BytesIO()
-            doc = SimpleDocTemplate(buffer, pagesize=A4)
-
-            story = []
-            styles = getSampleStyleSheet()
-
-            # Jednoduchá faktura pomocí ReportLab
-            story.append(Paragraph(f"<b>FAKTURA {data['faktura'].cislo_faktury if data['faktura'] else ''}</b>", styles['Title']))
-            story.append(Spacer(1, 20))
-
-            # Základní informace
-            if data['dodavatel']:
-                story.append(Paragraph(f"<b>Dodavatel:</b> {data['dodavatel'].nazev_sro}", styles['Normal']))
-                story.append(Paragraph(f"Adresa: {data['dodavatel'].adresa_radek_1}", styles['Normal']))
-                story.append(Spacer(1, 10))
-
-            if data['odberatel']:
-                story.append(Paragraph(f"<b>Odběratel:</b> {data['odberatel'].nazev_odberatele}", styles['Normal']))
-                story.append(Paragraph(f"Adresa: {data['odberatel'].adresa_odberatele}", styles['Normal']))
-                story.append(Spacer(1, 10))
-
-            # Částky
-            story.append(Paragraph(f"<b>Základ bez DPH:</b> {data['zaklad_bez_dph']:.2f} Kč", styles['Normal']))
-            story.append(Paragraph(f"<b>DPH ({data['sazba_dph_procenta']:.0f}%):</b> {data['castka_dph']:.2f} Kč", styles['Normal']))
-            story.append(Paragraph(f"<b>Celkem k platbě:</b> {data['k_platbe']:.2f} Kč", styles['Normal']))
-
-            doc.build(story)
-            pdf_bytes = buffer.getvalue()
-            buffer.close()
-
-            print("[SUCCESS] PDF faktura úspěšně vygenerována pomocí ReportLab")
-            return pdf_bytes
-
-        except Exception as reportlab_error:
-            print(f"[ERROR] ReportLab selhalo: {reportlab_error}")
-            raise Exception(f"ReportLab error: {reportlab_error}")
+        # Použij WeasyPrint s úplnou izolací od ostatních PDF knihoven
+        if WEASYPRINT_AVAILABLE:
+            print("[INFO] Generuji PDF faktury pomocí WeasyPrint")
+            try:
+                # Kompletně izolované volání WeasyPrint bez jakýchkoliv předchozích importů
+                pdf_bytes = _safe_weasyprint_convert(html_content)
+                print("[SUCCESS] PDF faktura úspěšně vygenerována pomocí WeasyPrint")
+                return pdf_bytes
+            except Exception as weasy_error:
+                print(f"[ERROR] WeasyPrint selhalo: {weasy_error}")
+                raise Exception(f"WeasyPrint error: {weasy_error}")
+        else:
+            raise Exception("WeasyPrint není dostupný - nelze generovat PDF fakturu")
             
     except Exception as e:
         print(f"[ERROR] Obecná chyba v _get_faktura_pdf_bytes: {e}")
