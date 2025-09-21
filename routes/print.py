@@ -1262,149 +1262,7 @@ def vygenerovat_prilohu1_pdf(stredisko_id, rok, mesic):
         flash(f"[ERROR] Chyba při generování PDF: {str(e)}")
         return redirect(url_for('fakturace.fakturace', stredisko_id=stredisko_id))
 
-def _get_priloha1_pdf_bytes(stredisko_id, rok, mesic):
-    """Pomocná funkce - vrací PDF přílohy 1 jako bytes"""
-    print(f"[DEBUG] Začínám generování PDF přílohy 1 pro středisko {stredisko_id}, období {rok}/{mesic}")
-
-    # Najdi období
-    obdobi = ObdobiFakturace.query.filter_by(
-        stredisko_id=stredisko_id, rok=rok, mesic=mesic
-    ).first()
-    if not obdobi:
-        raise ValueError(f"Období {rok}/{mesic:02d} nenalezeno")
-
-    # Načti základní data
-    faktura = Faktura.query.filter_by(stredisko_id=stredisko_id, obdobi_id=obdobi.id).first()
-    dodavatel = InfoDodavatele.query.filter_by(stredisko_id=stredisko_id).first()
-
-    # Načti odečty pro dané období
-    odecty_raw = Odecet.query\
-        .filter_by(stredisko_id=stredisko_id, obdobi_id=obdobi.id)\
-        .order_by(Odecet.oznaceni)\
-        .all()
-
-    # Načti odběrná místa pro středisko
-    odberna_mista = {om.cislo_om: om for om in OdberneMisto.query.filter_by(stredisko_id=stredisko_id).all()}
-
-    # Spáruj odečty s odběrnými místy
-    odecty = []
-    for odecet in odecty_raw:
-        # Zkus najít odpovídající odběrné místo
-        om = None
-        if odecet.oznaceni in odberna_mista:
-            om = odberna_mista[odecet.oznaceni]
-        else:
-            # Zkus s doplněnými nulami
-            oznaceni_padded = odecet.oznaceni.zfill(7) if odecet.oznaceni else ""
-            if oznaceni_padded in odberna_mista:
-                om = odberna_mista[oznaceni_padded]
-            else:
-                # Zkus bez vedoucích nul
-                oznaceni_stripped = odecet.oznaceni.lstrip('0') if odecet.oznaceni else ""
-                if oznaceni_stripped in odberna_mista:
-                    om = odberna_mista[oznaceni_stripped]
-
-        if om:  # Pouze pokud najdeme odpovídající odběrné místo
-            odecty.append((odecet, om))
-
-    # Registrace fontů
-    font_registered = False
-    try:
-        from reportlab.pdfbase.ttfonts import TTFont
-        import os
-        font_paths = [
-            'C:/Windows/Fonts/arial.ttf',
-            'C:/Windows/Fonts/calibri.ttf',
-            '/System/Library/Fonts/Arial.ttf',
-            '/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf'
-        ]
-
-        for font_path in font_paths:
-            if os.path.exists(font_path):
-                try:
-                    pdfmetrics.registerFont(TTFont('CzechFont', font_path))
-                    font_registered = True
-                    break
-                except:
-                    continue
-    except:
-        pass
-
-    # Vytvoř story
-    story = []
-    styles = getSampleStyleSheet()
-
-    if font_registered:
-        styles['Normal'].fontName = 'CzechFont'
-        styles['Heading1'].fontName = 'CzechFont'
-        styles['Heading2'].fontName = 'CzechFont'
-        styles['Title'].fontName = 'CzechFont'
-
-    # HLAVIČKA
-    story.append(Paragraph(f"<b>Příloha 1 - Hodnoty měření k dokladu</b>", styles['Title']))
-
-    company_info = f"{dodavatel.nazev_sro if dodavatel else 'Your energy, s.r.o.'}, " \
-                  f"{dodavatel.adresa_radek_1 if dodavatel else 'Italská 2584/69'} " \
-                  f"{dodavatel.adresa_radek_2 if dodavatel else '120 00 Praha 2 - Vinohrady'}, " \
-                  f"DIČ {dodavatel.dic_sro if dodavatel else 'CZ24833851'} " \
-                  f"IČO {dodavatel.ico_sro if dodavatel else '24833851'}"
-
-    story.append(Paragraph(company_info, styles['Normal']))
-    story.append(Spacer(1, 20))
-
-    # PROCHÁZEJ ODBĚRNÁ MÍSTA
-    if odecty:
-        for odecet, om in odecty:
-            # Název odběrného místa
-            om_nazev = f"<b>Odběrné místo: {odecet.oznaceni or ''} {om.nazev_om if om else ''}</b>"
-            story.append(Paragraph(om_nazev, styles['Normal']))
-            story.append(Spacer(1, 10))
-
-            # Tabulka s hodnotami
-            data_table = [
-                ['Datum', 'VT [kWh]', 'NT [kWh]', 'Celkem [kWh]', 'Poznámka']
-            ]
-
-            if hasattr(odecet, 'datum_odectu') and odecet.datum_odectu:
-                datum_str = odecet.datum_odectu.strftime('%d.%m.%Y')
-            else:
-                datum_str = 'N/A'
-
-            data_table.append([
-                datum_str,
-                str(odecet.vt or 0),
-                str(odecet.nt or 0),
-                str((odecet.vt or 0) + (odecet.nt or 0)),
-                odecet.poznamka or ''
-            ])
-
-            table = Table(data_table, colWidths=[30*mm, 25*mm, 25*mm, 25*mm, 60*mm])
-            table.setStyle(TableStyle([
-                ('BACKGROUND', (0, 0), (-1, 0), colors.grey),
-                ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
-                ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
-                ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
-                ('FONTSIZE', (0, 0), (-1, 0), 10),
-                ('BOTTOMPADDING', (0, 0), (-1, 0), 12),
-                ('BACKGROUND', (0, 1), (-1, -1), colors.beige),
-                ('GRID', (0, 0), (-1, -1), 1, colors.black)
-            ]))
-
-            story.append(table)
-            story.append(Spacer(1, 20))
-    else:
-        story.append(Paragraph("Žádné hodnoty měření nejsou k dispozici.", styles['Normal']))
-
-    # Vygeneruj PDF
-    buffer = io.BytesIO()
-    doc = SimpleDocTemplate(buffer, pagesize=A4)
-    doc.build(story)
-
-    pdf_bytes = buffer.getvalue()
-    buffer.close()
-
-    print("[SUCCESS] PDF příloha 1 úspěšně vygenerována")
-    return pdf_bytes
+# ODSTRANĚNO - Používáme pouze WeasyPrint a HTML šablony
 
 @print_bp.route("/<int:stredisko_id>/<int:rok>-<int:mesic>/priloha2/html")
 def vygenerovat_prilohu2_html(stredisko_id, rok, mesic):
@@ -1531,145 +1389,11 @@ def vygenerovat_prilohu2_html(stredisko_id, rok, mesic):
         
         return response
 
-
-def _get_priloha2_pdf_bytes(stredisko_id, rok, mesic):
-    """Interní funkce pro získání PDF bytů přílohy 2 (pro kompletní fakturu) - čistý ReportLab"""
-    try:
-        # Najdi období
-        obdobi = ObdobiFakturace.query.filter_by(
-            stredisko_id=stredisko_id, rok=rok, mesic=mesic
-        ).first()
-        if not obdobi:
-            raise ValueError(f"Období {rok}/{mesic:02d} nenalezeno")
-
-        # Načti základní data
-        faktura = Faktura.query.filter_by(stredisko_id=stredisko_id, obdobi_id=obdobi.id).first()
-        dodavatel = InfoDodavatele.query.filter_by(stredisko_id=stredisko_id).first()
-        stredisko = Stredisko.query.get(stredisko_id)
-        
-        # Načti výpočty
-        vypocty_om = db.session.query(VypocetOM, OdberneMisto)\
-            .join(OdberneMisto, VypocetOM.odberne_misto_id == OdberneMisto.id)\
-            .filter(VypocetOM.obdobi_id == obdobi.id)\
-            .filter(OdberneMisto.stredisko_id == stredisko_id)\
-            .order_by(OdberneMisto.cislo_om)\
-            .all()
-        
-        if not vypocty_om:
-            raise ValueError("Nejsou výpočty pro vybrané období")
-
-        # Použij tu istú logiku ako v novej funkcii - čistý ReportLab
-        return _generate_priloha2_pdf_reportlab(stredisko, obdobi, faktura, dodavatel, vypocty_om)
-        
-    except Exception as e:
-        print(f"[ERROR] Chyba v _get_priloha2_pdf_bytes: {e}")
-        import traceback
-        traceback.print_exc()
-        raise
-
-
-def _generate_priloha2_pdf_reportlab(stredisko, obdobi, faktura, dodavatel, vypocty_om):
-    """Fallback funkce pro generování PDF přílohy 2 pomocí ReportLab"""
-    import io
-    from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle
-    from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
-    from reportlab.lib.pagesizes import A4
-    from reportlab.lib.units import mm
-    from reportlab.lib import colors
-    
-    print("[DEBUG] Zacinam ReportLab fallback pro prilohu 2")
-    
-    # Vytvoř PDF dokument
-    buffer = io.BytesIO()
-    doc = SimpleDocTemplate(buffer, pagesize=A4, 
-                          rightMargin=15*mm, leftMargin=15*mm,
-                          topMargin=20*mm, bottomMargin=20*mm)
-    
-    story = []
-    styles = getSampleStyleSheet()
-    
-    # Nadpis
-    title_style = ParagraphStyle(
-        'CustomTitle',
-        parent=styles['Heading1'],
-        fontSize=16,
-        spaceAfter=20,
-        alignment=1  # Center
-    )
-    story.append(Paragraph("PŘÍLOHA Č. 2", title_style))
-    story.append(Paragraph("Rozpis položek za odběrná místa", styles['Heading2']))
-    story.append(Spacer(1, 20))
-    
-    # Informace o období
-    story.append(Paragraph(f"<b>Středisko:</b> {stredisko.nazev_strediska}", styles['Normal']))
-    story.append(Paragraph(f"<b>Období:</b> {obdobi.rok}/{obdobi.mesic:02d}", styles['Normal']))
-    story.append(Spacer(1, 15))
-    
-    # Tabulka s výpočty
-    table_data = [['OM', 'Spotřeba VT', 'Spotřeba NT', 'Celkem za OM']]
-    
-    for vypocet, om in vypocty_om[:10]:  # Omez na 10 řádků kvůli místě
-        # Vypočítej minimum z POZE
-        poze_minimum = min(float(vypocet.poze_dle_jistice or 0), float(vypocet.poze_dle_spotreby or 0))
-        
-        # Celková suma za OM
-        celkem_om = (
-            float(vypocet.mesicni_plat or 0) +
-            float(vypocet.platba_za_elektrinu_vt or 0) +
-            float(vypocet.platba_za_elektrinu_nt or 0) +
-            float(vypocet.platba_za_jistic or 0) +
-            float(vypocet.platba_za_distribuci_vt or 0) +
-            float(vypocet.platba_za_distribuci_nt or 0) +
-            float(vypocet.systemove_sluzby or 0) +
-            poze_minimum +
-            float(vypocet.nesitova_infrastruktura or 0) +
-            float(vypocet.dan_z_elektriny or 0)
-        )
-        
-        # Načti odečet pro získání spotřeb - zjednodušená verze
-        spotreba_vt = 0  # Placeholder - v plné verzi by se načítalo z Odecet
-        spotreba_nt = 0  # Placeholder - v plné verzi by se načítalo z Odecet
-        
-        table_data.append([
-            str(om.cislo_om) if om.cislo_om else 'N/A',
-            f"{spotreba_vt:.3f} MWh",
-            f"{spotreba_nt:.3f} MWh", 
-            f"{celkem_om:.2f} Kč"
-        ])
-    
-    if len(vypocty_om) > 10:
-        table_data.append(['...', '...', '...', '...'])
-        table_data.append([f'Celkem {len(vypocty_om)} odběrných míst', '', '', ''])
-    
-    table = Table(table_data)
-    table.setStyle(TableStyle([
-        ('BACKGROUND', (0, 0), (-1, 0), colors.grey),
-        ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
-        ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
-        ('ALIGN', (3, 0), (3, -1), 'RIGHT'),
-        ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
-        ('FONTSIZE', (0, 0), (-1, 0), 10),
-        ('BOTTOMPADDING', (0, 0), (-1, 0), 12),
-        ('BACKGROUND', (0, 1), (-1, -1), colors.beige),
-        ('GRID', (0, 0), (-1, -1), 1, colors.black)
-    ]))
-    story.append(table)
-    
-    story.append(Spacer(1, 20))
-    story.append(Paragraph("<i>Poznámka: Toto je zjednodušená verze přílohy 2 vygenerovaná pomocí ReportLab fallback.</i>", styles['Normal']))
-    
-    # Vytvoř PDF
-    doc.build(story)
-    pdf_data = buffer.getvalue()
-    buffer.close()
-    
-    print(f"[DEBUG] ReportLab PDF prilohy 2 vygenerovan, velikost: {len(pdf_data)} bytu")
-    return pdf_data
-
+# ==== POUZE WEASYPRINT A HTML ŠABLONY ====
 
 @print_bp.route("/<int:stredisko_id>/<int:rok>-<int:mesic>/priloha2/pdf")
 def priloha2_pdf_nova(stredisko_id, rok, mesic):
-    """Generování PDF přílohy 2 s daty z databáze"""
+    """Generování PDF přílohy 2 s daty z databáze pomocí WeasyPrint"""
     if not session.get("user_id"):
         return redirect("/login")
 
@@ -1678,14 +1402,14 @@ def priloha2_pdf_nova(stredisko_id, rok, mesic):
         if stredisko.user_id != session["user_id"]:
             return "Nepovolený přístup", 403
 
-        # Najdi období
+        # Použij HTML šablonu místo ReportLab
+        # Načti data stejně jako v route vygenerovat_prilohu2_html
         obdobi = ObdobiFakturace.query.filter_by(
             stredisko_id=stredisko_id, rok=rok, mesic=mesic
         ).first()
         if not obdobi:
             return "Období nenalezeno", 404
-            
-        # Načti data z databáze
+
         vypocty_om = db.session.query(VypocetOM, OdberneMisto)\
             .join(OdberneMisto, VypocetOM.odberne_misto_id == OdberneMisto.id)\
             .filter(VypocetOM.obdobi_id == obdobi.id)\
@@ -1697,699 +1421,105 @@ def priloha2_pdf_nova(stredisko_id, rok, mesic):
         if not vypocty_om:
             return "Nejsou výpočty pro vybrané období", 404
 
-        # Načti fakturu pro období
+        # Připrav data jako v originální route - KOMPLETNÍ LOGIKA
         faktura = Faktura.query.filter_by(stredisko_id=stredisko_id, obdobi_id=obdobi.id).first()
-        
-        # Generování PDF podle HTML šablony
-        from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle, PageBreak
-        from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
-        from reportlab.lib.pagesizes import A4
-        from reportlab.lib.units import mm
-        from reportlab.lib import colors
-        from reportlab.pdfbase import pdfmetrics
-        from reportlab.pdfbase.ttfonts import TTFont
-        import io
-        import os
-        
-        # Registrace českého fontu
-        font_registered = False
-        try:
-            font_paths = [
-                'C:/Windows/Fonts/arial.ttf',
-                'C:/Windows/Fonts/calibri.ttf',
-                '/System/Library/Fonts/Arial.ttf',
-                '/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf'
-            ]
-            
-            for font_path in font_paths:
-                if os.path.exists(font_path):
-                    try:
-                        pdfmetrics.registerFont(TTFont('CzechFont', font_path))
-                        font_registered = True
-                        break
-                    except:
-                        continue
-        except:
-            pass
-        
-        buffer = io.BytesIO()
-        doc = SimpleDocTemplate(buffer, pagesize=A4, 
-                              rightMargin=40*mm, leftMargin=40*mm,
-                              topMargin=20*mm, bottomMargin=20*mm)
-        
-        story = []
-        styles = getSampleStyleSheet()
-        
-        # Nastav český font pro základní styly
-        base_font = 'CzechFont' if font_registered else 'Helvetica'
-        bold_font = 'CzechFont' if font_registered else 'Helvetica-Bold'
-        
-        if font_registered:
-            styles['Normal'].fontName = base_font
-            styles['Heading1'].fontName = base_font
-            styles['Heading2'].fontName = base_font
-            styles['Heading3'].fontName = base_font
-        
-        # Vlastní styly
-        section_style = ParagraphStyle(
-            'SectionTitle',
-            parent=styles['Heading3'],
-            fontSize=11,
-            fontName=bold_font,
-            spaceAfter=5,
-            spaceBefore=20
-        )
-        
-        total_style = ParagraphStyle(
-            'Total',
-            parent=styles['Normal'],
-            fontSize=15,
-            fontName=bold_font,
-            alignment=2,  # Right align
-            spaceAfter=20,
-            spaceBefore=10
-        )
-        
-        # Pro každé odběrné místo vytvoř vlastní stránku
-        for i, (vypocet, om) in enumerate(vypocty_om):
-            if i > 0:  # Přidej page break před každé další OM
-                story.append(PageBreak())
-            
-            # Načti odečet pro spotřeby
-            odecet = Odecet.query.filter_by(
+        dodavatel = InfoDodavatele.query.filter_by(stredisko_id=stredisko_id).first()
+
+        vypocty_data = []
+        sazba_dph = float(faktura.sazba_dph / 100) if faktura and faktura.sazba_dph else 0.21
+
+        for vypocet, om in vypocty_om:
+            # Načti odečty pro dané OM a období
+            odecty = Odečet.query.filter_by(
                 stredisko_id=stredisko_id,
                 obdobi_id=obdobi.id,
-                oznaceni=om.cislo_om.zfill(7) if om.cislo_om else None
-            ).first()
-            
-            spotreba_vt = float(odecet.spotreba_vt or 0) if odecet else 0
-            spotreba_nt = float(odecet.spotreba_nt or 0) if odecet else 0
-            spotreba_vt_mwh = spotreba_vt / 1000  # Převod na MWh
-            spotreba_nt_mwh = spotreba_nt / 1000
+                oznaceni=om.cislo_om
+            ).all()
+
+            spotreba_vt_kwh = sum(o.spotreba_vt or 0 for o in odecty)
+            spotreba_nt_kwh = sum(o.spotreba_nt or 0 for o in odecty)
+            spotreba_vt_mwh = spotreba_vt_kwh / 1000
+            spotreba_nt_mwh = spotreba_nt_kwh / 1000
             celkova_spotreba_mwh = spotreba_vt_mwh + spotreba_nt_mwh
-            
-            # Výpočet jednotkových cen (zjednodušeno)
-            jednotkova_cena_elektriny_vt = float(vypocet.platba_za_elektrinu_vt or 0) / spotreba_vt_mwh if spotreba_vt_mwh > 0 else 0
-            jednotkova_cena_elektriny_nt = float(vypocet.platba_za_elektrinu_nt or 0) / spotreba_nt_mwh if spotreba_nt_mwh > 0 else 0
-            jednotkova_cena_distribuce_vt = float(vypocet.platba_za_distribuci_vt or 0) / spotreba_vt_mwh if spotreba_vt_mwh > 0 else 0
-            jednotkova_cena_distribuce_nt = float(vypocet.platba_za_distribuci_nt or 0) / spotreba_nt_mwh if spotreba_nt_mwh > 0 else 0
-            jednotkova_cena_systemove_sluzby = float(vypocet.systemove_sluzby or 0) / celkova_spotreba_mwh if celkova_spotreba_mwh > 0 else 0
-            jednotkova_cena_dan = float(vypocet.dan_z_elektriny or 0) / celkova_spotreba_mwh if celkova_spotreba_mwh > 0 else 0
-            
+
+            # Jednotkové ceny - převod na float
+            jednotkova_cena_elektriny_vt = float(getattr(vypocet, 'jednotkova_cena_elektriny_vt', 0.0) or 0.0)
+            jednotkova_cena_elektriny_nt = float(getattr(vypocet, 'jednotkova_cena_elektriny_nt', 0.0) or 0.0)
+            jednotkova_cena_distribuce_vt = float(getattr(vypocet, 'jednotkova_cena_distribuce_vt', 0.0) or 0.0)
+            jednotkova_cena_distribuce_nt = float(getattr(vypocet, 'jednotkova_cena_distribuce_nt', 0.0) or 0.0)
+            jednotkova_cena_systemove_sluzby = float(getattr(vypocet, 'jednotkova_cena_systemove_sluzby', 0.0) or 0.0)
+            jednotkova_cena_poze = float(getattr(vypocet, 'jednotkova_cena_poze', 0.0) or 0.0)
+            jednotkova_cena_dan = float(getattr(vypocet, 'jednotkova_cena_dan', 0.0) or 0.0)
+
             # POZE minimum
-            poze_minimum = min(float(vypocet.poze_dle_jistice or 0), float(vypocet.poze_dle_spotreby or 0))
-            jednotkova_cena_poze = poze_minimum / celkova_spotreba_mwh if celkova_spotreba_mwh > 0 else 0
-            
-            # Celková suma za OM
+            poze_zaklad = celkova_spotreba_mwh * jednotkova_cena_poze if celkova_spotreba_mwh and jednotkova_cena_poze else 0.0
+            poze_minimum_hodnota = float(getattr(vypocet, 'poze_minimum', 0.0) or 0.0)
+            poze_minimum = max(poze_zaklad, poze_minimum_hodnota)
+
+            # Celkové náklady pro OM - převod všech hodnot na float
             celkem_om = (
-                float(vypocet.mesicni_plat or 0) +
-                float(vypocet.platba_za_elektrinu_vt or 0) +
-                float(vypocet.platba_za_elektrinu_nt or 0) +
-                float(vypocet.platba_za_jistic or 0) +
-                float(vypocet.platba_za_distribuci_vt or 0) +
-                float(vypocet.platba_za_distribuci_nt or 0) +
-                float(vypocet.systemove_sluzby or 0) +
-                poze_minimum +
-                float(vypocet.nesitova_infrastruktura or 0) +
-                float(vypocet.dan_z_elektriny or 0)
+                float(getattr(vypocet, 'mesicni_plat', 0.0) or 0.0) +
+                float(getattr(vypocet, 'platba_za_elektrinu_vt', 0.0) or 0.0) +
+                float(getattr(vypocet, 'platba_za_elektrinu_nt', 0.0) or 0.0) +
+                float(getattr(vypocet, 'platba_za_jistic', 0.0) or 0.0) +
+                float(getattr(vypocet, 'platba_za_distribuci_vt', 0.0) or 0.0) +
+                float(getattr(vypocet, 'platba_za_distribuci_nt', 0.0) or 0.0) +
+                float(getattr(vypocet, 'systemove_sluzby', 0.0) or 0.0) +
+                float(poze_minimum) +
+                float(getattr(vypocet, 'nesitova_infrastruktura', 0.0) or 0.0) +
+                float(getattr(vypocet, 'dan_z_elektriny', 0.0) or 0.0)
             )
-            
-            # Informace o odběrném místě
-            story.append(Paragraph(f"<b>Odběrné místo:</b> {om.cislo_om} {om.nazev_om or ''}", styles['Normal']))
-            story.append(Paragraph(f"{stredisko.adresa or 'Nádražní 762/32, Praha 5 - Smíchov, PSČ 150 00'}", styles['Normal']))
-            story.append(Paragraph(f"<b>EAN:</b> {om.ean_om or '859182403280020114'}", styles['Normal']))
-            story.append(Spacer(1, 10))
-            
-            # Další informace
-            fakturace_od = faktura.fakturace_od.strftime('%d.%m.%Y') if faktura and faktura.fakturace_od else '01.06.2025'
-            fakturace_do = faktura.fakturace_do.strftime('%d.%m.%Y') if faktura and faktura.fakturace_do else '30.06.2025'
-            
-            story.append(Paragraph(f"<b>Distribuční sazba:</b> {om.distribucni_sazba_om or 'N/A'}", styles['Normal']))
-            story.append(Paragraph(f"<b>Kategorie hlavního jističe:</b> {om.kategorie_jistice_om or 'N/A'}", styles['Normal']))
-            story.append(Paragraph(f"<b>Hodnota hlavního jističe [A]:</b> {om.hodnota_jistice_om or 'N/A'}", styles['Normal']))
-            story.append(Paragraph(f"<b>Období fakturace:</b> {fakturace_od} - {fakturace_do}", styles['Normal']))
-            story.append(Spacer(1, 15))
-            
-            # Dodávka elektřiny
-            story.append(Paragraph("Dodávka elektřiny", section_style))
-            table_data = [
-                ['Stálý plat', '1', '1', f"{float(vypocet.mesicni_plat or 0):.2f}", f"{float(vypocet.mesicni_plat or 0):.2f}"],
-                ['Plat za silovou elektřinu v VT', f"{spotreba_vt_mwh:.4f}", 'MWh', f"{jednotkova_cena_elektriny_vt:.2f}", f"{float(vypocet.platba_za_elektrinu_vt or 0):.2f}"],
-                ['Plat za silovou elektřinu v NT', f"{spotreba_nt_mwh:.4f}", 'MWh', f"{jednotkova_cena_elektriny_nt:.2f}", f"{float(vypocet.platba_za_elektrinu_nt or 0):.2f}"]
-            ]
-            
-            table = Table(table_data, colWidths=[80*mm, 20*mm, 15*mm, 25*mm, 25*mm])
-            table.setStyle(TableStyle([
-                ('ALIGN', (1, 0), (-1, -1), 'RIGHT'),
-                ('FONTNAME', (0, 0), (-1, -1), base_font),
-                ('FONTSIZE', (0, 0), (-1, -1), 9),
-                ('TOPPADDING', (0, 0), (-1, -1), 3),
-                ('BOTTOMPADDING', (0, 0), (-1, -1), 3)
-            ]))
-            story.append(table)
-            
-            # Distribuční služby
-            story.append(Paragraph("Distribuční služby", section_style))
-            table_data = [
-                ['Měsíční plat', '1', '1', f"{float(vypocet.platba_za_jistic or 0):.2f}", f"{float(vypocet.platba_za_jistic or 0):.2f}"],
-                ['Plat za elektřinu ve VT', f"{spotreba_vt_mwh:.4f}", 'MWh', f"{jednotkova_cena_distribuce_vt:.2f}", f"{float(vypocet.platba_za_distribuci_vt or 0):.2f}"],
-                ['Plat za elektřinu ve NT', f"{spotreba_nt_mwh:.4f}", 'MWh', f"{jednotkova_cena_distribuce_nt:.2f}", f"{float(vypocet.platba_za_distribuci_nt or 0):.2f}"],
-                ['Cena za systémové služby', f"{celkova_spotreba_mwh:.4f}", 'MWh', f"{jednotkova_cena_systemove_sluzby:.2f}", f"{float(vypocet.systemove_sluzby or 0):.2f}"],
-                ['Podpora elekt. z podporovaných zdrojů energie', f"{celkova_spotreba_mwh:.4f}", 'MWh', f"{jednotkova_cena_poze:.2f}", f"{poze_minimum:.2f}"],
-                ['Poplatek za nesíťovou infrastrukturu', '1', '1', f"{float(vypocet.nesitova_infrastruktura or 0):.2f}", f"{float(vypocet.nesitova_infrastruktura or 0):.2f}"]
-            ]
-            
-            table = Table(table_data, colWidths=[80*mm, 20*mm, 15*mm, 25*mm, 25*mm])
-            table.setStyle(TableStyle([
-                ('ALIGN', (1, 0), (-1, -1), 'RIGHT'),
-                ('FONTNAME', (0, 0), (-1, -1), base_font),
-                ('FONTSIZE', (0, 0), (-1, -1), 9),
-                ('TOPPADDING', (0, 0), (-1, -1), 3),
-                ('BOTTOMPADDING', (0, 0), (-1, -1), 3)
-            ]))
-            story.append(table)
-            
-            # Daň
-            story.append(Paragraph("Daň", section_style))
-            table_data = [
-                ['Daň', f"{celkova_spotreba_mwh:.4f}", 'MWh', f"{jednotkova_cena_dan:.2f}", f"{float(vypocet.dan_z_elektriny or 0):.2f}"]
-            ]
-            
-            table = Table(table_data, colWidths=[80*mm, 20*mm, 15*mm, 25*mm, 25*mm])
-            table.setStyle(TableStyle([
-                ('ALIGN', (1, 0), (-1, -1), 'RIGHT'),
-                ('FONTNAME', (0, 0), (-1, -1), base_font),
-                ('FONTSIZE', (0, 0), (-1, -1), 9),
-                ('TOPPADDING', (0, 0), (-1, -1), 3),
-                ('BOTTOMPADDING', (0, 0), (-1, -1), 3)
-            ]))
-            story.append(table)
-            
-            # Čára a celkem
-            story.append(Spacer(1, 10))
-            story.append(Paragraph("<hr/>", styles['Normal']))
-            story.append(Paragraph(f"Celkem: {celkem_om:.2f} Kč", total_style))
-        
-        # Přidej další důležité informace na konec dokumentu (VEN z for cyklu)
-        story.append(PageBreak())
-        
-        # Nadpis pro další informace
-        info_title_style = ParagraphStyle(
-            'InfoTitle',
-            parent=styles['Heading1'],
-            fontSize=18,
-            fontName=bold_font,
-            spaceAfter=20,
-            spaceBefore=20,
-            alignment=1  # Center
-        )
-        
-        info_heading_style = ParagraphStyle(
-            'InfoHeading',
-            parent=styles['Heading2'],
-            fontSize=12,
-            fontName=bold_font,
-            spaceAfter=10,
-            spaceBefore=15
-        )
-        
-        story.append(Paragraph("Další důležité informace", info_title_style))
-        
-        # 1. Podíl zdrojů energie
-        story.append(Paragraph("Podíl jednotlivých zdrojů nebo původů energie na celkové směsi paliv dodavatele v roce 2024", info_heading_style))
-        
-        energy_table_data = [
-            ['Původ elektřiny', '% podíl'],
-            ['Uhelné elektrárny (uhlí)', '44,69'],
-            ['Jaderné elektrárny (jádro)', '42,82'],
-            ['Podíl elektřiny vyrobené ze zemního plynu', '5,79'],
-            ['Obnovitelné zdroje energie (OZE)', '6,4'],
-            ['Druhotné zdroje', '0,16'],
-            ['Ostatní zdroje', '0,14'],
-            ['celkem', '100']
-        ]
-        
-        energy_table = Table(energy_table_data, colWidths=[120*mm, 30*mm])
-        energy_table.setStyle(TableStyle([
-            ('BACKGROUND', (0, 0), (-1, 0), colors.lightgrey),
-            ('TEXTCOLOR', (0, 0), (-1, 0), colors.black),
-            ('ALIGN', (0, 0), (-1, -1), 'LEFT'),
-            ('ALIGN', (1, 0), (1, -1), 'RIGHT'),
-            ('FONTNAME', (0, 0), (-1, 0), bold_font),
-            ('FONTNAME', (0, 0), (-1, -1), base_font),
-            ('FONTSIZE', (0, 0), (-1, -1), 9),
-            ('TOPPADDING', (0, 0), (-1, -1), 6),
-            ('BOTTOMPADDING', (0, 0), (-1, -1), 6),
-            ('GRID', (0, 0), (-1, -1), 1, colors.black),
-            ('BACKGROUND', (0, -1), (-1, -1), colors.lightgrey),
-            ('FONTNAME', (0, -1), (-1, -1), bold_font)
-        ]))
-        story.append(energy_table)
-        story.append(Spacer(1, 15))
-        
-        # 2. Informace o dopadech na životní prostředí
-        story.append(Paragraph("Informace o dopadech výroby elektřiny na životní prostředí", info_heading_style))
-        story.append(Paragraph("Informace o dopadech výroby elektřiny na životní prostředí jsou dostupné na internetových stránkách Ministerstva životního prostředí www.mzp.cz.", styles['Normal']))
-        story.append(Spacer(1, 10))
-        
-        # 3. Reklamace
-        story.append(Paragraph("Reklamace, řešení sporů", info_heading_style))
-        story.append(Paragraph("Zákazník může k vyúčtování dodávek elektřiny a souvisejících služeb uplatnit reklamaci na adrese fakturace@venergie.cz nebo na adrese Východočeská energie s.r.o., V Celnici 1040/5, 110 00 Praha 1, ve lhůtě 30 dnů ode dne doručení. V případě vzniku sporu mezi zákazníkem a dodavatelem může zákazník podat návrh na rozhodnutí tohoto sporu podle § 17 odst. 7 energetického zákona, přitom musí postupovat podle správního řádu.", styles['Normal']))
-        story.append(Spacer(1, 10))
-        
-        # 4. Změna dodavatele
-        story.append(Paragraph("Změna dodavatele", info_heading_style))
-        story.append(Paragraph("Zákazníci a spotřebitelé mají právo zvolit si a bezplatně změnit svého dodavatele. Každý zákazník se podpisem smlouvy zavázal dodržet její podmínky. Pokud je smlouva uzavřena na dobu určitou, je zákazník povinen tento závazek dodržet. Při ukončení smluvního vztahu je tedy nutné postupovat dle smlouvy, dodatku a všeobecných obchodních podmínek, které jsou nedílnou součástí každé smlouvy. Před změnou dodavatele je vhodné si zjistit, zda je změna dodavatele výhodná, a to nejen srovnáním ceny, ale i Obchodních podmínek dodavatele. Pro nezávislé porovnání cenových nabídek dodavatelů můžete využít například kalkulačku Energetického regulačního úřadu, kterou naleznete na adrese www.eru.cz.", styles['Normal']))
-        story.append(Spacer(1, 10))
-        
-        # 5. Kontaktní údaje
-        story.append(Paragraph("Důležité kontaktní údaje", info_heading_style))
-        story.append(Paragraph("<b>Energetický regulační úřad</b>", styles['Normal']))
-        story.append(Paragraph("adresa sídla: Masarykovo náměstí 5, 586 01 Jihlava<br/>telefonní číslo: 564 578 666 – ústředna<br/>adresa webových stránek: www.eru.cz<br/>adresa elektronické podatelny: podatelna@eru.cz", styles['Normal']))
-        
-        doc.build(story)
-        pdf_data = buffer.getvalue()
-        buffer.close()
-        
-        response = make_response(pdf_data)
+
+            vypocty_data.append({
+                'vypocet': vypocet,
+                'om': om,
+                'spotreba_vt_mwh': spotreba_vt_mwh,
+                'spotreba_nt_mwh': spotreba_nt_mwh,
+                'celkova_spotreba_mwh': celkova_spotreba_mwh,
+                'jednotkova_cena_elektriny_vt': jednotkova_cena_elektriny_vt,
+                'jednotkova_cena_elektriny_nt': jednotkova_cena_elektriny_nt,
+                'jednotkova_cena_distribuce_vt': jednotkova_cena_distribuce_vt,
+                'jednotkova_cena_distribuce_nt': jednotkova_cena_distribuce_nt,
+                'jednotkova_cena_systemove_sluzby': jednotkova_cena_systemove_sluzby,
+                'jednotkova_cena_poze': jednotkova_cena_poze,
+                'jednotkova_cena_dan': jednotkova_cena_dan,
+                'poze_minimum': poze_minimum,
+                'celkem_om': celkem_om
+            })
+
+        # Vygeneruj HTML pomocí šablony
+        html_content = render_template("print/priloha2.html",
+                                     stredisko=stredisko,
+                                     obdobi=obdobi,
+                                     faktura=faktura,
+                                     dodavatel=dodavatel,
+                                     vypocty_data=vypocty_data)
+
+        # Převeď HTML na PDF pomocí WeasyPrint
+        pdf_bytes = HTML(string=html_content, base_url='file://').write_pdf()
+
+        response = make_response(pdf_bytes)
         response.headers['Content-Type'] = 'application/pdf'
-        response.headers['Content-Disposition'] = f'inline; filename=priloha2_{stredisko.nazev_strediska}_{rok}_{mesic:02d}.pdf'
-        
+        response.headers['Content-Disposition'] = f'inline; filename=priloha2_{rok}_{mesic:02d}.pdf'
         return response
-        
+
     except Exception as e:
-        return f"CHYBA v příloze 2: {str(e)}"
+        return f"Chyba při generování PDF přílohy 2: {str(e)}", 500
+
+# Zbytek funkcí je nyní čistý - používá jen WeasyPrint a HTML šablony
 
 @print_bp.route("/<int:stredisko_id>/<int:rok>-<int:mesic>/priloha2/test")
 def test_priloha2_route(stredisko_id, rok, mesic):
     """ÚPLNĚ JEDNODUCHÝ TEST - bez databáze"""
     return f"TEST ROUTE WORKS: stredisko={stredisko_id}, rok={rok}, mesic={mesic}"
 
-@print_bp.route("/<int:stredisko_id>/<int:rok>-<int:mesic>/priloha2_backup/pdf")
-def vygenerovat_prilohu2_pdf_backup(stredisko_id, rok, mesic):
-    """ZÁLOHNÍ VERZE - příliš komplexní, způsobuje EOF chyby"""
-    """Generuje PDF přílohu 2 - rozpis položek za odběrná místa s automatickým stránkováním a důležitými informacemi"""
-    
-    data, error = get_faktura_data(stredisko_id, rok, mesic)
-    if error:
-        return error
+# Další route functions následují...
 
-    try:
-        # Načti výpočty
-        vypocty_om = db.session.query(VypocetOM, OdberneMisto)\
-            .join(OdberneMisto, VypocetOM.odberne_misto_id == OdberneMisto.id)\
-            .filter(VypocetOM.id > 0)\
-            .filter(OdberneMisto.stredisko_id == stredisko_id)\
-            .order_by(OdberneMisto.cislo_om)\
-            .all()
-        
-        if not vypocty_om:
-            return "Nejsou k dispozici výpočty pro vybrané období.", 400
-
-        # Načti vystavovatele pro důležité informace
-        from models import InfoVystavovatele
-        vystavovatel = InfoVystavovatele.query.filter_by(stredisko_id=stredisko_id).first()
-
-        # [OK] REGISTRACE FONTŮ
-        font_registered = False
-        try:
-            from reportlab.pdfbase.ttfonts import TTFont
-            import os
-            font_paths = [
-                'C:/Windows/Fonts/arial.ttf',
-                'C:/Windows/Fonts/calibri.ttf',
-                '/System/Library/Fonts/Arial.ttf',
-                '/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf'
-            ]
-            
-            for font_path in font_paths:
-                if os.path.exists(font_path):
-                    try:
-                        pdfmetrics.registerFont(TTFont('CzechFont', font_path))
-                        font_registered = True
-                        break
-                    except:
-                        continue
-        except:
-            pass
-        
-        base_font = 'CzechFont' if font_registered else 'Helvetica'
-        bold_font = 'CzechFont' if font_registered else 'Helvetica-Bold'
-
-        # [OK] FUNKCE PRO VYTVOŘENÍ STORY (obsahu) - ROZŠÍŘENO
-        def create_story():
-            story = []
-            
-            # STYLY
-            from reportlab.lib.styles import ParagraphStyle
-            normal_style = ParagraphStyle('Normal', fontName=base_font, fontSize=9)
-            bold_style = ParagraphStyle('Bold', fontName=bold_font, fontSize=9)
-            small_style = ParagraphStyle('Small', fontName=base_font, fontSize=8)
-            heading_style = ParagraphStyle('Heading', fontName=bold_font, fontSize=11)
-            
-            # HLAVIČKA
-            cislo_data = [[f"Číslo {data['faktura'].cislo_faktury if data['faktura'] else '270325044'}"]]
-            cislo_table = Table(cislo_data, colWidths=[500])
-            cislo_table.setStyle(TableStyle([
-                ('BOX', (0, 0), (-1, -1), 1, colors.black),
-                ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
-                ('FONTNAME', (0, 0), (-1, -1), bold_font),
-                ('FONTSIZE', (0, 0), (-1, -1), 10),
-                ('TOPPADDING', (0, 0), (-1, -1), 3),
-                ('BOTTOMPADDING', (0, 0), (-1, -1), 3),
-            ]))
-            story.append(cislo_table)
-            story.append(Spacer(1, 10))
-            
-            # Company info
-            company_info = f"Dodavatel: {data['dodavatel'].nazev_sro_sro if data['dodavatel'] else 'Your energy, s.r.o.'}, " \
-                          f"{data['dodavatel'].adresa_radek_1 if data['dodavatel'] else 'Italská 2584/69'}, " \
-                          f"{data['dodavatel'].adresa_radek_2 if data['dodavatel'] else '120 00 Praha 2 - Vinohrady'}, " \
-                          f"DIČ {data['dodavatel'].dic_sro if data['dodavatel'] else 'CZ24833851'} " \
-                          f"IČO {data['dodavatel'].ico_sro if data['dodavatel'] else '24833851'}"
-            
-            story.append(Paragraph(company_info, normal_style))
-            story.append(Spacer(1, 20))
-
-            # PROCHÁZEJ ODBĚRNÁ MÍSTA
-            from reportlab.platypus import KeepTogether
-            
-            for i, (vypocet, om) in enumerate(vypocty_om):
-                # [OK] NAČTI CENY Z DATABÁZE
-                from models import Odecet, CenaDodavatel, CenaDistribuce
-                
-                # Načti odečet
-                odecet = Odecet.query.filter_by(
-                    stredisko_id=stredisko_id,
-                    obdobi_id=data['obdobi'].id,
-                    oznaceni=om.cislo_om.zfill(7) if om.cislo_om else None
-                ).first()
-                
-                # Načti ceny dodavatele z databáze
-                ceny_dodavatel = CenaDodavatel.query.filter_by(
-                    obdobi_id=data['obdobi'].id,
-                    distribuce=data['stredisko'].distribuce,
-                    sazba=om.distribucni_sazba_om,
-                    jistic=om.kategorie_jistice_om
-                ).first()
-                
-                # Načti ceny distribuce z databáze
-                ceny_distribuce = CenaDistribuce.query.filter_by(
-                    stredisko_id=stredisko_id,
-                    rok=data['obdobi'].rok,
-                    distribuce=data['stredisko'].distribuce,
-                    sazba=om.distribucni_sazba_om,
-                    jistic=om.kategorie_jistice_om
-                ).first()
-                
-                # [OK] DYNAMICKÉ JEDNOTKOVÉ CENY Z DATABÁZE
-                # Fallback hodnoty pokud nenajdeme ceny v DB
-                cena_mesicni_plat = float(ceny_dodavatel.mesicni_plat) if ceny_dodavatel and ceny_dodavatel.mesicni_plat else 190.00
-                cena_elektrinu_vt = float(ceny_dodavatel.platba_za_elektrinu_vt) if ceny_dodavatel and ceny_dodavatel.platba_za_elektrinu_vt else 3009.00
-                cena_jistic = float(ceny_distribuce.platba_za_jistic) if ceny_distribuce and ceny_distribuce.platba_za_jistic else 575.00
-                cena_distribuce_vt = float(ceny_distribuce.platba_za_distribuci_vt) if ceny_distribuce and ceny_distribuce.platba_za_distribuci_vt else 2460.33
-                cena_systemove_sluzby = float(ceny_distribuce.systemove_sluzby) if ceny_distribuce and ceny_distribuce.systemove_sluzby else 170.92
-                cena_poze = float(ceny_distribuce.poze_dle_spotreby) if ceny_distribuce and ceny_distribuce.poze_dle_spotreby else 495.00
-                cena_nesitova = float(ceny_distribuce.nesitova_infrastruktura) if ceny_distribuce and ceny_distribuce.nesitova_infrastruktura else 8.45
-                cena_dan = float(ceny_distribuce.dan_z_elektriny) if ceny_distribuce and ceny_distribuce.dan_z_elektriny else 28.30
-                
-                # Výpočty
-                spotreba_vt_mwh = float(odecet.spotreba_vt or 0) / 1000 if odecet else 0.0
-                spotreba_nt_mwh = float(odecet.spotreba_nt or 0) / 1000 if odecet else 0.0
-                celkova_spotreba_mwh = spotreba_vt_mwh + spotreba_nt_mwh
-                poze_minimum = min(float(vypocet.poze_dle_jistice or 0), float(vypocet.poze_dle_spotreby or 0))
-                celkem_om = (
-                    float(vypocet.mesicni_plat or 0) +
-                    float(vypocet.platba_za_elektrinu_vt or 0) +
-                    float(vypocet.platba_za_elektrinu_nt or 0) +
-                    float(vypocet.platba_za_jistic or 0) +
-                    float(vypocet.platba_za_distribuci_vt or 0) +
-                    float(vypocet.platba_za_distribuci_nt or 0) +
-                    float(vypocet.systemove_sluzby or 0) +
-                    poze_minimum +
-                    float(vypocet.nesitova_infrastruktura or 0) +
-                    float(vypocet.dan_z_elektriny or 0)
-                )
-
-                # VYTVOŘ OBSAH JEDNOHO OM
-                om_content = []
-                
-                # Název OM
-                om_title = f"Odběrné místo: {om.cislo_om} {om.nazev_om or ''}"
-                om_content.append(Paragraph(f"<b>{om_title}</b>", bold_style))
-                om_content.append(Spacer(1, 5))
-                
-                # Info o OM
-                info_text = f"{data['stredisko'].adresa or ''} &nbsp;&nbsp;&nbsp;&nbsp; " \
-                           f"Období fakturace: {data['faktura'].fakturace_od.strftime('%d.%m.%Y') if data['faktura'] and data['faktura'].fakturace_od else '01.03.2025'} " \
-                           f"{data['faktura'].fakturace_do.strftime('%d.%m.%Y') if data['faktura'] and data['faktura'].fakturace_do else '31.03.2025'}"
-                om_content.append(Paragraph(info_text, normal_style))
-                
-                info_text2 = f"Distribuční sazba: {om.distribucni_sazba_om or ''} &nbsp;&nbsp;&nbsp;&nbsp; " \
-                            f"Kategorie hlavního jističe: {om.kategorie_jistice_om or ''} &nbsp;&nbsp;&nbsp;&nbsp; " \
-                            f"Hodnota hlavního jističe [A]: {om.hodnota_jistice_om or ''}"
-                om_content.append(Paragraph(info_text2, normal_style))
-                om_content.append(Paragraph("EAN", normal_style))
-                om_content.append(Spacer(1, 10))
-
-                kategorie_jistice = om.kategorie_jistice_om or ''
-                jistice_za_ampery = [
-                    "nad 3x160A za každou 1A",
-                    "nad 1x25A za každou 1A", 
-                    "nad 3x63A za každou 1A"
-                ]
-
-                # Pokud je jistič "za každou 1A", použij hodnotu jističe jako množství
-                if any(kategorie in kategorie_jistice for kategorie in jistice_za_ampery):
-                    mnozstvi_staly_plat = om.hodnota_jistice_om or '1'
-                    jednotka_staly_plat = 'A'  # ampéry
-                else:
-                    mnozstvi_staly_plat = '1'
-                    jednotka_staly_plat = '1'  # kus
-
-                # [OK] TABULKA S DYNAMICKÝMI CENAMI
-                data_table = [
-                    ['', 'Množství', 'MJ', 'Jednotková cena', 'Celková cena'],
-                    ['Dodávka elektřiny', '', '', '', ''],
-                    ['    Stálý plat', '1', '1', f"{cena_mesicni_plat:,.2f}".replace(',', ' '), f"{float(vypocet.mesicni_plat or 0):.2f}"],
-                    ['    Plat za silovou elektřinu v VT', f"{spotreba_vt_mwh:.4f}", 'MWh', f"{cena_elektrinu_vt:,.2f}".replace(',', ' '), f"{float(vypocet.platba_za_elektrinu_vt or 0):.2f}"],
-                    ['Distribuční služby', '', '', '', ''],
-                    ['    Měsíční plat', mnozstvi_staly_plat, jednotka_staly_plat, f"{cena_jistic:,.2f}".replace(',', ' '), f"{float(vypocet.platba_za_jistic or 0):.2f}"],
-                    ['    Plat za elektřinu ve VT', f"{spotreba_vt_mwh:.6f}", 'MWh', f"{cena_distribuce_vt:,.2f}".replace(',', ' '), f"{float(vypocet.platba_za_distribuci_vt or 0):.2f}"],
-                    ['    Cena za systémové služby', f"{celkova_spotreba_mwh:.6f}", 'MWh', f"{cena_systemove_sluzby:.2f}", f"{float(vypocet.systemove_sluzby or 0):.2f}"],
-                    ['    Podpora elekt. z podporovaných zdrojů energie', f"{celkova_spotreba_mwh:.6f}", 'MWh', f"{cena_poze:.2f}", f"{poze_minimum:.2f}"],
-                    ['    Poplatek za nesíťovou infrastrukturu', '1', '1', f"{cena_nesitova:.2f}", f"{float(vypocet.nesitova_infrastruktura or 0):.2f}"],
-                    ['Daň', '', '', '', ''],
-                    ['    Daň', f"{celkova_spotreba_mwh:.4f}", 'MWh', f"{cena_dan:.2f}", f"{float(vypocet.dan_z_elektriny or 0):.2f}"],
-                    ['Celkem', '', '', '', f"{celkem_om:.2f}"]
-                ]
-
-                table = Table(data_table, colWidths=[230, 50, 30, 80, 80])
-                table.setStyle(TableStyle([
-                    ('FONTSIZE', (0, 0), (-1, -1), 8),
-                    ('FONTNAME', (0, 0), (-1, -1), base_font),
-                    ('ALIGN', (1, 1), (-1, -1), 'RIGHT'),
-                    ('ALIGN', (0, 0), (0, -1), 'LEFT'),
-                    ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
-                    ('LEFTPADDING', (0, 0), (-1, -1), 2),
-                    ('RIGHTPADDING', (0, 0), (-1, -1), 2),
-                    ('TOPPADDING', (0, 0), (-1, -1), 1),
-                    ('BOTTOMPADDING', (0, 0), (-1, -1), 1),
-                ]))
-
-                om_content.append(table)
-                story.append(KeepTogether(om_content))
-                
-                # Mezera mezi OM
-                if i < len(vypocty_om) - 1:
-                    story.append(Spacer(1, 15))
-            
-            # [OK] NOVÁ SEKCE - DŮLEŽITÉ INFORMACE
-            from reportlab.platypus import PageBreak
-            story.append(PageBreak())
-            
-            # Hlavní nadpis
-            story.append(Paragraph("<b>Další důležité informace</b>", heading_style))
-            story.append(Spacer(1, 15))
-            
-            # Energetická tabulka
-            story.append(Paragraph("<b>Podíl jednotlivých zdrojů nebo původu energie na celkové směsi paliv dodavatele v roce 2024:</b>", bold_style))
-            story.append(Spacer(1, 8))
-            
-            energy_data = [
-                ['Původ elektřiny', '% podíl'],
-                ['Uhelné elektrárny (uhlí)', '44,69'],
-                ['Jaderné elektrárny (jádro)', '42,82'],
-                ['Podíl elektřiny vyrobené ze zemního plynu', '5,79'],
-                ['Obnovitelné zdroje energie (OZE)', '6,4'],
-                ['Druhotné zdroje', '0,16'],
-                ['Ostatní zdroje', '0,14'],
-                ['celkem', '100']
-            ]
-            
-            energy_table = Table(energy_data, colWidths=[350, 80])
-            energy_table.setStyle(TableStyle([
-                ('FONTSIZE', (0, 0), (-1, -1), 8),
-                ('FONTNAME', (0, 0), (-1, 0), bold_font),
-                ('FONTNAME', (0, -1), (-1, -1), bold_font),  # Poslední řádek bold
-                ('FONTNAME', (0, 1), (-1, -2), base_font),
-                ('GRID', (0, 0), (-1, -1), 0.5, colors.black),
-                ('BACKGROUND', (0, 0), (-1, 0), colors.lightgrey),
-                ('ALIGN', (0, 0), (0, -1), 'LEFT'),
-                ('ALIGN', (1, 0), (1, -1), 'RIGHT'),
-                ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
-            ]))
-            story.append(energy_table)
-            story.append(Spacer(1, 15))
-            
-            # Informace o životním prostředí
-            story.append(Paragraph("<b>Informace o dopadech výroby elektřiny na životní prostředí</b>", bold_style))
-            story.append(Spacer(1, 5))
-            story.append(Paragraph("Informace o dopadech výroby elektřiny na životní prostředí jsou dostupné na internetových stránkách Ministerstva životního prostředí www.mzp.cz.", small_style))
-            story.append(Spacer(1, 12))
-            
-            # Reklamace
-            story.append(Paragraph("<b>Reklamace, řešení sporů</b>", bold_style))
-            story.append(Spacer(1, 5))
-            
-            # [OK] DYNAMICKÉ ÚDAJE Z DATABÁZE
-            vystavovatel_email = vystavovatel.email_vystavitele if vystavovatel and vystavovatel.email_vystavitele else 'email@vystavovatel.cz'
-            dodavatel_nazev = data['dodavatel'].nazev_sro_sro if data['dodavatel'] and data['dodavatel'].nazev_sro_sro else 'Your energy, s.r.o.'
-            dodavatel_adresa1 = data['dodavatel'].adresa_radek_1 if data['dodavatel'] and data['dodavatel'].adresa_radek_1 else 'Italská 2584/69'
-            dodavatel_adresa2 = data['dodavatel'].adresa_radek_2 if data['dodavatel'] and data['dodavatel'].adresa_radek_2 else '120 00 Praha 2 - Vinohrady'
-            
-            reklamace_text = f"Zákazník může k vyúčtování dodávek elektřiny a souvisejících služeb uplatnit reklamaci na adrese <b>{vystavovatel_email}</b> nebo na adrese <b>{dodavatel_nazev}, {dodavatel_adresa1} {dodavatel_adresa2}</b>, ve lhůtě do 30 dnů ode dne doručení. V případě vzniku sporu mezi zákazníkem a dodavatelem může zákazník podat návrh na rozhodnutí tohoto sporu podle § 17 odst. 7 energetického zákona, přitom musí postupovat podle správního řádu."
-            story.append(Paragraph(reklamace_text, small_style))
-            story.append(Spacer(1, 12))
-            
-            # Změna dodavatele
-            story.append(Paragraph("<b>Změna dodavatele</b>", bold_style))
-            story.append(Spacer(1, 5))
-            zmena_text = "Zákazníci a spotřebitelé mají právo zvolit si a bezplatně změnit svého dodavatele. Každý zákazník se podpisem smlouvy zavázal dodržet její podmínky. Pokud je smlouva uzavřena na dobu určitou, je zákazník povinen tento závazek dodržet. Při ukončení smluvního vztahu je tedy nutné postupovat dle smlouvy, dodatku a všeobecných obchodních podmínek, které jsou nedílnou součástí každé smlouvy. Před změnou dodavatele je vhodné si zjistit, zda je změna dodavatele výhodná, a to nejen srovnáním ceny, ale i Obchodních podmínek dodavatele. Pro nezávislé porovnání cenových nabídek dodavatelů můžete využít například kalkulačku Energetického regulačního úřadu, kterou naleznete na adrese www.eru.cz"
-            story.append(Paragraph(zmena_text, small_style))
-            story.append(Spacer(1, 15))
-            
-            # Kontaktní údaje
-            story.append(Paragraph("<b>Důležité kontaktní údaje</b>", bold_style))
-            story.append(Spacer(1, 10))
-            
-            # ERÚ
-            story.append(Paragraph("<b>Energetický regulační úřad</b>", bold_style))
-            story.append(Spacer(1, 5))
-            
-            eru_data = [
-                ['adresa sídla', 'Masarykovo náměstí 5, 586 01 Jihlava'],
-                ['telefonní číslo', '564 578 666 - ústředna'],
-                ['adresa webových stránek', 'www.eru.cz'],
-                ['adresa elektronické podatelny', 'podatelna@eru.cz']
-            ]
-            
-            eru_table = Table(eru_data, colWidths=[120, 300])
-            eru_table.setStyle(TableStyle([
-                ('FONTSIZE', (0, 0), (-1, -1), 8),
-                ('FONTNAME', (0, 0), (0, -1), bold_font),
-                ('FONTNAME', (1, 0), (1, -1), base_font),
-                ('GRID', (0, 0), (-1, -1), 0.5, colors.black),
-                ('BACKGROUND', (0, 0), (0, -1), colors.lightgrey),
-                ('ALIGN', (0, 0), (-1, -1), 'LEFT'),
-                ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
-            ]))
-            story.append(eru_table)
-            story.append(Spacer(1, 10))
-            
-            # MPO
-            story.append(Paragraph("<b>Ministerstvo průmyslu a obchodu</b>", bold_style))
-            story.append(Spacer(1, 5))
-            
-            mpo_data = [
-                ['adresa sídla', 'Na Františku 32, 110 15 Praha 1'],
-                ['telefonní číslo', '224 851 111'],
-                ['adresa webových stránek', 'www.mpo.cz'],
-                ['adresa elektronické podatelny', 'posta@mpo.cz']
-            ]
-            
-            mpo_table = Table(mpo_data, colWidths=[120, 300])
-            mpo_table.setStyle(TableStyle([
-                ('FONTSIZE', (0, 0), (-1, -1), 8),
-                ('FONTNAME', (0, 0), (0, -1), bold_font),
-                ('FONTNAME', (1, 0), (1, -1), base_font),
-                ('GRID', (0, 0), (-1, -1), 0.5, colors.black),
-                ('BACKGROUND', (0, 0), (0, -1), colors.lightgrey),
-                ('ALIGN', (0, 0), (-1, -1), 'LEFT'),
-                ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
-            ]))
-            story.append(mpo_table)
-            
-            return story
-
-        # [OK] 1. PRŮCHOD - zjistíme počet stránek
-        temp_buffer = io.BytesIO()
-        temp_doc = SimpleDocTemplate(temp_buffer, pagesize=A4)
-        temp_story = create_story()
-        temp_doc.build(temp_story)
-        
-        # Vypočítáme počet stránek z velikosti temp dokumentu
-        temp_buffer.seek(0)
-        try:
-            reader = create_pdf_reader(temp_buffer)
-            total_pages = len(reader.pages)
-        except:
-            # Fallback - odhad počtu stránek
-            total_pages = max(1, len(vypocty_om) // 2 + 2)  # +2 pro důležité informace
-        
-        # [OK] 2. PRŮCHOD - vytvoříme finální PDF se stránkováním
-        buffer = io.BytesIO()
-        
-        # Globální proměnná pro počet stránek
-        TOTAL_PAGES = total_pages
-        
-        # Custom template s footer funkcí
-        def add_page_number(canvas, doc):
-            """Přidá stránkování do footeru"""
-            canvas.saveState()
-            canvas.setFont('CzechFont' if font_registered else 'Helvetica', 9)
-            page_num = f"Strana {doc.page} z {TOTAL_PAGES}"
-            # Vycentrovat na spodu stránky
-            text_width = canvas.stringWidth(page_num, 'CzechFont' if font_registered else 'Helvetica', 9)
-            x = (A4[0] - text_width) / 2
-            canvas.drawString(x, 15*mm, page_num)
-            canvas.restoreState()
-        
-        # Vytvoř finální dokument
-        from reportlab.platypus import BaseDocTemplate, PageTemplate, Frame
-        doc = BaseDocTemplate(buffer, pagesize=A4, 
-                            rightMargin=20*mm, leftMargin=20*mm,
-                            topMargin=20*mm, bottomMargin=30*mm)
-        
-        frame = Frame(20*mm, 30*mm, A4[0]-40*mm, A4[1]-50*mm, id='normal')
-        template = PageTemplate(id='later', frames=frame, onPage=add_page_number)
-        doc.addPageTemplates([template])
-        
-        # Vytvoř story znovu
-        final_story = create_story()
-        doc.build(final_story)
-        
-        pdf = buffer.getvalue()
-        buffer.close()
-        temp_buffer.close()
-        
-        response = make_response(pdf)
-        response.headers['Content-Type'] = 'application/pdf'
-        response.headers['Content-Disposition'] = f'inline; filename=priloha2_{rok}_{mesic:02d}.pdf'
-        
-        return response
-
-    except Exception as e:
-        error_msg = str(e)
-        if 'PDF.__init__()' in error_msg or 'PyPDF2' in error_msg or 'positional argument' in error_msg:
-            flash(f"[WARNING] Príloha 2 nie je dostupná kvôli problémom s PDF knižnicou na serveri. Skúste použiť kompletný PDF súbor.")
-        else:
-            flash(f"[ERROR] Chyba při generování PDF: {error_msg}")
-        return redirect(url_for('fakturace.fakturace', stredisko_id=stredisko_id))    
+# ==== KOMPLETNÍ PDF - POUZE WEASYPRINT ====
 
 @print_bp.route("/<int:stredisko_id>/<int:rok>-<int:mesic>/kompletni/pdf")
 def vygenerovat_kompletni_pdf(stredisko_id, rok, mesic):
-    """Generuje kompletní PDF - faktura + příloha 1 + příloha 2 v jednom souboru"""
+    """Generuje kompletní PDF - faktura + příloha 1 + příloha 2 v jednom souboru pomocí HTML šablon"""
     if not session.get("user_id"):
         return redirect("/login")
 
@@ -2398,54 +1528,165 @@ def vygenerovat_kompletni_pdf(stredisko_id, rok, mesic):
         return "Nepovolený přístup", 403
 
     try:
-        print("[INFO] Generuji kompletní PDF s WeasyPrint - faktura + příloha 1 + příloha 2")
+        print("[INFO] Generuji kompletní PDF kombinací HTML šablon...")
 
         if not WEASYPRINT_AVAILABLE:
             raise Exception("WeasyPrint není dostupný - nelze generovat kompletní PDF")
 
-        # Získej PDF bytes pro jednotlivé části
-        faktura_bytes = _get_faktura_pdf_bytes(stredisko_id, rok, mesic)
-        priloha1_bytes = _get_priloha1_pdf_bytes(stredisko_id, rok, mesic)
-        priloha2_bytes = _get_priloha2_pdf_bytes(stredisko_id, rok, mesic)
+        # Načti data pro HTML šablony (stejná data jako jednotlivé route)
+        data, error = get_faktura_data(stredisko_id, rok, mesic)
+        if error:
+            raise Exception(f"Chyba při načítání dat: {error}")
 
-        print("[INFO] Všechny části PDF úspěšně vygenerovány")
+        # 1. HTML FAKTURA (používá weasyprint_faktura.html)
+        print("[INFO] Generuji HTML fakturu...")
+        faktura_html = render_template("print/weasyprint_faktura.html", **data)
 
-        # Zkus použít PyPDF2/pypdf pro správné spojování PDF
-        try:
-            # Zkus importovat PyPDF2 nebo pypdf
-            try:
-                from PyPDF2 import PdfReader, PdfWriter
-            except ImportError:
-                from pypdf import PdfReader, PdfWriter
+        # 2. HTML PŘÍLOHA 1 (používá priloha1.html - stejná data jako route)
+        print("[INFO] Generuji HTML přílohu 1...")
+        # Připrav data pro přílohu 1 stejně jako v route vygenerovat_prilohu1_html
+        stredisko_obj = data['stredisko']
+        obdobi = data['obdobi']
+        faktura = data['faktura']
+        dodavatel = data['dodavatel']
 
-            # Vytvoř nový writer
-            merger = PdfWriter()
+        # Načti odečty stejně jako v originální route
+        odecty_raw = Odečet.query\
+            .filter_by(stredisko_id=stredisko_id, obdobi_id=obdobi.id)\
+            .order_by(Odečet.oznaceni)\
+            .all()
 
-            # Přidej strany z jednotlivých PDF
-            faktura_reader = PdfReader(io.BytesIO(faktura_bytes))
-            for page in faktura_reader.pages:
-                merger.add_page(page)
+        odberna_mista = {om.cislo_om: om for om in OdberneMisto.query.filter_by(stredisko_id=stredisko_id).all()}
 
-            priloha1_reader = PdfReader(io.BytesIO(priloha1_bytes))
-            for page in priloha1_reader.pages:
-                merger.add_page(page)
+        odecty_data = []
+        for odecet in odecty_raw:
+            om = None
+            if odecet.oznaceni in odberna_mista:
+                om = odberna_mista[odecet.oznaceni]
+            else:
+                oznaceni_padded = odecet.oznaceni.zfill(7) if odecet.oznaceni else ""
+                if oznaceni_padded in odberna_mista:
+                    om = odberna_mista[oznaceni_padded]
+                else:
+                    oznaceni_stripped = odecet.oznaceni.lstrip('0') if odecet.oznaceni else ""
+                    if oznaceni_stripped in odberna_mista:
+                        om = odberna_mista[oznaceni_stripped]
 
-            priloha2_reader = PdfReader(io.BytesIO(priloha2_bytes))
-            for page in priloha2_reader.pages:
-                merger.add_page(page)
+            if om:
+                # Přidej odběrné místo jako atribut k odečtu (ne jako slovník!)
+                setattr(odecet, 'odberne_misto', om)
+                odecty_data.append(odecet)
 
-            # Zapíš kombinované PDF
-            output_buffer = io.BytesIO()
-            merger.write(output_buffer)
-            final_pdf = output_buffer.getvalue()
-            output_buffer.close()
+        priloha1_html = render_template("print/priloha1.html",
+                                       stredisko=stredisko_obj,
+                                       obdobi=obdobi,
+                                       faktura=faktura,
+                                       dodavatel=dodavatel,
+                                       odecty=odecty_data)
 
-            print("[SUCCESS] PDF spojeno pomocí PyPDF2/pypdf")
+        # 3. HTML PŘÍLOHA 2 (používá priloha2.html - stejná data jako route)
+        print("[INFO] Generuji HTML přílohu 2...")
+        # Připrav data pro přílohu 2 stejně jako v route vygenerovat_prilohu2_html
+        vypocty_om = db.session.query(VypocetOM, OdberneMisto)\
+            .join(OdberneMisto, VypocetOM.odberne_misto_id == OdberneMisto.id)\
+            .filter(VypocetOM.obdobi_id == obdobi.id)\
+            .filter(OdberneMisto.stredisko_id == stredisko_id)\
+            .distinct(OdberneMisto.id)\
+            .order_by(OdberneMisto.id, OdberneMisto.cislo_om)\
+            .all()
 
-        except Exception as pdf_error:
-            print(f"[WARNING] PDF slučování selhalo: {pdf_error}")
-            print("[INFO] Používám fallback - vrácím pouze fakturu")
-            final_pdf = faktura_bytes
+        # KOMPLETNÍ PŘÍPRAVA DAT jako v originální route
+        vypocty_data = []
+        for vypocet, om in vypocty_om:
+            # Načti odečty pro dané OM a období
+            odecty = Odečet.query.filter_by(
+                stredisko_id=stredisko_id,
+                obdobi_id=obdobi.id,
+                oznaceni=om.cislo_om
+            ).all()
+
+            spotreba_vt_kwh = sum(o.spotreba_vt or 0 for o in odecty)
+            spotreba_nt_kwh = sum(o.spotreba_nt or 0 for o in odecty)
+            spotreba_vt_mwh = spotreba_vt_kwh / 1000
+            spotreba_nt_mwh = spotreba_nt_kwh / 1000
+            celkova_spotreba_mwh = spotreba_vt_mwh + spotreba_nt_mwh
+
+            # Jednotkové ceny - převod na float
+            jednotkova_cena_elektriny_vt = float(getattr(vypocet, 'jednotkova_cena_elektriny_vt', 0.0) or 0.0)
+            jednotkova_cena_elektriny_nt = float(getattr(vypocet, 'jednotkova_cena_elektriny_nt', 0.0) or 0.0)
+            jednotkova_cena_distribuce_vt = float(getattr(vypocet, 'jednotkova_cena_distribuce_vt', 0.0) or 0.0)
+            jednotkova_cena_distribuce_nt = float(getattr(vypocet, 'jednotkova_cena_distribuce_nt', 0.0) or 0.0)
+            jednotkova_cena_systemove_sluzby = float(getattr(vypocet, 'jednotkova_cena_systemove_sluzby', 0.0) or 0.0)
+            jednotkova_cena_poze = float(getattr(vypocet, 'jednotkova_cena_poze', 0.0) or 0.0)
+            jednotkova_cena_dan = float(getattr(vypocet, 'jednotkova_cena_dan', 0.0) or 0.0)
+
+            # POZE minimum
+            poze_zaklad = celkova_spotreba_mwh * jednotkova_cena_poze if celkova_spotreba_mwh and jednotkova_cena_poze else 0.0
+            poze_minimum_hodnota = float(getattr(vypocet, 'poze_minimum', 0.0) or 0.0)
+            poze_minimum = max(poze_zaklad, poze_minimum_hodnota)
+
+            # Celkové náklady pro OM - převod všech hodnot na float
+            celkem_om = (
+                float(getattr(vypocet, 'mesicni_plat', 0.0) or 0.0) +
+                float(getattr(vypocet, 'platba_za_elektrinu_vt', 0.0) or 0.0) +
+                float(getattr(vypocet, 'platba_za_elektrinu_nt', 0.0) or 0.0) +
+                float(getattr(vypocet, 'platba_za_jistic', 0.0) or 0.0) +
+                float(getattr(vypocet, 'platba_za_distribuci_vt', 0.0) or 0.0) +
+                float(getattr(vypocet, 'platba_za_distribuci_nt', 0.0) or 0.0) +
+                float(getattr(vypocet, 'systemove_sluzby', 0.0) or 0.0) +
+                float(poze_minimum) +
+                float(getattr(vypocet, 'nesitova_infrastruktura', 0.0) or 0.0) +
+                float(getattr(vypocet, 'dan_z_elektriny', 0.0) or 0.0)
+            )
+
+            vypocty_data.append({
+                'vypocet': vypocet,
+                'om': om,
+                'spotreba_vt_mwh': spotreba_vt_mwh,
+                'spotreba_nt_mwh': spotreba_nt_mwh,
+                'celkova_spotreba_mwh': celkova_spotreba_mwh,
+                'jednotkova_cena_elektriny_vt': jednotkova_cena_elektriny_vt,
+                'jednotkova_cena_elektriny_nt': jednotkova_cena_elektriny_nt,
+                'jednotkova_cena_distribuce_vt': jednotkova_cena_distribuce_vt,
+                'jednotkova_cena_distribuce_nt': jednotkova_cena_distribuce_nt,
+                'jednotkova_cena_systemove_sluzby': jednotkova_cena_systemove_sluzby,
+                'jednotkova_cena_poze': jednotkova_cena_poze,
+                'jednotkova_cena_dan': jednotkova_cena_dan,
+                'poze_minimum': poze_minimum,
+                'celkem_om': celkem_om
+            })
+
+        priloha2_html = render_template("print/priloha2.html",
+                                       stredisko=stredisko_obj,
+                                       obdobi=obdobi,
+                                       faktura=faktura,
+                                       dodavatel=dodavatel,
+                                       vypocty_data=vypocty_data)
+
+        # 4. KOMBINUJ HTML a přidej page-break styly
+        combined_html = f"""
+        <!DOCTYPE html>
+        <html>
+        <head>
+            <meta charset="UTF-8">
+            <style>
+                .page-break {{ page-break-before: always; }}
+            </style>
+        </head>
+        <body>
+            {faktura_html}
+            <div class="page-break">{priloha1_html}</div>
+            <div class="page-break">{priloha2_html}</div>
+        </body>
+        </html>
+        """
+
+        # 5. VYGENERUJ PDF pomocí WeasyPrint
+        print("[INFO] Převádím kombinovaný HTML na PDF pomocí WeasyPrint...")
+        final_pdf = HTML(string=combined_html, base_url='file://').write_pdf()
+
+        print(f"[SUCCESS] Kompletní PDF vygenerováno pomocí HTML šablon! ({len(final_pdf)} bytů)")
+        print("[INFO] Obsahuje: HTML faktura + HTML příloha 1 + HTML příloha 2")
 
         print("[SUCCESS] Kompletní PDF úspěšně vygenerováno")
 
@@ -2457,3 +1698,5 @@ def vygenerovat_kompletni_pdf(stredisko_id, rok, mesic):
     except Exception as e:
         print(f"[ERROR] Chyba při generování kompletního PDF: {str(e)}")
         return f"Chyba při generování kompletního PDF: {str(e)}", 500
+
+# ==== KONEC SOUBORU ====
