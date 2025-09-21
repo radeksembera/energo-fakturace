@@ -320,21 +320,13 @@ def _get_faktura_pdf_bytes(stredisko_id, rok, mesic):
                                      sazba_dph_procenta=data['sazba_dph_procenta'])
         print(f"[DEBUG] HTML šablona vygenerována, délka: {len(html_content)} znaků")
 
-        # Používej přímou konverzi HTML -> PDF pomocí pdfkit nebo podobně
-        print("[INFO] Generuji PDF přímo z HTML šablony")
+        # WeasyPrint způsobuje PyPDF2 problémy na serveru - použij ReportLab
+        print("[INFO] Generuji PDF faktury pomocí ReportLab (WeasyPrint vypnut kvůli PyPDF2)")
         try:
-            # Zkus použít ReportLab s HTML obsahem jako základ
-            # Použij WeasyPrint pro konverzi HTML na PDF
-            from weasyprint import HTML, CSS
-            
-            # Vytvoř PDF z HTML pomocí WeasyPrint
-            html_doc = HTML(string=html_content)
-            pdf_bytes = html_doc.write_pdf()
-            
-            print(f"[SUCCESS] PDF faktury vygenerováno pomocí WeasyPrint, velikost: {len(pdf_bytes)} bytů")
-            return pdf_bytes
+            # Použij ReportLab verzi faktury
+            return _generate_faktura_pdf_reportlab(data)
         except Exception as reportlab_error:
-            print(f"[ERROR] HTML -> PDF konverze selhala: {reportlab_error}")
+            print(f"[ERROR] ReportLab PDF konverze selhala: {reportlab_error}")
             raise reportlab_error
             
     except Exception as e:
