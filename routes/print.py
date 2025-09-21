@@ -342,19 +342,49 @@ def _get_faktura_pdf_bytes(stredisko_id, rok, mesic):
                                      sazba_dph_procenta=data['sazba_dph_procenta'])
         print(f"[DEBUG] HTML šablona vygenerována, délka: {len(html_content)} znaků")
 
-        # Použij WeasyPrint pro generování PDF
-        if WEASYPRINT_AVAILABLE:
-            print("[INFO] Generuji PDF faktury pomocí WeasyPrint")
-            try:
-                # Bezpečné volání přes izolovanou funkci
-                pdf_bytes = _safe_weasyprint_convert(html_content)
-                print("[SUCCESS] PDF faktura úspěšně vygenerována pomocí WeasyPrint")
-                return pdf_bytes
-            except Exception as weasy_error:
-                print(f"[ERROR] WeasyPrint selhalo: {weasy_error}")
-                raise Exception(f"WeasyPrint error: {weasy_error}")
-        else:
-            raise Exception("WeasyPrint není dostupný - nelze generovat PDF fakturu")
+        # Použij ReportLab místo WeasyPrint (stejně jako příloha 1)
+        print("[INFO] Generuji PDF faktury pomocí ReportLab")
+        try:
+            from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer
+            from reportlab.lib.styles import getSampleStyleSheet
+
+            # Použij ReportLab - stejně jako fungující příloha 1
+            buffer = io.BytesIO()
+            doc = SimpleDocTemplate(buffer, pagesize=A4)
+
+            story = []
+            styles = getSampleStyleSheet()
+
+            # Jednoduchá faktura pomocí ReportLab
+            story.append(Paragraph(f"<b>FAKTURA {data['faktura'].cislo_faktury if data['faktura'] else ''}</b>", styles['Title']))
+            story.append(Spacer(1, 20))
+
+            # Základní informace
+            if data['dodavatel']:
+                story.append(Paragraph(f"<b>Dodavatel:</b> {data['dodavatel'].nazev_sro}", styles['Normal']))
+                story.append(Paragraph(f"Adresa: {data['dodavatel'].adresa_radek_1}", styles['Normal']))
+                story.append(Spacer(1, 10))
+
+            if data['odberatel']:
+                story.append(Paragraph(f"<b>Odběratel:</b> {data['odberatel'].nazev_odberatele}", styles['Normal']))
+                story.append(Paragraph(f"Adresa: {data['odberatel'].adresa_odberatele}", styles['Normal']))
+                story.append(Spacer(1, 10))
+
+            # Částky
+            story.append(Paragraph(f"<b>Základ bez DPH:</b> {data['zaklad_bez_dph']:.2f} Kč", styles['Normal']))
+            story.append(Paragraph(f"<b>DPH ({data['sazba_dph_procenta']:.0f}%):</b> {data['castka_dph']:.2f} Kč", styles['Normal']))
+            story.append(Paragraph(f"<b>Celkem k platbě:</b> {data['k_platbe']:.2f} Kč", styles['Normal']))
+
+            doc.build(story)
+            pdf_bytes = buffer.getvalue()
+            buffer.close()
+
+            print("[SUCCESS] PDF faktura úspěšně vygenerována pomocí ReportLab")
+            return pdf_bytes
+
+        except Exception as reportlab_error:
+            print(f"[ERROR] ReportLab selhalo: {reportlab_error}")
+            raise Exception(f"ReportLab error: {reportlab_error}")
             
     except Exception as e:
         print(f"[ERROR] Obecná chyba v _get_faktura_pdf_bytes: {e}")
