@@ -728,14 +728,13 @@ def vygenerovat_fakturu_pdf(stredisko_id, rok, mesic):
     """Generuje PDF fakturu z HTML šablony pomocí WeasyPrint"""
     try:
         pdf_bytes = _get_faktura_pdf_bytes(stredisko_id, rok, mesic)
-        
-        return send_file(
-            io.BytesIO(pdf_bytes),
-            mimetype='application/pdf',
-            as_attachment=True,
-            download_name=f'faktura_{stredisko_id}_{rok}_{mesic:02d}.pdf'
-        )
-        
+
+        # Použij stejný způsob jako přílohy - make_response místo send_file
+        response = make_response(pdf_bytes)
+        response.headers['Content-Type'] = 'application/pdf'
+        response.headers['Content-Disposition'] = f'inline; filename=faktura_{stredisko_id}_{rok}_{mesic:02d}.pdf'
+        return response
+
     except Exception as e:
         return f"Chyba při generování PDF faktury: {str(e)}", 500
 
