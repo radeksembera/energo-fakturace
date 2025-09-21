@@ -802,7 +802,7 @@ def vygenerovat_fakturu_pdf(stredisko_id, rok, mesic):
         pdf_bytes = _get_faktura_pdf_bytes(stredisko_id, rok, mesic)
 
         # Zkontroluj jestli je to skutečně PDF nebo HTML fallback
-        if pdf_bytes.startswith(b'<h1>PDF Generování Selhalo'):
+        if pdf_bytes.startswith(b'<h1>PDF'):
             # Je to HTML fallback - vrať jako HTML
             response = make_response(pdf_bytes)
             response.headers['Content-Type'] = 'text/html; charset=utf-8'
