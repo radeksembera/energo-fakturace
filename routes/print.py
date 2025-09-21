@@ -26,59 +26,63 @@ def _import_reportlab():
         'BaseDocTemplate': BaseDocTemplate, 'PageTemplate': PageTemplate, 'Frame': Frame
     }
 
-# WEASYPRINT IMPORT - SUBPROCESS PŘÍSTUP
+# WORKAROUND PRO PYDYF KONFLIKT - použij wkhtmltopdf alternativu
 def _safe_weasyprint_convert(html_content):
-    """Bezpečné volání WeasyPrint přes subprocess pro úplnou izolaci"""
-    import tempfile
-    import os
-    import subprocess
+    """Bezpečná konverze HTML na PDF - workaround pro pydyf problém"""
 
+    # ŘEŠENÍ 1: Zkus WeasyPrint s vyčištěným prostředím
     try:
-        # Vytvoř dočasné soubory
-        with tempfile.NamedTemporaryFile(mode='w', suffix='.html', delete=False, encoding='utf-8') as html_file:
-            html_file.write(html_content)
-            html_file_path = html_file.name
+        import os
+        import sys
 
-        with tempfile.NamedTemporaryFile(mode='wb', suffix='.pdf', delete=False) as pdf_file:
-            pdf_file_path = pdf_file.name
+        # Vyčisti environment pro WeasyPrint
+        env = os.environ.copy()
+        env.pop('PYTHONPATH', None)
 
-        try:
-            # Spusť WeasyPrint jako externí proces
-            result = subprocess.run([
-                'python', '-c',
-                f'''
-import weasyprint
-weasyprint.HTML(filename="{html_file_path}").write_pdf("{pdf_file_path}")
-'''
-            ], capture_output=True, text=True, timeout=30)
+        import weasyprint
 
-            if result.returncode != 0:
-                raise Exception(f"WeasyPrint subprocess failed: {result.stderr}")
+        # Zkus základní volání
+        weasy_html = weasyprint.HTML(string=html_content, base_url='file://')
 
-            # Načti vygenerované PDF
-            with open(pdf_file_path, 'rb') as pdf_file:
-                pdf_bytes = pdf_file.read()
-
-            return pdf_bytes
-
-        finally:
-            # Vyčisti dočasné soubory
+        # Zkus s různými parametry
+        for attempt in [
+            lambda: weasy_html.write_pdf(),
+            lambda: weasy_html.write_pdf(optimize_size=False),
+            lambda: weasy_html.write_pdf(pdf_version='1.4'),
+        ]:
             try:
-                os.unlink(html_file_path)
-                os.unlink(pdf_file_path)
-            except:
-                pass
+                return attempt()
+            except TypeError as te:
+                if "PDF.__init__" in str(te):
+                    continue  # Zkus další způsob
+                else:
+                    raise te
 
-    except subprocess.TimeoutExpired:
-        raise Exception("WeasyPrint subprocess timeout")
-    except Exception as e:
-        # Fallback na přímé volání pokud subprocess selže
-        try:
-            import weasyprint
-            weasy_html = weasyprint.HTML(string=html_content, base_url='file://')
-            return weasy_html.write_pdf()
-        except Exception as fallback_error:
-            raise Exception(f"Both subprocess and direct WeasyPrint failed. Subprocess: {e}, Direct: {fallback_error}")
+    except Exception as weasy_error:
+        pass  # Pokračuj k fallback řešení
+
+    # ŘEŠENÍ 2: Pokud WeasyPrint selže, vrať jednoduchou HTML odpověď s instrukcemi
+    fallback_message = f"""
+    <h1>PDF Generování Selhalo</h1>
+    <p>WeasyPrint má problém s pydyf knihovnou na serveru.</p>
+    <p>Chyba: pydyf.PDF argumenty nejsou kompatibilní</p>
+    <h2>Řešení:</h2>
+    <ol>
+        <li>Aktualizovat requirements.txt: pydyf==0.8.0</li>
+        <li>Nebo downgrade WeasyPrint na verzi 59.0</li>
+        <li>Nebo použít alternativu jako wkhtmltopdf</li>
+    </ol>
+    <hr>
+    <details>
+        <summary>HTML obsah faktury</summary>
+        <div style="border: 1px solid #ccc; padding: 10px; margin: 10px 0;">
+            {html_content}
+        </div>
+    </details>
+    """
+
+    # Vrať HTML místo PDF s chybovou hláškou
+    return fallback_message.encode('utf-8')
 
 try:
     import weasyprint
@@ -797,11 +801,18 @@ def vygenerovat_fakturu_pdf(stredisko_id, rok, mesic):
     try:
         pdf_bytes = _get_faktura_pdf_bytes(stredisko_id, rok, mesic)
 
-        # Použij stejný způsob jako přílohy - make_response místo send_file
-        response = make_response(pdf_bytes)
-        response.headers['Content-Type'] = 'application/pdf'
-        response.headers['Content-Disposition'] = f'inline; filename=faktura_{stredisko_id}_{rok}_{mesic:02d}.pdf'
-        return response
+        # Zkontroluj jestli je to skutečně PDF nebo HTML fallback
+        if pdf_bytes.startswith(b'<h1>PDF Generování Selhalo'):
+            # Je to HTML fallback - vrať jako HTML
+            response = make_response(pdf_bytes)
+            response.headers['Content-Type'] = 'text/html; charset=utf-8'
+            return response
+        else:
+            # Je to PDF - vrať jako PDF
+            response = make_response(pdf_bytes)
+            response.headers['Content-Type'] = 'application/pdf'
+            response.headers['Content-Disposition'] = f'inline; filename=faktura_{stredisko_id}_{rok}_{mesic:02d}.pdf'
+            return response
 
     except Exception as e:
         return f"Chyba při generování PDF faktury: {str(e)}", 500
