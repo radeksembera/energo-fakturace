@@ -19,6 +19,15 @@ from flask import make_response
 from reportlab.platypus import BaseDocTemplate, PageTemplate, Frame
 from reportlab.platypus.doctemplate import PageTemplate
 
+# WEASYPRINT IMPORT
+try:
+    from weasyprint import HTML
+    WEASYPRINT_AVAILABLE = True
+    print("[INFO] WeasyPrint successfully imported")
+except ImportError as e:
+    WEASYPRINT_AVAILABLE = False
+    print(f"[WARNING] WeasyPrint not available: {e}")
+
 # Import kompatibilní verze PDF knihovny - DOČASNĚ VYPNUTO
 PDF_VERSION = 'disabled'
 PdfReader = None  
@@ -320,13 +329,24 @@ def _get_faktura_pdf_bytes(stredisko_id, rok, mesic):
                                      sazba_dph_procenta=data['sazba_dph_procenta'])
         print(f"[DEBUG] HTML šablona vygenerována, délka: {len(html_content)} znaků")
 
-        # WeasyPrint způsobuje PyPDF2 problémy na serveru - použij ReportLab
-        print("[INFO] Generuji PDF faktury pomocí ReportLab (WeasyPrint vypnut kvůli PyPDF2)")
+        # Pokus se nejprve o WeasyPrint pro lokální prostředí
+        if WEASYPRINT_AVAILABLE:
+            try:
+                print("[INFO] Zkouším generovat PDF faktury pomocí WeasyPrint")
+                pdf_bytes = HTML(string=html_content, base_url='file://').write_pdf()
+                print("[SUCCESS] PDF faktura úspěšně vygenerována pomocí WeasyPrint")
+                return pdf_bytes
+            except Exception as weasy_error:
+                print(f"[WARNING] WeasyPrint selhalo (pravděpodobně server bez PyPDF2): {weasy_error}")
+                print("[INFO] Přepínám na ReportLab jako fallback")
+        else:
+            print("[INFO] WeasyPrint není dostupný, používám ReportLab")
+        
         try:
-            # Použij ReportLab verzi faktury
+            # Použij ReportLab jako fallback pro server nebo když WeasyPrint není dostupný
             return _generate_faktura_pdf_reportlab(data)
         except Exception as reportlab_error:
-            print(f"[ERROR] ReportLab PDF konverze selhala: {reportlab_error}")
+            print(f"[ERROR] ReportLab PDF konverze také selhala: {reportlab_error}")
             raise reportlab_error
             
     except Exception as e:
