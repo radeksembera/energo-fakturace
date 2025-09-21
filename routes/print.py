@@ -22,12 +22,17 @@ from reportlab.platypus.doctemplate import PageTemplate
 # WEASYPRINT IMPORT
 try:
     import weasyprint
-    from weasyprint import HTML as WeasyHTML
+    from weasyprint import HTML as WeasyHTML, CSS
     WEASYPRINT_AVAILABLE = True
-    print("[INFO] WeasyPrint successfully imported")
+    print(f"[INFO] WeasyPrint successfully imported, version: {weasyprint.__version__}")
 except ImportError as e:
     WEASYPRINT_AVAILABLE = False
+    WeasyHTML = None
     print(f"[WARNING] WeasyPrint not available: {e}")
+except Exception as e:
+    WEASYPRINT_AVAILABLE = False
+    WeasyHTML = None
+    print(f"[ERROR] WeasyPrint import error: {e}")
 
 # Import kompatibilní verze PDF knihovny - DOČASNĚ VYPNUTO
 PDF_VERSION = 'disabled'
@@ -331,11 +336,16 @@ def _get_faktura_pdf_bytes(stredisko_id, rok, mesic):
         print(f"[DEBUG] HTML šablona vygenerována, délka: {len(html_content)} znaků")
 
         # Použij WeasyPrint pro generování PDF
-        if WEASYPRINT_AVAILABLE:
+        if WEASYPRINT_AVAILABLE and WeasyHTML:
             print("[INFO] Generuji PDF faktury pomocí WeasyPrint")
-            pdf_bytes = WeasyHTML(string=html_content, base_url='file://').write_pdf()
-            print("[SUCCESS] PDF faktura úspěšně vygenerována pomocí WeasyPrint")
-            return pdf_bytes
+            try:
+                # Bezpečné volání WeasyPrint
+                pdf_bytes = WeasyHTML(string=html_content, base_url='file://').write_pdf()
+                print("[SUCCESS] PDF faktura úspěšně vygenerována pomocí WeasyPrint")
+                return pdf_bytes
+            except Exception as weasy_error:
+                print(f"[ERROR] WeasyPrint selhalo: {weasy_error}")
+                raise Exception(f"WeasyPrint error: {weasy_error}")
         else:
             raise Exception("WeasyPrint není dostupný - nelze generovat PDF fakturu")
             
@@ -1496,12 +1506,17 @@ def priloha2_pdf_nova(stredisko_id, rok, mesic):
                                      vypocty_data=vypocty_data)
 
         # Převeď HTML na PDF pomocí WeasyPrint
-        pdf_bytes = WeasyHTML(string=html_content, base_url='file://').write_pdf()
-
-        response = make_response(pdf_bytes)
-        response.headers['Content-Type'] = 'application/pdf'
-        response.headers['Content-Disposition'] = f'inline; filename=priloha2_{rok}_{mesic:02d}.pdf'
-        return response
+        if WEASYPRINT_AVAILABLE and WeasyHTML:
+            try:
+                pdf_bytes = WeasyHTML(string=html_content, base_url='file://').write_pdf()
+                response = make_response(pdf_bytes)
+                response.headers['Content-Type'] = 'application/pdf'
+                response.headers['Content-Disposition'] = f'inline; filename=priloha2_{rok}_{mesic:02d}.pdf'
+                return response
+            except Exception as weasy_error:
+                raise Exception(f"WeasyPrint error in priloha2: {weasy_error}")
+        else:
+            raise Exception("WeasyPrint není dostupný pro přílohu 2")
 
     except Exception as e:
         return f"Chyba při generování PDF přílohy 2: {str(e)}", 500
@@ -1683,12 +1698,16 @@ def vygenerovat_kompletni_pdf(stredisko_id, rok, mesic):
 
         # 5. VYGENERUJ PDF pomocí WeasyPrint
         print("[INFO] Převádím kombinovaný HTML na PDF pomocí WeasyPrint...")
-        final_pdf = WeasyHTML(string=combined_html, base_url='file://').write_pdf()
-
-        print(f"[SUCCESS] Kompletní PDF vygenerováno pomocí HTML šablon! ({len(final_pdf)} bytů)")
-        print("[INFO] Obsahuje: HTML faktura + HTML příloha 1 + HTML příloha 2")
-
-        print("[SUCCESS] Kompletní PDF úspěšně vygenerováno")
+        if WEASYPRINT_AVAILABLE and WeasyHTML:
+            try:
+                final_pdf = WeasyHTML(string=combined_html, base_url='file://').write_pdf()
+                print(f"[SUCCESS] Kompletní PDF vygenerováno pomocí HTML šablon! ({len(final_pdf)} bytů)")
+                print("[INFO] Obsahuje: HTML faktura + HTML příloha 1 + HTML příloha 2")
+                print("[SUCCESS] Kompletní PDF úspěšně vygenerováno")
+            except Exception as weasy_error:
+                raise Exception(f"WeasyPrint error in kompletni PDF: {weasy_error}")
+        else:
+            raise Exception("WeasyPrint není dostupný pro kompletní PDF")
 
         response = make_response(final_pdf)
         response.headers['Content-Type'] = 'application/pdf'
