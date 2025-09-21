@@ -19,19 +19,26 @@ from flask import make_response
 from reportlab.platypus import BaseDocTemplate, PageTemplate, Frame
 from reportlab.platypus.doctemplate import PageTemplate
 
-# WEASYPRINT IMPORT
+# WEASYPRINT IMPORT - IZOLOVANÝ
+def _safe_weasyprint_convert(html_content):
+    """Bezpečné volání WeasyPrint v izolovaném prostředí"""
+    try:
+        import weasyprint
+        # Úplně nový import bez alias
+        weasy_html = weasyprint.HTML(string=html_content, base_url='file://')
+        return weasy_html.write_pdf()
+    except Exception as e:
+        raise Exception(f"WeasyPrint conversion failed: {e}")
+
 try:
     import weasyprint
-    from weasyprint import HTML as WeasyHTML, CSS
     WEASYPRINT_AVAILABLE = True
     print(f"[INFO] WeasyPrint successfully imported, version: {weasyprint.__version__}")
 except ImportError as e:
     WEASYPRINT_AVAILABLE = False
-    WeasyHTML = None
     print(f"[WARNING] WeasyPrint not available: {e}")
 except Exception as e:
     WEASYPRINT_AVAILABLE = False
-    WeasyHTML = None
     print(f"[ERROR] WeasyPrint import error: {e}")
 
 # Import kompatibilní verze PDF knihovny - DOČASNĚ VYPNUTO
@@ -336,11 +343,11 @@ def _get_faktura_pdf_bytes(stredisko_id, rok, mesic):
         print(f"[DEBUG] HTML šablona vygenerována, délka: {len(html_content)} znaků")
 
         # Použij WeasyPrint pro generování PDF
-        if WEASYPRINT_AVAILABLE and WeasyHTML:
+        if WEASYPRINT_AVAILABLE:
             print("[INFO] Generuji PDF faktury pomocí WeasyPrint")
             try:
-                # Bezpečné volání WeasyPrint
-                pdf_bytes = WeasyHTML(string=html_content, base_url='file://').write_pdf()
+                # Bezpečné volání přes izolovanou funkci
+                pdf_bytes = _safe_weasyprint_convert(html_content)
                 print("[SUCCESS] PDF faktura úspěšně vygenerována pomocí WeasyPrint")
                 return pdf_bytes
             except Exception as weasy_error:
@@ -1506,9 +1513,9 @@ def priloha2_pdf_nova(stredisko_id, rok, mesic):
                                      vypocty_data=vypocty_data)
 
         # Převeď HTML na PDF pomocí WeasyPrint
-        if WEASYPRINT_AVAILABLE and WeasyHTML:
+        if WEASYPRINT_AVAILABLE:
             try:
-                pdf_bytes = WeasyHTML(string=html_content, base_url='file://').write_pdf()
+                pdf_bytes = _safe_weasyprint_convert(html_content)
                 response = make_response(pdf_bytes)
                 response.headers['Content-Type'] = 'application/pdf'
                 response.headers['Content-Disposition'] = f'inline; filename=priloha2_{rok}_{mesic:02d}.pdf'
@@ -1698,9 +1705,9 @@ def vygenerovat_kompletni_pdf(stredisko_id, rok, mesic):
 
         # 5. VYGENERUJ PDF pomocí WeasyPrint
         print("[INFO] Převádím kombinovaný HTML na PDF pomocí WeasyPrint...")
-        if WEASYPRINT_AVAILABLE and WeasyHTML:
+        if WEASYPRINT_AVAILABLE:
             try:
-                final_pdf = WeasyHTML(string=combined_html, base_url='file://').write_pdf()
+                final_pdf = _safe_weasyprint_convert(combined_html)
                 print(f"[SUCCESS] Kompletní PDF vygenerováno pomocí HTML šablon! ({len(final_pdf)} bytů)")
                 print("[INFO] Obsahuje: HTML faktura + HTML příloha 1 + HTML příloha 2")
                 print("[SUCCESS] Kompletní PDF úspěšně vygenerováno")
