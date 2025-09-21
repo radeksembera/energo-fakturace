@@ -329,25 +329,14 @@ def _get_faktura_pdf_bytes(stredisko_id, rok, mesic):
                                      sazba_dph_procenta=data['sazba_dph_procenta'])
         print(f"[DEBUG] HTML šablona vygenerována, délka: {len(html_content)} znaků")
 
-        # Pokus se nejprve o WeasyPrint pro lokální prostředí
+        # Použij WeasyPrint pro generování PDF
         if WEASYPRINT_AVAILABLE:
-            try:
-                print("[INFO] Zkouším generovat PDF faktury pomocí WeasyPrint")
-                pdf_bytes = HTML(string=html_content, base_url='file://').write_pdf()
-                print("[SUCCESS] PDF faktura úspěšně vygenerována pomocí WeasyPrint")
-                return pdf_bytes
-            except Exception as weasy_error:
-                print(f"[WARNING] WeasyPrint selhalo (pravděpodobně server bez PyPDF2): {weasy_error}")
-                print("[INFO] Přepínám na ReportLab jako fallback")
+            print("[INFO] Generuji PDF faktury pomocí WeasyPrint")
+            pdf_bytes = HTML(string=html_content, base_url='file://').write_pdf()
+            print("[SUCCESS] PDF faktura úspěšně vygenerována pomocí WeasyPrint")
+            return pdf_bytes
         else:
-            print("[INFO] WeasyPrint není dostupný, používám ReportLab")
-        
-        try:
-            # Použij ReportLab jako fallback pro server nebo když WeasyPrint není dostupný
-            return _generate_faktura_pdf_reportlab(data)
-        except Exception as reportlab_error:
-            print(f"[ERROR] ReportLab PDF konverze také selhala: {reportlab_error}")
-            raise reportlab_error
+            raise Exception("WeasyPrint není dostupný - nelze generovat PDF fakturu")
             
     except Exception as e:
         print(f"[ERROR] Obecná chyba v _get_faktura_pdf_bytes: {e}")
@@ -1272,7 +1261,150 @@ def vygenerovat_prilohu1_pdf(stredisko_id, rok, mesic):
     except Exception as e:
         flash(f"[ERROR] Chyba při generování PDF: {str(e)}")
         return redirect(url_for('fakturace.fakturace', stredisko_id=stredisko_id))
-    
+
+def _get_priloha1_pdf_bytes(stredisko_id, rok, mesic):
+    """Pomocná funkce - vrací PDF přílohy 1 jako bytes"""
+    print(f"[DEBUG] Začínám generování PDF přílohy 1 pro středisko {stredisko_id}, období {rok}/{mesic}")
+
+    # Najdi období
+    obdobi = ObdobiFakturace.query.filter_by(
+        stredisko_id=stredisko_id, rok=rok, mesic=mesic
+    ).first()
+    if not obdobi:
+        raise ValueError(f"Období {rok}/{mesic:02d} nenalezeno")
+
+    # Načti základní data
+    faktura = Faktura.query.filter_by(stredisko_id=stredisko_id, obdobi_id=obdobi.id).first()
+    dodavatel = InfoDodavatele.query.filter_by(stredisko_id=stredisko_id).first()
+
+    # Načti odečty pro dané období
+    odecty_raw = Odecet.query\
+        .filter_by(stredisko_id=stredisko_id, obdobi_id=obdobi.id)\
+        .order_by(Odecet.oznaceni)\
+        .all()
+
+    # Načti odběrná místa pro středisko
+    odberna_mista = {om.cislo_om: om for om in OdberneMisto.query.filter_by(stredisko_id=stredisko_id).all()}
+
+    # Spáruj odečty s odběrnými místy
+    odecty = []
+    for odecet in odecty_raw:
+        # Zkus najít odpovídající odběrné místo
+        om = None
+        if odecet.oznaceni in odberna_mista:
+            om = odberna_mista[odecet.oznaceni]
+        else:
+            # Zkus s doplněnými nulami
+            oznaceni_padded = odecet.oznaceni.zfill(7) if odecet.oznaceni else ""
+            if oznaceni_padded in odberna_mista:
+                om = odberna_mista[oznaceni_padded]
+            else:
+                # Zkus bez vedoucích nul
+                oznaceni_stripped = odecet.oznaceni.lstrip('0') if odecet.oznaceni else ""
+                if oznaceni_stripped in odberna_mista:
+                    om = odberna_mista[oznaceni_stripped]
+
+        if om:  # Pouze pokud najdeme odpovídající odběrné místo
+            odecty.append((odecet, om))
+
+    # Registrace fontů
+    font_registered = False
+    try:
+        from reportlab.pdfbase.ttfonts import TTFont
+        import os
+        font_paths = [
+            'C:/Windows/Fonts/arial.ttf',
+            'C:/Windows/Fonts/calibri.ttf',
+            '/System/Library/Fonts/Arial.ttf',
+            '/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf'
+        ]
+
+        for font_path in font_paths:
+            if os.path.exists(font_path):
+                try:
+                    pdfmetrics.registerFont(TTFont('CzechFont', font_path))
+                    font_registered = True
+                    break
+                except:
+                    continue
+    except:
+        pass
+
+    # Vytvoř story
+    story = []
+    styles = getSampleStyleSheet()
+
+    if font_registered:
+        styles['Normal'].fontName = 'CzechFont'
+        styles['Heading1'].fontName = 'CzechFont'
+        styles['Heading2'].fontName = 'CzechFont'
+        styles['Title'].fontName = 'CzechFont'
+
+    # HLAVIČKA
+    story.append(Paragraph(f"<b>Příloha 1 - Hodnoty měření k dokladu</b>", styles['Title']))
+
+    company_info = f"{dodavatel.nazev_sro if dodavatel else 'Your energy, s.r.o.'}, " \
+                  f"{dodavatel.adresa_radek_1 if dodavatel else 'Italská 2584/69'} " \
+                  f"{dodavatel.adresa_radek_2 if dodavatel else '120 00 Praha 2 - Vinohrady'}, " \
+                  f"DIČ {dodavatel.dic_sro if dodavatel else 'CZ24833851'} " \
+                  f"IČO {dodavatel.ico_sro if dodavatel else '24833851'}"
+
+    story.append(Paragraph(company_info, styles['Normal']))
+    story.append(Spacer(1, 20))
+
+    # PROCHÁZEJ ODBĚRNÁ MÍSTA
+    if odecty:
+        for odecet, om in odecty:
+            # Název odběrného místa
+            om_nazev = f"<b>Odběrné místo: {odecet.oznaceni or ''} {om.nazev_om if om else ''}</b>"
+            story.append(Paragraph(om_nazev, styles['Normal']))
+            story.append(Spacer(1, 10))
+
+            # Tabulka s hodnotami
+            data_table = [
+                ['Datum', 'VT [kWh]', 'NT [kWh]', 'Celkem [kWh]', 'Poznámka']
+            ]
+
+            if hasattr(odecet, 'datum_odectu') and odecet.datum_odectu:
+                datum_str = odecet.datum_odectu.strftime('%d.%m.%Y')
+            else:
+                datum_str = 'N/A'
+
+            data_table.append([
+                datum_str,
+                str(odecet.vt or 0),
+                str(odecet.nt or 0),
+                str((odecet.vt or 0) + (odecet.nt or 0)),
+                odecet.poznamka or ''
+            ])
+
+            table = Table(data_table, colWidths=[30*mm, 25*mm, 25*mm, 25*mm, 60*mm])
+            table.setStyle(TableStyle([
+                ('BACKGROUND', (0, 0), (-1, 0), colors.grey),
+                ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
+                ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
+                ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+                ('FONTSIZE', (0, 0), (-1, 0), 10),
+                ('BOTTOMPADDING', (0, 0), (-1, 0), 12),
+                ('BACKGROUND', (0, 1), (-1, -1), colors.beige),
+                ('GRID', (0, 0), (-1, -1), 1, colors.black)
+            ]))
+
+            story.append(table)
+            story.append(Spacer(1, 20))
+    else:
+        story.append(Paragraph("Žádné hodnoty měření nejsou k dispozici.", styles['Normal']))
+
+    # Vygeneruj PDF
+    buffer = io.BytesIO()
+    doc = SimpleDocTemplate(buffer, pagesize=A4)
+    doc.build(story)
+
+    pdf_bytes = buffer.getvalue()
+    buffer.close()
+
+    print("[SUCCESS] PDF příloha 1 úspěšně vygenerována")
+    return pdf_bytes
 
 @print_bp.route("/<int:stredisko_id>/<int:rok>-<int:mesic>/priloha2/html")
 def vygenerovat_prilohu2_html(stredisko_id, rok, mesic):
@@ -2266,22 +2398,62 @@ def vygenerovat_kompletni_pdf(stredisko_id, rok, mesic):
         return "Nepovolený přístup", 403
 
     try:
-        # DOČASNÉ ŘEŠENÍ: Vráti jen fakturu bez slučování kvůli PyPDF2 kompatibilitě na serveru
-        print("[WARNING] PyPDF2 slučování vypnuto - vrací jen fakturu")
-        
+        print("[INFO] Generuji kompletní PDF s WeasyPrint - faktura + příloha 1 + příloha 2")
+
+        if not WEASYPRINT_AVAILABLE:
+            raise Exception("WeasyPrint není dostupný - nelze generovat kompletní PDF")
+
+        # Získej PDF bytes pro jednotlivé části
+        faktura_bytes = _get_faktura_pdf_bytes(stredisko_id, rok, mesic)
+        priloha1_bytes = _get_priloha1_pdf_bytes(stredisko_id, rok, mesic)
+        priloha2_bytes = _get_priloha2_pdf_bytes(stredisko_id, rok, mesic)
+
+        print("[INFO] Všechny části PDF úspěšně vygenerovány")
+
+        # Zkus použít PyPDF2/pypdf pro správné spojování PDF
         try:
-            # Zavolej pomocnou funkci pro získání PDF bytes faktury
-            faktura_bytes = _get_faktura_pdf_bytes(stredisko_id, rok, mesic)
-            
-            response = make_response(faktura_bytes)
-            response.headers['Content-Type'] = 'application/pdf'
-            response.headers['Content-Disposition'] = f'inline; filename=kompletni_faktura_{rok}_{mesic:02d}.pdf'
-            return response
-            
-        except Exception as e:
-            print(f"[ERROR] Chyba při generování faktury: {e}")
-            return f"Chyba při generování faktury: {e}", 500
-        
+            # Zkus importovat PyPDF2 nebo pypdf
+            try:
+                from PyPDF2 import PdfReader, PdfWriter
+            except ImportError:
+                from pypdf import PdfReader, PdfWriter
+
+            # Vytvoř nový writer
+            merger = PdfWriter()
+
+            # Přidej strany z jednotlivých PDF
+            faktura_reader = PdfReader(io.BytesIO(faktura_bytes))
+            for page in faktura_reader.pages:
+                merger.add_page(page)
+
+            priloha1_reader = PdfReader(io.BytesIO(priloha1_bytes))
+            for page in priloha1_reader.pages:
+                merger.add_page(page)
+
+            priloha2_reader = PdfReader(io.BytesIO(priloha2_bytes))
+            for page in priloha2_reader.pages:
+                merger.add_page(page)
+
+            # Zapíš kombinované PDF
+            output_buffer = io.BytesIO()
+            merger.write(output_buffer)
+            final_pdf = output_buffer.getvalue()
+            output_buffer.close()
+
+            print("[SUCCESS] PDF spojeno pomocí PyPDF2/pypdf")
+
+        except Exception as pdf_error:
+            print(f"[WARNING] PDF slučování selhalo: {pdf_error}")
+            print("[INFO] Používám fallback - vrácím pouze fakturu")
+            final_pdf = faktura_bytes
+
+        print("[SUCCESS] Kompletní PDF úspěšně vygenerováno")
+
+        response = make_response(final_pdf)
+        response.headers['Content-Type'] = 'application/pdf'
+        response.headers['Content-Disposition'] = f'inline; filename=kompletni_faktura_{rok}_{mesic:02d}.pdf'
+        return response
+
     except Exception as e:
         print(f"[ERROR] Chyba při generování kompletního PDF: {str(e)}")
         return f"Chyba při generování kompletního PDF: {str(e)}", 500
