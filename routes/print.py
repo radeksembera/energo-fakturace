@@ -21,7 +21,8 @@ from reportlab.platypus.doctemplate import PageTemplate
 
 # WEASYPRINT IMPORT
 try:
-    from weasyprint import HTML
+    import weasyprint
+    from weasyprint import HTML as WeasyHTML
     WEASYPRINT_AVAILABLE = True
     print("[INFO] WeasyPrint successfully imported")
 except ImportError as e:
@@ -332,7 +333,7 @@ def _get_faktura_pdf_bytes(stredisko_id, rok, mesic):
         # Použij WeasyPrint pro generování PDF
         if WEASYPRINT_AVAILABLE:
             print("[INFO] Generuji PDF faktury pomocí WeasyPrint")
-            pdf_bytes = HTML(string=html_content, base_url='file://').write_pdf()
+            pdf_bytes = WeasyHTML(string=html_content, base_url='file://').write_pdf()
             print("[SUCCESS] PDF faktura úspěšně vygenerována pomocí WeasyPrint")
             return pdf_bytes
         else:
@@ -1495,7 +1496,7 @@ def priloha2_pdf_nova(stredisko_id, rok, mesic):
                                      vypocty_data=vypocty_data)
 
         # Převeď HTML na PDF pomocí WeasyPrint
-        pdf_bytes = HTML(string=html_content, base_url='file://').write_pdf()
+        pdf_bytes = WeasyHTML(string=html_content, base_url='file://').write_pdf()
 
         response = make_response(pdf_bytes)
         response.headers['Content-Type'] = 'application/pdf'
@@ -1682,7 +1683,7 @@ def vygenerovat_kompletni_pdf(stredisko_id, rok, mesic):
 
         # 5. VYGENERUJ PDF pomocí WeasyPrint
         print("[INFO] Převádím kombinovaný HTML na PDF pomocí WeasyPrint...")
-        final_pdf = HTML(string=combined_html, base_url='file://').write_pdf()
+        final_pdf = WeasyHTML(string=combined_html, base_url='file://').write_pdf()
 
         print(f"[SUCCESS] Kompletní PDF vygenerováno pomocí HTML šablon! ({len(final_pdf)} bytů)")
         print("[INFO] Obsahuje: HTML faktura + HTML příloha 1 + HTML příloha 2")
