@@ -7,24 +7,7 @@ import io
 
 from file_helpers import get_faktury_path, get_faktura_filenames, check_faktury_exist
 
-# REPORTLAB IMPORTS - pouze pro funkce které je potřebují
-def _import_reportlab():
-    """Podmíněný import ReportLab pouze když je potřeba"""
-    from reportlab.pdfgen import canvas
-    from reportlab.lib.pagesizes import A4
-    from reportlab.lib.units import mm
-    from reportlab.pdfbase import pdfmetrics
-    from reportlab.pdfbase.ttfonts import TTFont
-    from reportlab.lib.styles import getSampleStyleSheet
-    from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph, Spacer, BaseDocTemplate, PageTemplate, Frame
-    from reportlab.lib import colors
-    return {
-        'canvas': canvas, 'A4': A4, 'mm': mm, 'pdfmetrics': pdfmetrics,
-        'TTFont': TTFont, 'getSampleStyleSheet': getSampleStyleSheet,
-        'SimpleDocTemplate': SimpleDocTemplate, 'Table': Table, 'TableStyle': TableStyle,
-        'Paragraph': Paragraph, 'Spacer': Spacer, 'colors': colors,
-        'BaseDocTemplate': BaseDocTemplate, 'PageTemplate': PageTemplate, 'Frame': Frame
-    }
+# REPORTLAB IMPORTS - odstraněno, používá se pouze WeasyPrint
 
 # WORKAROUND PRO PYDYF KONFLIKT - použij wkhtmltopdf alternativu
 def _safe_weasyprint_convert(html_content):
@@ -366,55 +349,7 @@ def vygenerovat_fakturu_html(stredisko_id, rok, mesic):
 
 # V print.py - oprava pouze design části stávající funkce
 
-def _get_faktura_pdf_bytes(stredisko_id, rok, mesic):
-    """Pomocná funkce - vrací PDF faktury jako bytes"""
-    print(f"[DEBUG] Začínám generování PDF faktury pro středisko {stredisko_id}, období {rok}/{mesic}")
-    
-    try:
-        data, error = get_faktura_data(stredisko_id, rok, mesic)
-        if error:
-            raise Exception(f"Chyba při načítání dat faktury: {error}")
-        print("[DEBUG] Data faktury úspěšně načtena")
-        
-        # Vygeneruj HTML obsah pomocí šablony
-        html_content = render_template("print/weasyprint_faktura.html", 
-                                     stredisko=data['stredisko'],
-                                     obdobi=data['obdobi'],
-                                     faktura=data['faktura'],
-                                     zaloha=data['zaloha'],
-                                     dodavatel=data['dodavatel'],
-                                     odberatel=data['odberatel'],
-                                     rekapitulace=data['rekapitulace'],
-                                     zaklad_bez_dph=data['zaklad_bez_dph'],
-                                     castka_dph=data['castka_dph'],
-                                     celkem_vc_dph=data['celkem_vc_dph'],
-                                     zaloha_celkem_vc_dph=data['zaloha_celkem_vc_dph'],
-                                     zaloha_hodnota=data['zaloha_hodnota'],
-                                     zaloha_dph=data['zaloha_dph'],
-                                     k_platbe=data['k_platbe'],
-                                     sazba_dph=data['sazba_dph'],
-                                     sazba_dph_procenta=data['sazba_dph_procenta'])
-        print(f"[DEBUG] HTML šablona vygenerována, délka: {len(html_content)} znaků")
-
-        # Použij WeasyPrint s úplnou izolací od ostatních PDF knihoven
-        if WEASYPRINT_AVAILABLE:
-            print("[INFO] Generuji PDF faktury pomocí WeasyPrint")
-            try:
-                # Kompletně izolované volání WeasyPrint bez jakýchkoliv předchozích importů
-                pdf_bytes = _safe_weasyprint_convert(html_content)
-                print("[SUCCESS] PDF faktura úspěšně vygenerována pomocí WeasyPrint")
-                return pdf_bytes
-            except Exception as weasy_error:
-                print(f"[ERROR] WeasyPrint selhalo: {weasy_error}")
-                raise Exception(f"WeasyPrint error: {weasy_error}")
-        else:
-            raise Exception("WeasyPrint není dostupný - nelze generovat PDF fakturu")
-            
-    except Exception as e:
-        print(f"[ERROR] Obecná chyba v _get_faktura_pdf_bytes: {e}")
-        import traceback
-        traceback.print_exc()
-        raise e
+# Odstraněno - _get_faktura_pdf_bytes() už se nepoužívá, nahrazeno WeasyPrint implementací
 
 
 
@@ -798,21 +733,34 @@ def _generate_faktura_pdf_reportlab(data):
 @print_bp.route("/<int:stredisko_id>/<int:rok>-<int:mesic>/faktura/pdf")
 def vygenerovat_fakturu_pdf(stredisko_id, rok, mesic):
     """Generuje PDF fakturu z HTML šablony pomocí WeasyPrint"""
-    try:
-        pdf_bytes = _get_faktura_pdf_bytes(stredisko_id, rok, mesic)
+    if not session.get("user_id"):
+        return redirect("/login")
 
-        # Zkontroluj jestli je to skutečně PDF nebo HTML fallback
-        if pdf_bytes.startswith(b'<h1>PDF'):
-            # Je to HTML fallback - vrať jako HTML
-            response = make_response(pdf_bytes)
-            response.headers['Content-Type'] = 'text/html; charset=utf-8'
-            return response
-        else:
-            # Je to PDF - vrať jako PDF
-            response = make_response(pdf_bytes)
-            response.headers['Content-Type'] = 'application/pdf'
-            response.headers['Content-Disposition'] = f'inline; filename=faktura_{stredisko_id}_{rok}_{mesic:02d}.pdf'
-            return response
+    stredisko = Stredisko.query.get_or_404(stredisko_id)
+    if stredisko.user_id != session["user_id"]:
+        return "Nepovolený přístup", 403
+
+    try:
+        # Načti data stejně jako v HTML verzi
+        data, error = get_faktura_data(stredisko_id, rok, mesic)
+        if error:
+            raise Exception(f"Chyba při načítání dat: {error}")
+
+        # Vygeneruj HTML pomocí stejné šablony jako HTML verze
+        html_content = render_template("print/weasyprint_faktura.html", **data)
+
+        # Převeď HTML na PDF pomocí WeasyPrint
+        pdf_bytes = _safe_weasyprint_convert(html_content)
+
+        if isinstance(pdf_bytes, str):
+            # Pokud WeasyPrint selhal, vrať chybovou zprávu
+            return make_response(pdf_bytes, 500, {'Content-Type': 'text/html; charset=utf-8'})
+
+        # Vytvoř odpověď s PDF
+        response = make_response(pdf_bytes)
+        response.headers['Content-Type'] = 'application/pdf'
+        response.headers['Content-Disposition'] = f'inline; filename=faktura_{stredisko_id}_{rok}_{mesic:02d}.pdf'
+        return response
 
     except Exception as e:
         return f"Chyba při generování PDF faktury: {str(e)}", 500
@@ -850,7 +798,7 @@ def vygenerovat_zalohu_html(stredisko_id, rok, mesic):
 
 @print_bp.route("/<int:stredisko_id>/<int:rok>-<int:mesic>/zalohova/pdf")
 def vygenerovat_zalohu_pdf(stredisko_id, rok, mesic):
-    """Generuje PDF zálohovou fakturu"""
+    """Generuje PDF zálohovou fakturu pomocí WeasyPrint"""
     if not session.get("user_id"):
         return redirect("/login")
 
@@ -864,189 +812,38 @@ def vygenerovat_zalohu_pdf(stredisko_id, rok, mesic):
             stredisko_id=stredisko_id, rok=rok, mesic=mesic
         ).first_or_404()
 
-        # Načti všechna potřebná data
+        # Načti všechna potřebná data (stejná logika jako HTML verze)
         zaloha = ZalohovaFaktura.query.filter_by(stredisko_id=stredisko_id, obdobi_id=obdobi.id).first()
         dodavatel = InfoDodavatele.query.filter_by(stredisko_id=stredisko_id).first()
-        odberatel = InfoOdberatele.query.first()
+        odberatel = InfoOdberatele.query.filter_by(stredisko_id=stredisko_id).first()
         vystavovatel = InfoVystavovatele.query.filter_by(stredisko_id=stredisko_id).first()
 
-        # Vytvoř PDF s UTF-8 kódováním
-        buffer = io.BytesIO()
-        doc = SimpleDocTemplate(buffer, pagesize=A4, 
-                              rightMargin=20*mm, leftMargin=20*mm,
-                              topMargin=20*mm, bottomMargin=20*mm)
-        
-        story = []
-        styles = getSampleStyleSheet()
-        font_registered = False  # Inicializace proměnné
-        
-        # [OK] REGISTRUJ ČESKÉ FONTY
-        try:
-            # Pokus o registraci českých fontů
-            from reportlab.pdfbase.ttfonts import TTFont
-            from reportlab.lib.fonts import addMapping
-            
-            # Pro Windows - zkus najít české fonty
-            import os
-            font_paths = [
-                'C:/Windows/Fonts/arial.ttf',
-                'C:/Windows/Fonts/calibri.ttf',
-                '/System/Library/Fonts/Arial.ttf',  # macOS
-                '/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf'  # Linux
-            ]
-            
-            font_registered = False
-            for font_path in font_paths:
-                if os.path.exists(font_path):
-                    try:
-                        pdfmetrics.registerFont(TTFont('CzechFont', font_path))
-                        font_registered = True
-                        break
-                    except:
-                        continue
-            
-            if font_registered:
-                # Nastav český font pro styly
-                styles['Normal'].fontName = 'CzechFont'
-                styles['Heading1'].fontName = 'CzechFont'
-                styles['Heading2'].fontName = 'CzechFont'
-                styles['Title'].fontName = 'CzechFont'
-        except:
-            # Fallback - použij základní fonty s UTF-8
-            pass
-        
-        # [OK] HLAVIČKA - STEJNÁ JAKO HTML
-        hlavicka_data = [
-            [
-                # Levá strana - dodavatel
-                [
-                    Paragraph("<b>ZÁLOHOVÁ FAKTURA - DAŇOVÝ DOKLAD</b>", styles['Heading1']),
-                    Paragraph(f"<b>{dodavatel.nazev_sro if dodavatel else 'Your energy, s.r.o.'}</b>", styles['Normal']),
-                    Paragraph(f"{dodavatel.adresa_radek_1 if dodavatel else 'Italská 2584/69'}", styles['Normal']),
-                    Paragraph(f"{dodavatel.adresa_radek_2 if dodavatel else '120 00 Praha 2 - Vinohrady'}", styles['Normal']),
-                    Paragraph(f"<b>DIČ</b> {dodavatel.dic_sro if dodavatel else 'CZ24833851'}", styles['Normal']),
-                    Paragraph(f"<b>IČO</b> {dodavatel.ico_sro if dodavatel else '24833851'}", styles['Normal']),
-                    Paragraph("", styles['Normal']),  # Spacer
-                    Paragraph(f"<b>Banka:</b> {dodavatel.banka if dodavatel else 'Bankovní účet Raiffeisenbank a.s. CZK'}", styles['Normal']),
-                    Paragraph(f"<b>Č.úč.</b> {dodavatel.cislo_uctu if dodavatel else '5041011366/5500'}", styles['Normal']),
-                    Paragraph(f"<b>IBAN</b> {dodavatel.iban if dodavatel else 'CZ1055000000005041011366'}", styles['Normal']),
-                    Paragraph(f"<b>SWIFT/BIC</b> {dodavatel.swift if dodavatel else 'RZBCCZPP'}", styles['Normal']),
-                ],
-                # Pravá strana - faktura info + odběratel
-                [
-                    Paragraph(f"<b>Číslo {zaloha.cislo_zalohove_faktury if zaloha else ''}</b>", styles['Heading2']),
-                    Paragraph("", styles['Normal']),  # Spacer
-                    Paragraph(f"<b>konst. symbol</b> {zaloha.konstantni_symbol if zaloha else ''}", styles['Normal']),
-                    Paragraph(f"<b>VS</b> {zaloha.variabilni_symbol if zaloha else ''}", styles['Normal']),
-                    Paragraph("", styles['Normal']),  # Spacer
-                    Paragraph("Objednávka:", styles['Normal']),
-                    Paragraph("", styles['Normal']),  # Spacer pro box
-                    # Odběratel box
-                    Paragraph("<b>Odběratel:</b>", styles['Normal']),
-                    Paragraph(f"<b>{odberatel.nazev_sro if odberatel else ''}</b>", styles['Normal']),
-                    Paragraph(f"{odberatel.adresa_radek_1 if odberatel else ''}", styles['Normal']),
-                    Paragraph(f"{odberatel.adresa_radek_2 if odberatel else ''}", styles['Normal']),
-                    Paragraph(f"<b>IČO:</b> {odberatel.ico_sro if odberatel else ''}", styles['Normal']),
-                    Paragraph(f"<b>DIČ:</b> {odberatel.dic_sro if odberatel else ''}", styles['Normal']),
-                    Paragraph("", styles['Normal']),  # Spacer
-                    Paragraph(f"<b>Středisko:</b> {stredisko.stredisko} {stredisko.nazev_strediska}", styles['Normal']),
-                    Paragraph(f"{stredisko.stredisko_mail if stredisko.stredisko_mail else 'info@yourenergy.cz'}", styles['Normal']),
-                ]
-            ]
-        ]
-        
-        hlavicka_table = Table(hlavicka_data, colWidths=[250, 250])
-        hlavicka_table.setStyle(TableStyle([
-            ('VALIGN', (0, 0), (-1, -1), 'TOP'),
-            ('LEFTPADDING', (0, 0), (-1, -1), 0),
-            ('RIGHTPADDING', (0, 0), (-1, -1), 0),
-        ]))
-        
-        story.append(hlavicka_table)
-        story.append(Spacer(1, 20))
-        
-        # [OK] DODACÍ A PLATEBNÍ PODMÍNKY
-        podmínky_data = [
-            ['Dodací a platební podmínky', '', ''],
-            ['Datum splatnosti', 'Datum vystavení', 'Forma úhrady'],
-            [
-                zaloha.datum_splatnosti.strftime('%d.%m.%Y') if zaloha and zaloha.datum_splatnosti else '',
-                zaloha.datum_vystaveni.strftime('%d.%m.%Y') if zaloha and zaloha.datum_vystaveni else '',
-                zaloha.forma_uhrady if zaloha else ''
-            ]
-        ]
-        
-        podmínky_table = Table(podmínky_data, colWidths=[150, 150, 150])
-        podmínky_table.setStyle(TableStyle([
-            ('BACKGROUND', (0, 0), (-1, 0), colors.lightblue),
-            ('FONTNAME', (0, 0), (-1, 0), 'CzechFont' if font_registered else 'Helvetica-Bold'),
-            ('BACKGROUND', (0, 1), (-1, 1), colors.lightgrey),
-            ('FONTNAME', (0, 1), (-1, 1), 'CzechFont' if font_registered else 'Helvetica-Bold'),
-            ('GRID', (0, 0), (-1, -1), 1, colors.black),
-            ('ALIGN', (0, 0), (-1, -1), 'LEFT'),
-            ('FONTSIZE', (0, 0), (-1, -1), 9),
-            ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
-            ('FONTNAME', (0, 0), (-1, -1), 'CzechFont' if font_registered else 'Helvetica'),
-        ]))
-        
-        story.append(podmínky_table)
-        story.append(Spacer(1, 20))
-        
-        # [OK] ZÁLOHOVÁ ČÁSTKA
-        if zaloha and zaloha.zaloha:
-            sazba_dph = 0.21  # 21% DPH
-            zaloha_vc_dph = float(zaloha.zaloha)
-            zaloha_bez_dph = zaloha_vc_dph / (1 + sazba_dph)
-            castka_dph = zaloha_vc_dph - zaloha_bez_dph
-            
-            zaloha_data = [
-                ['Popis', 'Základ daně', 'Sazba DPH', 'Částka DPH', 'Celkem vč. DPH'],
-                [f'Záloha na období {obdobi.rok}/{obdobi.mesic:02d}', f'{zaloha_bez_dph:.2f}', '21', f'{castka_dph:.2f}', f'{zaloha_vc_dph:.2f}'],
-                ['CELKEM', f'{zaloha_bez_dph:.2f}', '', f'{castka_dph:.2f}', f'{zaloha_vc_dph:.2f}']
-            ]
-            
-            zaloha_table = Table(zaloha_data, colWidths=[180, 80, 60, 80, 80])
-            zaloha_table.setStyle(TableStyle([
-                ('BACKGROUND', (0, 0), (-1, 0), colors.lightblue),
-                ('FONTNAME', (0, 0), (-1, 0), 'CzechFont' if font_registered else 'Helvetica-Bold'),
-                ('BACKGROUND', (0, 2), (-1, 2), colors.lightgrey),  # CELKEM řádek
-                ('FONTNAME', (0, 2), (-1, 2), 'CzechFont' if font_registered else 'Helvetica-Bold'),
-                ('GRID', (0, 0), (-1, -1), 1, colors.black),
-                ('ALIGN', (1, 1), (-1, -1), 'RIGHT'),  # Čísla vpravo
-                ('ALIGN', (0, 0), (0, -1), 'LEFT'),   # Názvy vlevo
-                ('FONTSIZE', (0, 0), (-1, -1), 9),
-                ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
-                ('FONTNAME', (0, 0), (-1, -1), 'CzechFont' if font_registered else 'Helvetica'),
-            ]))
-            
-            story.append(zaloha_table)
-            story.append(Spacer(1, 20))
-            
-            # K PLATBĚ
-            story.append(Paragraph(f"<b>K platbě celkem Kč {zaloha_vc_dph:.2f}</b>", styles['Title']))
-            story.append(Spacer(1, 15))
-        
-        # [OK] VYSTAVOVATEL
-        if vystavovatel:
-            story.append(Paragraph(f"<b>Vystavil:</b> {vystavovatel.jmeno_vystavitele if vystavovatel.jmeno_vystavitele else ''}", styles['Normal']))
-            story.append(Paragraph(f"<b>Telefon:</b> {vystavovatel.telefon_vystavitele if vystavovatel.telefon_vystavitele else ''}", styles['Normal']))
-            story.append(Paragraph(f"<b>Email:</b> {vystavovatel.email_vystavitele if vystavovatel.email_vystavitele else ''}", styles['Normal']))
-        
-        # [OK] GENERUJ PDF
-        doc.build(story)
-        
-        pdf = buffer.getvalue()
-        buffer.close()
-        
-        response = make_response(pdf)
+        # Vygeneruj HTML pomocí stejné šablony jako HTML verze
+        html_content = render_template("print/zalohova_faktura.html",
+                          stredisko=stredisko,
+                          obdobi=obdobi,
+                          zaloha=zaloha,
+                          dodavatel=dodavatel,
+                          odberatel=odberatel,
+                          vystavovatel=vystavovatel)
+
+        # Převeď HTML na PDF pomocí WeasyPrint
+        pdf_bytes = _safe_weasyprint_convert(html_content)
+
+        if isinstance(pdf_bytes, str):
+            # Pokud WeasyPrint selhal, vrať chybovou zprávu
+            return make_response(pdf_bytes, 500, {'Content-Type': 'text/html; charset=utf-8'})
+
+        # Vytvoř odpověď s PDF
+        response = make_response(pdf_bytes)
         response.headers['Content-Type'] = 'application/pdf'
         response.headers['Content-Disposition'] = f'inline; filename=zalohova_{rok}_{mesic:02d}.pdf'
-        
+
         return response
-        
+
     except Exception as e:
-        flash(f"[ERROR] Chyba při generování PDF: {str(e)}")
-        return redirect(url_for('fakturace.fakturace', stredisko_id=stredisko_id))
+        flash(f"Chyba při generování PDF zálohové faktury: {str(e)}")
+        return redirect(url_for('fakturace.fakturace', stredisko_id=stredisko_id, obdobi_id=obdobi.id))
 
 # Nahraď existující route v print.py:
 
@@ -1118,7 +915,7 @@ def vygenerovat_prilohu1_html(stredisko_id, rok, mesic):
 
 @print_bp.route("/<int:stredisko_id>/<int:rok>-<int:mesic>/priloha1/pdf")
 def vygenerovat_prilohu1_pdf(stredisko_id, rok, mesic):
-    """Generuje PDF přílohu 1 - hodnoty měření s automatickým stránkováním"""
+    """Generuje PDF přílohu 1 - hodnoty měření pomocí WeasyPrint"""
     if not session.get("user_id"):
         return redirect("/login")
 
@@ -1132,19 +929,19 @@ def vygenerovat_prilohu1_pdf(stredisko_id, rok, mesic):
             stredisko_id=stredisko_id, rok=rok, mesic=mesic
         ).first_or_404()
 
-        # Načti základní data
+        # Načti všechna potřebná data (stejná logika jako HTML verze)
         faktura = Faktura.query.filter_by(stredisko_id=stredisko_id, obdobi_id=obdobi.id).first()
         dodavatel = InfoDodavatele.query.filter_by(stredisko_id=stredisko_id).first()
-        
+
         # Načti odečty pro dané období
         odecty_raw = Odecet.query\
             .filter_by(stredisko_id=stredisko_id, obdobi_id=obdobi.id)\
             .order_by(Odecet.oznaceni)\
             .all()
-        
+
         # Načti odběrná místa pro středisko
         odberna_mista = {om.cislo_om: om for om in OdberneMisto.query.filter_by(stredisko_id=stredisko_id).all()}
-        
+
         # Spáruj odečty s odběrnými místy
         odecty = []
         for odecet in odecty_raw:
@@ -1162,183 +959,42 @@ def vygenerovat_prilohu1_pdf(stredisko_id, rok, mesic):
                     oznaceni_stripped = odecet.oznaceni.lstrip('0') if odecet.oznaceni else ""
                     if oznaceni_stripped in odberna_mista:
                         om = odberna_mista[oznaceni_stripped]
-            
+
             if om:  # Pouze pokud najdeme odpovídající odběrné místo
                 odecty.append((odecet, om))
 
-        # [OK] REGISTRACE FONTŮ
-        font_registered = False
-        try:
-            from reportlab.pdfbase.ttfonts import TTFont
-            import os
-            font_paths = [
-                'C:/Windows/Fonts/arial.ttf',
-                'C:/Windows/Fonts/calibri.ttf',
-                '/System/Library/Fonts/Arial.ttf',
-                '/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf'
-            ]
-            
-            for font_path in font_paths:
-                if os.path.exists(font_path):
-                    try:
-                        pdfmetrics.registerFont(TTFont('CzechFont', font_path))
-                        font_registered = True
-                        break
-                    except:
-                        continue
-        except:
-            pass
+        # Převeď na formát pro template - přidej odkaz na OM
+        odecty_data = []
+        for odecet, om in odecty:
+            # Přidej odkaz na odběrné místo do objektu odečtu
+            odecet.odberne_misto = om
+            odecty_data.append(odecet)
 
-        # [OK] FUNKCE PRO VYTVOŘENÍ STORY (obsahu)
-        def create_story():
-            story = []
-            styles = getSampleStyleSheet()
-            
-            if font_registered:
-                styles['Normal'].fontName = 'CzechFont'
-                styles['Heading1'].fontName = 'CzechFont'
-                styles['Heading2'].fontName = 'CzechFont'
-                styles['Title'].fontName = 'CzechFont'
-            
-            # HLAVIČKA
-            story.append(Paragraph(f"<b>Příloha 1 - Hodnoty měření k dokladu</b>", styles['Title']))
-            
-            company_info = f"{dodavatel.nazev_sro if dodavatel else 'Your energy, s.r.o.'}, " \
-                          f"{dodavatel.adresa_radek_1 if dodavatel else 'Italská 2584/69'} " \
-                          f"{dodavatel.adresa_radek_2 if dodavatel else '120 00 Praha 2 - Vinohrady'}, " \
-                          f"DIČ {dodavatel.dic_sro if dodavatel else 'CZ24833851'} " \
-                          f"IČO {dodavatel.ico_sro if dodavatel else '24833851'}"
-            
-            story.append(Paragraph(company_info, styles['Normal']))
-            story.append(Spacer(1, 20))
+        # Vygeneruj HTML pomocí stejné šablony jako HTML verze
+        html_content = render_template("print/priloha1.html",
+                            stredisko=stredisko,
+                            obdobi=obdobi,
+                            faktura=faktura,
+                            dodavatel=dodavatel,
+                            odecty=odecty_data)
 
-            # PROCHÁZEJ ODBĚRNÁ MÍSTA
-            if odecty:
-                for odecet, om in odecty:
-                    # Název odběrného místa
-                    om_nazev = f"<b>Odběrné místo: {odecet.oznaceni or ''} {om.nazev_om if om else ''}</b>"
-                    story.append(Paragraph(om_nazev, styles['Normal']))
-                    story.append(Spacer(1, 6))
-                    
-                    # Tabulka
-                    data = [
-                        ['Měření', 'Od', 'Do', 'Počátek', 'Konec', 'Spotřeba', 'MJ', 'Poznámka']
-                    ]
-                    
-                    # Období měření
-                    od_text = odecet.zacatek_periody_mereni.strftime('%d.%m.%Y') if odecet.zacatek_periody_mereni else ''
-                    do_text = odecet.konec_periody_mereni.strftime('%d.%m.%Y') if odecet.konec_periody_mereni else ''
-                    
-                    # VT řádek
-                    data.append([
-                        'Spotřeba VT',
-                        od_text,
-                        do_text,
-                        f"{float(odecet.pocatecni_hodnota_vt or 0):,.2f}".replace(',', ' '),
-                        f"{float(odecet.hodnota_odectu_vt or 0):,.2f}".replace(',', ' '),
-                        f"{float(odecet.spotreba_vt or 0):,.2f}".replace(',', ' '),
-                        'kWh',
-                        odecet.priznak if odecet.priznak else ''
-                    ])
-                    
-                    # NT řádek (vždy zobrazit)
-                    data.append([
-                        'Spotřeba NT',
-                        od_text,
-                        do_text,
-                        f"{float(odecet.pocatecni_hodnota_nt or 0):,.2f}".replace(',', ' '),
-                        f"{float(odecet.hodnota_odectu_nt or 0):,.2f}".replace(',', ' '),
-                        f"{float(odecet.spotreba_nt or 0):,.2f}".replace(',', ' '),
-                        'kWh',
-                        odecet.priznak if odecet.priznak else ''
-                    ])
+        # Převeď HTML na PDF pomocí WeasyPrint
+        pdf_bytes = _safe_weasyprint_convert(html_content)
 
-                    # Tabulka
-                    table = Table(data, colWidths=[65, 55, 55, 65, 65, 65, 30, 70])
-                    table.setStyle(TableStyle([
-                        ('FONTSIZE', (0, 0), (-1, -1), 8),
-                        ('FONTNAME', (0, 0), (-1, -1), 'CzechFont' if font_registered else 'Helvetica'),
-                        ('FONTNAME', (0, 0), (-1, 0), 'CzechFont' if font_registered else 'Helvetica-Bold'),
-                        ('ALIGN', (0, 0), (2, -1), 'LEFT'),
-                        ('ALIGN', (3, 0), (-2, -1), 'RIGHT'),
-                        ('ALIGN', (-1, 0), (-1, -1), 'LEFT'),
-                        ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
-                        ('LEFTPADDING', (0, 0), (-1, -1), 3),
-                        ('RIGHTPADDING', (0, 0), (-1, -1), 3),
-                        ('TOPPADDING', (0, 0), (-1, -1), 2),
-                        ('BOTTOMPADDING', (0, 0), (-1, -1), 2),
-                        ('LINEBELOW', (0, 0), (-1, 0), 0.5, colors.black),
-                    ]))
+        if isinstance(pdf_bytes, str):
+            # Pokud WeasyPrint selhal, vrať chybovou zprávu
+            return make_response(pdf_bytes, 500, {'Content-Type': 'text/html; charset=utf-8'})
 
-                    story.append(table)
-                    story.append(Spacer(1, 15))
-            else:
-                story.append(Paragraph("Nejsou k dispozici žádné odečty pro vybrané období.", styles['Normal']))
-            
-            return story
-
-        # [OK] 1. PRŮCHOD - zjistíme počet stránek
-        temp_buffer = io.BytesIO()
-        temp_doc = SimpleDocTemplate(temp_buffer, pagesize=A4, 
-                                  rightMargin=15*mm, leftMargin=15*mm,
-                                  topMargin=20*mm, bottomMargin=20*mm)
-        temp_story = create_story()
-        temp_doc.build(temp_story)
-        
-        # Vypočítáme počet stránek
-        temp_buffer.seek(0)
-        try:
-            reader = create_pdf_reader(temp_buffer)
-            total_pages = len(reader.pages)
-        except:
-            # Fallback - odhad počtu stránek
-            total_pages = max(1, len(odecty) // 3)  # Odhad: 3 OM na stránku
-        
-        # [OK] 2. PRŮCHOD - vytvoříme finální PDF se stránkováním
-        buffer = io.BytesIO()
-        
-        # Globální proměnná pro počet stránek
-        TOTAL_PAGES = total_pages
-        
-        # Custom template s footer funkcí
-        def add_page_number(canvas, doc):
-            """Přidá stránkování do footeru"""
-            canvas.saveState()
-            canvas.setFont('CzechFont' if font_registered else 'Helvetica', 9)
-            page_num = f"Strana {doc.page} z {TOTAL_PAGES}"
-            # Vycentrovat na spodu stránky
-            text_width = canvas.stringWidth(page_num, 'CzechFont' if font_registered else 'Helvetica', 9)
-            x = (A4[0] - text_width) / 2
-            canvas.drawString(x, 15*mm, page_num)
-            canvas.restoreState()
-        
-        # Vytvoř finální dokument
-        from reportlab.platypus import BaseDocTemplate, PageTemplate, Frame
-        doc = BaseDocTemplate(buffer, pagesize=A4, 
-                            rightMargin=15*mm, leftMargin=15*mm,
-                            topMargin=20*mm, bottomMargin=30*mm)  # Větší spodní okraj pro stránkování
-        
-        frame = Frame(15*mm, 30*mm, A4[0]-30*mm, A4[1]-50*mm, id='normal')
-        template = PageTemplate(id='later', frames=frame, onPage=add_page_number)
-        doc.addPageTemplates([template])
-        
-        # Vytvoř story znovu
-        final_story = create_story()
-        doc.build(final_story)
-        
-        pdf = buffer.getvalue()
-        buffer.close()
-        temp_buffer.close()
-        
-        response = make_response(pdf)
+        # Vytvoř odpověď s PDF
+        response = make_response(pdf_bytes)
         response.headers['Content-Type'] = 'application/pdf'
         response.headers['Content-Disposition'] = f'inline; filename=priloha1_{rok}_{mesic:02d}.pdf'
-        
+
         return response
-        
+
     except Exception as e:
-        flash(f"[ERROR] Chyba při generování PDF: {str(e)}")
-        return redirect(url_for('fakturace.fakturace', stredisko_id=stredisko_id))
+        flash(f"Chyba při generování PDF přílohy 1: {str(e)}")
+        return redirect(url_for('fakturace.fakturace', stredisko_id=stredisko_id, obdobi_id=obdobi.id))
 
 # ODSTRANĚNO - Používáme pouze WeasyPrint a HTML šablony
 
