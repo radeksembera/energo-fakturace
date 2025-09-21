@@ -10,3 +10,4 @@ xlrd>=2.0.1
 python-dotenv==1.0.0
 gunicorn==21.2.0
 weasyprint==61.2
+pydyf==0.8.0
