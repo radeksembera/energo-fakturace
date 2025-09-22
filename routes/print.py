@@ -1170,8 +1170,8 @@ def priloha2_pdf_nova(stredisko_id, rok, mesic):
                 oznaceni=om.cislo_om
             ).all()
 
-            spotreba_vt_kwh = sum(o.spotreba_vt or 0 for o in odecty)
-            spotreba_nt_kwh = sum(o.spotreba_nt or 0 for o in odecty)
+            spotreba_vt_kwh = sum(float(o.spotreba_vt or 0) for o in odecty)
+            spotreba_nt_kwh = sum(float(o.spotreba_nt or 0) for o in odecty)
             spotreba_vt_mwh = spotreba_vt_kwh / 1000
             spotreba_nt_mwh = spotreba_nt_kwh / 1000
             celkova_spotreba_mwh = spotreba_vt_mwh + spotreba_nt_mwh
@@ -1344,8 +1344,8 @@ def vygenerovat_kompletni_pdf(stredisko_id, rok, mesic):
                 oznaceni=om.cislo_om
             ).all()
 
-            spotreba_vt_kwh = sum(o.spotreba_vt or 0 for o in odecty)
-            spotreba_nt_kwh = sum(o.spotreba_nt or 0 for o in odecty)
+            spotreba_vt_kwh = sum(float(o.spotreba_vt or 0) for o in odecty)
+            spotreba_nt_kwh = sum(float(o.spotreba_nt or 0) for o in odecty)
             spotreba_vt_mwh = spotreba_vt_kwh / 1000
             spotreba_nt_mwh = spotreba_nt_kwh / 1000
             celkova_spotreba_mwh = spotreba_vt_mwh + spotreba_nt_mwh
