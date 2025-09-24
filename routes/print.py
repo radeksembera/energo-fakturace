@@ -1136,89 +1136,89 @@ def priloha2_pdf_nova(stredisko_id, rok, mesic):
         if stredisko.user_id != session["user_id"]:
             return "Nepovolený přístup", 403
 
-        # Použij HTML šablonu místo ReportLab
-        # Načti data stejně jako v route vygenerovat_prilohu2_html
+        # Najdi období
         obdobi = ObdobiFakturace.query.filter_by(
             stredisko_id=stredisko_id, rok=rok, mesic=mesic
-        ).first()
-        if not obdobi:
-            return "Období nenalezeno", 404
+        ).first_or_404()
 
-        vypocty_om = db.session.query(VypocetOM, OdberneMisto)\
-            .join(OdberneMisto, VypocetOM.odberne_misto_id == OdberneMisto.id)\
-            .filter(VypocetOM.obdobi_id == obdobi.id)\
-            .filter(OdberneMisto.stredisko_id == stredisko_id)\
-            .distinct(OdberneMisto.id)\
-            .order_by(OdberneMisto.id, OdberneMisto.cislo_om)\
-            .all()
-
-        if not vypocty_om:
-            return "Nejsou výpočty pro vybrané období", 404
-
-        # Připrav data jako v originální route - KOMPLETNÍ LOGIKA
+        # Načti základní data
         faktura = Faktura.query.filter_by(stredisko_id=stredisko_id, obdobi_id=obdobi.id).first()
         dodavatel = InfoDodavatele.query.filter_by(stredisko_id=stredisko_id).first()
 
+        # Načti všechny výpočty s odběrnými místy pro dané období - STEJNÝ QUERY JAKO HTML
+        vypocty_om = db.session.query(VypocetOM, OdberneMisto)\
+            .join(OdberneMisto, VypocetOM.odberne_misto_id == OdberneMisto.id)\
+            .filter(VypocetOM.id > 0)\
+            .filter(OdberneMisto.stredisko_id == stredisko_id)\
+            .order_by(OdberneMisto.cislo_om)\
+            .all()
+
+        if not vypocty_om:
+            return "Nejsou k dispozici výpočty pro vybrané období.", 400
+
+        # Připrav data pro template - STEJNÁ LOGIKA JAKO HTML
         vypocty_data = []
         sazba_dph = float(faktura.sazba_dph / 100) if faktura and faktura.sazba_dph else 0.21
 
         for vypocet, om in vypocty_om:
-            # Načti odečty pro dané OM a období
-            odecty = Odečet.query.filter_by(
-                stredisko_id=stredisko_id,
-                obdobi_id=obdobi.id,
-                oznaceni=om.cislo_om
-            ).all()
+            # Vypočítej minimum z POZE - převeď na float - STEJNÝ VÝPOČET JAKO HTML
+            poze_minimum = min(float(vypocet.poze_dle_jistice or 0), float(vypocet.poze_dle_spotreby or 0))
 
-            spotreba_vt_kwh = sum(float(o.spotreba_vt or 0) for o in odecty)
-            spotreba_nt_kwh = sum(float(o.spotreba_nt or 0) for o in odecty)
-            spotreba_vt_mwh = spotreba_vt_kwh / 1000
-            spotreba_nt_mwh = spotreba_nt_kwh / 1000
-            celkova_spotreba_mwh = spotreba_vt_mwh + spotreba_nt_mwh
-
-            # Jednotkové ceny - převod na float
-            jednotkova_cena_elektriny_vt = float(getattr(vypocet, 'jednotkova_cena_elektriny_vt', 0.0) or 0.0)
-            jednotkova_cena_elektriny_nt = float(getattr(vypocet, 'jednotkova_cena_elektriny_nt', 0.0) or 0.0)
-            jednotkova_cena_distribuce_vt = float(getattr(vypocet, 'jednotkova_cena_distribuce_vt', 0.0) or 0.0)
-            jednotkova_cena_distribuce_nt = float(getattr(vypocet, 'jednotkova_cena_distribuce_nt', 0.0) or 0.0)
-            jednotkova_cena_systemove_sluzby = float(getattr(vypocet, 'jednotkova_cena_systemove_sluzby', 0.0) or 0.0)
-            jednotkova_cena_poze = float(getattr(vypocet, 'jednotkova_cena_poze', 0.0) or 0.0)
-            jednotkova_cena_dan = float(getattr(vypocet, 'jednotkova_cena_dan', 0.0) or 0.0)
-
-            # POZE minimum
-            poze_zaklad = celkova_spotreba_mwh * jednotkova_cena_poze if celkova_spotreba_mwh and jednotkova_cena_poze else 0.0
-            poze_minimum_hodnota = float(getattr(vypocet, 'poze_minimum', 0.0) or 0.0)
-            poze_minimum = max(poze_zaklad, poze_minimum_hodnota)
-
-            # Celkové náklady pro OM - převod všech hodnot na float
+            # Celková suma za OM - převeď všechny hodnoty na float - STEJNÝ VÝPOČET JAKO HTML
             celkem_om = (
-                float(getattr(vypocet, 'mesicni_plat', 0.0) or 0.0) +
-                float(getattr(vypocet, 'platba_za_elektrinu_vt', 0.0) or 0.0) +
-                float(getattr(vypocet, 'platba_za_elektrinu_nt', 0.0) or 0.0) +
-                float(getattr(vypocet, 'platba_za_jistic', 0.0) or 0.0) +
-                float(getattr(vypocet, 'platba_za_distribuci_vt', 0.0) or 0.0) +
-                float(getattr(vypocet, 'platba_za_distribuci_nt', 0.0) or 0.0) +
-                float(getattr(vypocet, 'systemove_sluzby', 0.0) or 0.0) +
-                float(poze_minimum) +
-                float(getattr(vypocet, 'nesitova_infrastruktura', 0.0) or 0.0) +
-                float(getattr(vypocet, 'dan_z_elektriny', 0.0) or 0.0)
+                float(vypocet.mesicni_plat or 0) +
+                float(vypocet.platba_za_elektrinu_vt or 0) +
+                float(vypocet.platba_za_elektrinu_nt or 0) +
+                float(vypocet.platba_za_jistic or 0) +
+                float(vypocet.platba_za_distribuci_vt or 0) +
+                float(vypocet.platba_za_distribuci_nt or 0) +
+                float(vypocet.systemove_sluzby or 0) +
+                poze_minimum +
+                float(vypocet.nesitova_infrastruktura or 0) +
+                float(vypocet.dan_z_elektriny or 0)
             )
 
+            # Načti odečet pro získání spotřeb - STEJNÝ ZPŮSOB JAKO HTML
+            odecet = Odecet.query.filter_by(
+                stredisko_id=stredisko_id,
+                obdobi_id=obdobi.id,
+                oznaceni=om.cislo_om.zfill(7) if om.cislo_om else None
+            ).first()
+
+            # Výpočet jednotkových cen - STEJNÁ LOGIKA JAKO HTML
+            # Spotřeby v MWh
+            spotreba_vt_mwh = float(odecet.spotreba_vt or 0) / 1000 if odecet else 0
+            spotreba_nt_mwh = float(odecet.spotreba_nt or 0) / 1000 if odecet else 0
+            celkova_spotreba_mwh = spotreba_vt_mwh + spotreba_nt_mwh
+
+            # Jednotkové ceny (cena / spotřeba) - STEJNÝ VÝPOČET JAKO HTML
+            jednotkova_cena_elektriny_vt = float(vypocet.platba_za_elektrinu_vt or 0) / spotreba_vt_mwh if spotreba_vt_mwh > 0 else 0
+            jednotkova_cena_elektriny_nt = float(vypocet.platba_za_elektrinu_nt or 0) / spotreba_nt_mwh if spotreba_nt_mwh > 0 else 0
+            jednotkova_cena_distribuce_vt = float(vypocet.platba_za_distribuci_vt or 0) / spotreba_vt_mwh if spotreba_vt_mwh > 0 else 0
+            jednotkova_cena_distribuce_nt = float(vypocet.platba_za_distribuci_nt or 0) / spotreba_nt_mwh if spotreba_nt_mwh > 0 else 0
+            jednotkova_cena_systemove_sluzby = float(vypocet.systemove_sluzby or 0) / celkova_spotreba_mwh if celkova_spotreba_mwh > 0 else 0
+            jednotkova_cena_poze = float(poze_minimum) / celkova_spotreba_mwh if celkova_spotreba_mwh > 0 else 0
+            jednotkova_cena_dan = float(vypocet.dan_z_elektriny or 0) / celkova_spotreba_mwh if celkova_spotreba_mwh > 0 else 0
+
             vypocty_data.append({
-                'vypocet': vypocet,
                 'om': om,
+                'vypocet': vypocet,
+                'odecet': odecet,
+                'poze_minimum': poze_minimum,
+                'celkem_om': celkem_om,
+                'sazba_dph': sazba_dph,
+                # Spotřeby v MWh
                 'spotreba_vt_mwh': spotreba_vt_mwh,
                 'spotreba_nt_mwh': spotreba_nt_mwh,
                 'celkova_spotreba_mwh': celkova_spotreba_mwh,
+                # Jednotkové ceny
                 'jednotkova_cena_elektriny_vt': jednotkova_cena_elektriny_vt,
                 'jednotkova_cena_elektriny_nt': jednotkova_cena_elektriny_nt,
                 'jednotkova_cena_distribuce_vt': jednotkova_cena_distribuce_vt,
                 'jednotkova_cena_distribuce_nt': jednotkova_cena_distribuce_nt,
                 'jednotkova_cena_systemove_sluzby': jednotkova_cena_systemove_sluzby,
                 'jednotkova_cena_poze': jednotkova_cena_poze,
-                'jednotkova_cena_dan': jednotkova_cena_dan,
-                'poze_minimum': poze_minimum,
-                'celkem_om': celkem_om
+                'jednotkova_cena_dan': jednotkova_cena_dan
             })
 
         # Vygeneruj HTML pomocí šablony
@@ -1325,74 +1325,77 @@ def vygenerovat_kompletni_pdf(stredisko_id, rok, mesic):
 
         # 3. HTML PŘÍLOHA 2 (používá priloha2.html - stejná data jako route)
         print("[INFO] Generuji HTML přílohu 2...")
-        # Připrav data pro přílohu 2 stejně jako v route vygenerovat_prilohu2_html
+        # Připrav data pro přílohu 2 STEJNĚ jako v HTML route vygenerovat_prilohu2_html
         vypocty_om = db.session.query(VypocetOM, OdberneMisto)\
             .join(OdberneMisto, VypocetOM.odberne_misto_id == OdberneMisto.id)\
-            .filter(VypocetOM.obdobi_id == obdobi.id)\
+            .filter(VypocetOM.id > 0)\
             .filter(OdberneMisto.stredisko_id == stredisko_id)\
-            .distinct(OdberneMisto.id)\
-            .order_by(OdberneMisto.id, OdberneMisto.cislo_om)\
+            .order_by(OdberneMisto.cislo_om)\
             .all()
 
-        # KOMPLETNÍ PŘÍPRAVA DAT jako v originální route
+        # Připrav data pro template - STEJNÁ LOGIKA JAKO HTML
         vypocty_data = []
+        sazba_dph = float(faktura.sazba_dph / 100) if faktura and faktura.sazba_dph else 0.21
+
         for vypocet, om in vypocty_om:
-            # Načti odečty pro dané OM a období
-            odecty = Odečet.query.filter_by(
-                stredisko_id=stredisko_id,
-                obdobi_id=obdobi.id,
-                oznaceni=om.cislo_om
-            ).all()
+            # Vypočítej minimum z POZE - převeď na float - STEJNÝ VÝPOČET JAKO HTML
+            poze_minimum = min(float(vypocet.poze_dle_jistice or 0), float(vypocet.poze_dle_spotreby or 0))
 
-            spotreba_vt_kwh = sum(float(o.spotreba_vt or 0) for o in odecty)
-            spotreba_nt_kwh = sum(float(o.spotreba_nt or 0) for o in odecty)
-            spotreba_vt_mwh = spotreba_vt_kwh / 1000
-            spotreba_nt_mwh = spotreba_nt_kwh / 1000
-            celkova_spotreba_mwh = spotreba_vt_mwh + spotreba_nt_mwh
-
-            # Jednotkové ceny - převod na float
-            jednotkova_cena_elektriny_vt = float(getattr(vypocet, 'jednotkova_cena_elektriny_vt', 0.0) or 0.0)
-            jednotkova_cena_elektriny_nt = float(getattr(vypocet, 'jednotkova_cena_elektriny_nt', 0.0) or 0.0)
-            jednotkova_cena_distribuce_vt = float(getattr(vypocet, 'jednotkova_cena_distribuce_vt', 0.0) or 0.0)
-            jednotkova_cena_distribuce_nt = float(getattr(vypocet, 'jednotkova_cena_distribuce_nt', 0.0) or 0.0)
-            jednotkova_cena_systemove_sluzby = float(getattr(vypocet, 'jednotkova_cena_systemove_sluzby', 0.0) or 0.0)
-            jednotkova_cena_poze = float(getattr(vypocet, 'jednotkova_cena_poze', 0.0) or 0.0)
-            jednotkova_cena_dan = float(getattr(vypocet, 'jednotkova_cena_dan', 0.0) or 0.0)
-
-            # POZE minimum
-            poze_zaklad = celkova_spotreba_mwh * jednotkova_cena_poze if celkova_spotreba_mwh and jednotkova_cena_poze else 0.0
-            poze_minimum_hodnota = float(getattr(vypocet, 'poze_minimum', 0.0) or 0.0)
-            poze_minimum = max(poze_zaklad, poze_minimum_hodnota)
-
-            # Celkové náklady pro OM - převod všech hodnot na float
+            # Celková suma za OM - převeď všechny hodnoty na float - STEJNÝ VÝPOČET JAKO HTML
             celkem_om = (
-                float(getattr(vypocet, 'mesicni_plat', 0.0) or 0.0) +
-                float(getattr(vypocet, 'platba_za_elektrinu_vt', 0.0) or 0.0) +
-                float(getattr(vypocet, 'platba_za_elektrinu_nt', 0.0) or 0.0) +
-                float(getattr(vypocet, 'platba_za_jistic', 0.0) or 0.0) +
-                float(getattr(vypocet, 'platba_za_distribuci_vt', 0.0) or 0.0) +
-                float(getattr(vypocet, 'platba_za_distribuci_nt', 0.0) or 0.0) +
-                float(getattr(vypocet, 'systemove_sluzby', 0.0) or 0.0) +
-                float(poze_minimum) +
-                float(getattr(vypocet, 'nesitova_infrastruktura', 0.0) or 0.0) +
-                float(getattr(vypocet, 'dan_z_elektriny', 0.0) or 0.0)
+                float(vypocet.mesicni_plat or 0) +
+                float(vypocet.platba_za_elektrinu_vt or 0) +
+                float(vypocet.platba_za_elektrinu_nt or 0) +
+                float(vypocet.platba_za_jistic or 0) +
+                float(vypocet.platba_za_distribuci_vt or 0) +
+                float(vypocet.platba_za_distribuci_nt or 0) +
+                float(vypocet.systemove_sluzby or 0) +
+                poze_minimum +
+                float(vypocet.nesitova_infrastruktura or 0) +
+                float(vypocet.dan_z_elektriny or 0)
             )
 
+            # Načti odečet pro získání spotřeb - STEJNÝ ZPŮSOB JAKO HTML
+            odecet = Odecet.query.filter_by(
+                stredisko_id=stredisko_id,
+                obdobi_id=obdobi.id,
+                oznaceni=om.cislo_om.zfill(7) if om.cislo_om else None
+            ).first()
+
+            # Výpočet jednotkových cen - STEJNÁ LOGIKA JAKO HTML
+            # Spotřeby v MWh
+            spotreba_vt_mwh = float(odecet.spotreba_vt or 0) / 1000 if odecet else 0
+            spotreba_nt_mwh = float(odecet.spotreba_nt or 0) / 1000 if odecet else 0
+            celkova_spotreba_mwh = spotreba_vt_mwh + spotreba_nt_mwh
+
+            # Jednotkové ceny (cena / spotřeba) - STEJNÝ VÝPOČET JAKO HTML
+            jednotkova_cena_elektriny_vt = float(vypocet.platba_za_elektrinu_vt or 0) / spotreba_vt_mwh if spotreba_vt_mwh > 0 else 0
+            jednotkova_cena_elektriny_nt = float(vypocet.platba_za_elektrinu_nt or 0) / spotreba_nt_mwh if spotreba_nt_mwh > 0 else 0
+            jednotkova_cena_distribuce_vt = float(vypocet.platba_za_distribuci_vt or 0) / spotreba_vt_mwh if spotreba_vt_mwh > 0 else 0
+            jednotkova_cena_distribuce_nt = float(vypocet.platba_za_distribuci_nt or 0) / spotreba_nt_mwh if spotreba_nt_mwh > 0 else 0
+            jednotkova_cena_systemove_sluzby = float(vypocet.systemove_sluzby or 0) / celkova_spotreba_mwh if celkova_spotreba_mwh > 0 else 0
+            jednotkova_cena_poze = float(poze_minimum) / celkova_spotreba_mwh if celkova_spotreba_mwh > 0 else 0
+            jednotkova_cena_dan = float(vypocet.dan_z_elektriny or 0) / celkova_spotreba_mwh if celkova_spotreba_mwh > 0 else 0
+
             vypocty_data.append({
-                'vypocet': vypocet,
                 'om': om,
+                'vypocet': vypocet,
+                'odecet': odecet,
+                'poze_minimum': poze_minimum,
+                'celkem_om': celkem_om,
+                'sazba_dph': sazba_dph,
+                # Spotřeby v MWh
                 'spotreba_vt_mwh': spotreba_vt_mwh,
                 'spotreba_nt_mwh': spotreba_nt_mwh,
                 'celkova_spotreba_mwh': celkova_spotreba_mwh,
+                # Jednotkové ceny
                 'jednotkova_cena_elektriny_vt': jednotkova_cena_elektriny_vt,
                 'jednotkova_cena_elektriny_nt': jednotkova_cena_elektriny_nt,
                 'jednotkova_cena_distribuce_vt': jednotkova_cena_distribuce_vt,
                 'jednotkova_cena_distribuce_nt': jednotkova_cena_distribuce_nt,
                 'jednotkova_cena_systemove_sluzby': jednotkova_cena_systemove_sluzby,
                 'jednotkova_cena_poze': jednotkova_cena_poze,
-                'jednotkova_cena_dan': jednotkova_cena_dan,
-                'poze_minimum': poze_minimum,
-                'celkem_om': celkem_om
+                'jednotkova_cena_dan': jednotkova_cena_dan
             })
 
         priloha2_html = render_template("print/priloha2.html",

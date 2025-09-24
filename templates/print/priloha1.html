@@ -141,12 +141,5 @@
     </div>
     {% endfor %}
 
-    <!-- ZPĚT ODKAZ -->
-    <div class="back-link">
-        <a href="{{ url_for('fakturace.fakturace', stredisko_id=stredisko.id, obdobi_id=obdobi.id) }}" 
-           style="padding: 8px 15px; background-color: #6c757d; color: white; text-decoration: none; border-radius: 3px;">
-           ← Zpět na fakturaci (zachová období {{ obdobi.rok }}/{{ '%02d'|format(obdobi.mesic) }})
-        </a>
-    </div>
 </body>
 </html>
