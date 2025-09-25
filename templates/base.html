@@ -337,6 +337,45 @@
         .border-primary-custom {
             border-color: var(--primary-color) !important;
         }
+
+        /* Fix autofill text size inconsistency */
+        .form-control-lg,
+        .form-control-lg:-webkit-autofill {
+            font-size: 1.25rem !important;
+            line-height: 1.5 !important;
+            padding: 0.5rem 1rem !important;
+        }
+
+        .form-control,
+        .form-control:-webkit-autofill {
+            font-size: 1rem !important;
+            line-height: 1.5 !important;
+            padding: 0.375rem 0.75rem !important;
+        }
+
+        /* Ensure autofilled input text color and background are consistent */
+        input:-webkit-autofill,
+        input:-webkit-autofill:hover,
+        input:-webkit-autofill:focus,
+        input:-webkit-autofill:active {
+            -webkit-box-shadow: 0 0 0 30px white inset !important;
+            -webkit-text-fill-color: #212529 !important;
+            font-size: inherit !important;
+            line-height: inherit !important;
+            padding: inherit !important;
+        }
+
+        /* For large form controls with autofill */
+        .form-control-lg:-webkit-autofill,
+        .form-control-lg:-webkit-autofill:hover,
+        .form-control-lg:-webkit-autofill:focus,
+        .form-control-lg:-webkit-autofill:active {
+            -webkit-box-shadow: 0 0 0 30px white inset !important;
+            -webkit-text-fill-color: #212529 !important;
+            font-size: 1.25rem !important;
+            line-height: 1.5 !important;
+            padding: 0.5rem 1rem !important;
+        }
     </style>
     
     {% block extra_css %}{% endblock %}
