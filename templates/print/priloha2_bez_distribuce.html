@@ -109,32 +109,6 @@
             </p>
         </div>
 
-        <!-- Dodávka elektřiny -->
-        <div class="section-title">Dodávka elektřiny</div>
-        <table>
-            <tr>
-                <td>Stálý plat</td>
-                <td class="right">1</td>
-                <td class="right">1</td>
-                <td class="right">{{ (data.vypocet.mesicni_plat or 0)|number_format }}</td>
-                <td class="right">{{ (data.vypocet.mesicni_plat or 0)|number_format }}</td>
-            </tr>
-            <tr>
-                <td>Plat za silovou elektřinu v VT</td>
-                <td class="right">{{ "%.4f"|format(data.spotreba_vt_mwh) }}</td>
-                <td class="right">MWh</td>
-                <td class="right">{{ data.jednotkova_cena_elektriny_vt|number_format }}</td>
-                <td class="right">{{ (data.vypocet.platba_za_elektrinu_vt or 0)|number_format }}</td>
-            </tr>
-            <tr>
-                <td>Plat za silovou elektřinu v NT</td>
-                <td class="right">{{ "%.4f"|format(data.spotreba_nt_mwh) }}</td>
-                <td class="right">MWh</td>
-                <td class="right">{{ data.jednotkova_cena_elektriny_nt|number_format }}</td>
-                <td class="right">{{ (data.vypocet.platba_za_elektrinu_nt or 0)|number_format }}</td>
-            </tr>
-        </table>
-
         <!-- Distribuční služby -->
         <div class="section-title">Distribuční služby</div>
         <table>
@@ -179,18 +153,6 @@
                 <td class="right">1</td>
                 <td class="right">{{ (data.vypocet.nesitova_infrastruktura or 0)|number_format }}</td>
                 <td class="right">{{ (data.vypocet.nesitova_infrastruktura or 0)|number_format }}</td>
-            </tr>
-        </table>
-
-        <!-- Daň -->
-        <div class="section-title">Daň</div>
-        <table>
-            <tr>
-                <td>Daň</td>
-                <td class="right">{{ "%.4f"|format(data.celkova_spotreba_mwh) }}</td>
-                <td class="right">MWh</td>
-                <td class="right">{{ data.jednotkova_cena_dan|number_format }}</td>
-                <td class="right">{{ (data.vypocet.dan_z_elektriny or 0)|number_format }}</td>
             </tr>
         </table>
 

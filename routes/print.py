@@ -343,7 +343,7 @@ def vygenerovat_fakturu_html(stredisko_id, rok, mesic):
     if error:
         return error
     
-    return render_template("print/weasyprint_faktura.html", **data)
+    return render_template("print/faktura.html", **data)
 
 # ============== PDF FAKTURA ==============
 
@@ -746,8 +746,14 @@ def vygenerovat_fakturu_pdf(stredisko_id, rok, mesic):
         if error:
             raise Exception(f"Chyba při načítání dat: {error}")
 
-        # Vygeneruj HTML pomocí stejné šablony jako HTML verze
-        html_content = render_template("print/weasyprint_faktura.html", **data)
+        # Vybraz šablonu na základě fakturovat_distribuci
+        if data['faktura'] and not data['faktura'].fakturovat_distribuci:
+            template_name = "print/faktura_bez_distribuce.html"
+        else:
+            template_name = "print/faktura.html"
+
+        # Vygeneruj HTML pomocí příslušné šablony
+        html_content = render_template(template_name, **data)
 
         # Převeď HTML na PDF pomocí WeasyPrint
         pdf_bytes = _safe_weasyprint_convert(html_content)
@@ -1095,7 +1101,13 @@ def vygenerovat_prilohu2_html(stredisko_id, rok, mesic):
 
     # [OK] OPRAVA: Renderuj template s UTF-8 kódováním
     try:
-        html_content = render_template("print/priloha2.html", 
+        # Vybraz šablonu na základě fakturovat_distribuci
+        if faktura and not faktura.fakturovat_distribuci:
+            template_name = "print/priloha2_bez_distribuce.html"
+        else:
+            template_name = "print/priloha2.html"
+
+        html_content = render_template(template_name,
                             stredisko=stredisko,
                             obdobi=obdobi,
                             faktura=faktura,
@@ -1111,7 +1123,13 @@ def vygenerovat_prilohu2_html(stredisko_id, rok, mesic):
     except UnicodeEncodeError as e:
         # Fallback pro problematické znaky
         print(f"Unicode error: {e}")
-        html_content = render_template("print/priloha2.html", 
+        # Vybraz šablonu na základě fakturovat_distribuci
+        if faktura and not faktura.fakturovat_distribuci:
+            template_name = "print/priloha2_bez_distribuce.html"
+        else:
+            template_name = "print/priloha2.html"
+
+        html_content = render_template(template_name,
                             stredisko=stredisko,
                             obdobi=obdobi,
                             faktura=faktura,
@@ -1221,8 +1239,14 @@ def priloha2_pdf_nova(stredisko_id, rok, mesic):
                 'jednotkova_cena_dan': jednotkova_cena_dan
             })
 
-        # Vygeneruj HTML pomocí šablony
-        html_content = render_template("print/priloha2.html",
+        # Vybraz šablonu na základě fakturovat_distribuci
+        if faktura and not faktura.fakturovat_distribuci:
+            template_name = "print/priloha2_bez_distribuce.html"
+        else:
+            template_name = "print/priloha2.html"
+
+        # Vygeneruj HTML pomocí příslušné šablony
+        html_content = render_template(template_name,
                                      stredisko=stredisko,
                                      obdobi=obdobi,
                                      faktura=faktura,
@@ -1277,9 +1301,13 @@ def vygenerovat_kompletni_pdf(stredisko_id, rok, mesic):
         if error:
             raise Exception(f"Chyba při načítání dat: {error}")
 
-        # 1. HTML FAKTURA (používá weasyprint_faktura.html)
+        # 1. HTML FAKTURA (používá faktura.html nebo faktura_bez_distribuce.html)
         print("[INFO] Generuji HTML fakturu...")
-        faktura_html = render_template("print/weasyprint_faktura.html", **data)
+        if data['faktura'] and not data['faktura'].fakturovat_distribuci:
+            faktura_template = "print/faktura_bez_distribuce.html"
+        else:
+            faktura_template = "print/faktura.html"
+        faktura_html = render_template(faktura_template, **data)
 
         # 2. HTML PŘÍLOHA 1 (používá priloha1.html - stejná data jako route)
         print("[INFO] Generuji HTML přílohu 1...")
@@ -1398,7 +1426,13 @@ def vygenerovat_kompletni_pdf(stredisko_id, rok, mesic):
                 'jednotkova_cena_dan': jednotkova_cena_dan
             })
 
-        priloha2_html = render_template("print/priloha2.html",
+        # Vybraz šablonu pro přílohu 2 na základě fakturovat_distribuci
+        if faktura and not faktura.fakturovat_distribuci:
+            priloha2_template = "print/priloha2_bez_distribuce.html"
+        else:
+            priloha2_template = "print/priloha2.html"
+
+        priloha2_html = render_template(priloha2_template,
                                        stredisko=stredisko_obj,
                                        obdobi=obdobi,
                                        faktura=faktura,

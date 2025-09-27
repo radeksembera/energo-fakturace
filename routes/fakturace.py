@@ -765,7 +765,10 @@ def ulozit_fakturu(stredisko_id, obdobi_id):
     
     faktura.forma_uhrady = request.form.get("forma_uhrady_f", "")
     faktura.popis_dodavky = request.form.get("popis", "")
-    
+
+    # Zpracuj checkbox pro fakturování distribuce
+    faktura.fakturovat_distribuci = bool(request.form.get("fakturovat_distribuci"))
+
     dph = request.form.get("dph")
     if dph:
         faktura.sazba_dph = float(dph)

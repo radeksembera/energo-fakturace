@@ -196,12 +196,31 @@
                                 <i class="bi bi-file-text me-2"></i>
                                 Popis dodávky
                             </label>
-                            <input type="text" 
-                                   class="form-control form-control-custom" 
-                                   id="popis" 
-                                   name="popis" 
+                            <input type="text"
+                                   class="form-control form-control-custom"
+                                   id="popis"
+                                   name="popis"
                                    value="{{ fak.popis_dodavky if fak else 'Dodávka elektrické energie' }}"
                                    placeholder="Dodávka elektrické energie">
+                        </div>
+
+                        <!-- Fakturovat distribuci -->
+                        <div class="col-12 mb-3">
+                            <div class="form-check">
+                                <input type="checkbox"
+                                       class="form-check-input"
+                                       id="fakturovat_distribuci"
+                                       name="fakturovat_distribuci"
+                                       value="1"
+                                       {{ 'checked' if (fak and fak.fakturovat_distribuci) or (not fak) else '' }}>
+                                <label class="form-check-label" for="fakturovat_distribuci">
+                                    <i class="bi bi-lightning-charge me-2"></i>
+                                    Fakturovat distribuci
+                                </label>
+                                <div class="form-text">
+                                    Při vypnutí bude faktura obsahovat pouze dodávku elektřiny a daň, bez distribučních služeb.
+                                </div>
+                            </div>
                         </div>
                     </div>
                     <div class="d-flex justify-content-end">

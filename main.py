@@ -71,7 +71,43 @@ app.register_blueprint(print_bp, url_prefix="/faktury")
 # Template filters and functions
 from utils.helpers import safe_sum_filter
 from session_helpers import get_obdobi_display_name
+
+def number_format(value, decimals=2):
+    """Formátuje číslo s mezerou jako oddělovačem tisíců a českým desetinným oddělovačem"""
+    try:
+        # Převeď na float pokud není
+        if isinstance(value, str):
+            value = float(value.replace(',', '.'))
+        elif value is None:
+            value = 0.0
+        else:
+            value = float(value)
+
+        # Formátuj s požadovaným počtem desetinných míst
+        formatted = f"{value:.{decimals}f}"
+
+        # Rozděl na celou a desetinnou část
+        parts = formatted.split('.')
+        whole_part = parts[0]
+        decimal_part = parts[1] if len(parts) > 1 else ""
+
+        # Přidej mezery jako oddělovače tisíců
+        whole_with_spaces = ""
+        for i, digit in enumerate(reversed(whole_part)):
+            if i > 0 and i % 3 == 0:
+                whole_with_spaces = " " + whole_with_spaces
+            whole_with_spaces = digit + whole_with_spaces
+
+        # Spoj s desetinnou částí pomocí čárky
+        if decimal_part and int(decimal_part) > 0:
+            return f"{whole_with_spaces},{decimal_part}"
+        else:
+            return whole_with_spaces
+    except (ValueError, TypeError):
+        return "0"
+
 app.jinja_env.filters['safe_sum'] = safe_sum_filter
+app.jinja_env.filters['number_format'] = number_format
 app.jinja_env.globals['get_obdobi_display_name'] = get_obdobi_display_name
 
 @app.route("/")

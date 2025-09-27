@@ -220,6 +220,7 @@ class Faktura(db.Model):
     sazba_dph = db.Column(db.Numeric)
     fakturace_od = db.Column(db.Date)
     fakturace_do = db.Column(db.Date)
+    fakturovat_distribuci = db.Column(db.Boolean, default=True, nullable=False)
 
 # --- OBDOBI FAKTURACE ---
 class ObdobiFakturace(db.Model):
