@@ -142,6 +142,7 @@
                                 <th colspan="8" class="text-center" style="background-color: #e3f2fd; color: #1e293b; font-weight: 600; border: 1px solid #cbd5e1;">Distribuce (Kč/měsíc nebo Kč/MWh)</th>
                                 <th colspan="3" class="text-center" style="background-color: #fff3e0; color: #1e293b; font-weight: 600; border: 1px solid #cbd5e1;">Dodavatel (Kč/měsíc nebo Kč/MWh)</th>
                                 <th colspan="3" class="text-center" style="background-color: #e8f5e8; color: #1e293b; font-weight: 600; border: 1px solid #cbd5e1;">Celkem</th>
+                                <th colspan="3" class="text-center" style="background-color: #fce4ec; color: #1e293b; font-weight: 600; border: 1px solid #cbd5e1;">Jen distribuce</th>
                             </tr>
                             <tr>
                                 <!-- Distribuce -->
@@ -161,6 +162,10 @@
                                 <th class="text-center" style="background-color: #e8f5e8; color: #1e293b; font-weight: 600; border: 1px solid #cbd5e1;">Bez DPH</th>
                                 <th class="text-center" style="background-color: #e8f5e8; color: #1e293b; font-weight: 600; border: 1px solid #cbd5e1;">DPH</th>
                                 <th class="text-center" style="background-color: #e8f5e8; color: #1e293b; font-weight: 600; border: 1px solid #cbd5e1;">S DPH</th>
+                                <!-- Jen distribuce -->
+                                <th class="text-center" style="background-color: #fce4ec; color: #1e293b; font-weight: 600; border: 1px solid #cbd5e1;">Bez DPH</th>
+                                <th class="text-center" style="background-color: #fce4ec; color: #1e293b; font-weight: 600; border: 1px solid #cbd5e1;">DPH</th>
+                                <th class="text-center" style="background-color: #fce4ec; color: #1e293b; font-weight: 600; border: 1px solid #cbd5e1;">S DPH</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -205,6 +210,11 @@
                                 <td class="text-end fw-bold" style="background-color: #f8fff8;">{{ "%.2f"|format(vypocet.zaklad_bez_dph or 0) }}</td>
                                 <td class="text-end fw-bold" style="background-color: #f8fff8;">{{ "%.2f"|format(vypocet.castka_dph or 0) }}</td>
                                 <td class="text-end fw-bold" style="background-color: #f8fff8;">{{ "%.2f"|format(vypocet.celkem_vc_dph or 0) }}</td>
+
+                                <!-- Jen distribuce -->
+                                <td class="text-end fw-bold" style="background-color: #fdf2f8;">{{ "%.2f"|format(vypocet.zaklad_bez_dph_bez_di or 0) }}</td>
+                                <td class="text-end fw-bold" style="background-color: #fdf2f8;">{{ "%.2f"|format(vypocet.castka_dph_bez_di or 0) }}</td>
+                                <td class="text-end fw-bold" style="background-color: #fdf2f8;">{{ "%.2f"|format(vypocet.celkem_vc_dph_bez_di or 0) }}</td>
                             </tr>
                             {% endfor %}
                             
@@ -231,6 +241,10 @@
                                 <td class="text-end fw-bold" style="border: 1px solid #d97706; font-size: 1rem;">{{ "%.2f"|format(vypocty|safe_sum('zaklad_bez_dph')) }}</td>
                                 <td class="text-end fw-bold" style="border: 1px solid #d97706; font-size: 1rem;">{{ "%.2f"|format(vypocty|safe_sum('castka_dph')) }}</td>
                                 <td class="text-end fw-bold" style="border: 1px solid #d97706; font-size: 1rem;">{{ "%.2f"|format(vypocty|safe_sum('celkem_vc_dph')) }}</td>
+                                <!-- Jen distribuce sumy -->
+                                <td class="text-end fw-bold" style="border: 1px solid #d97706; font-size: 1rem; background-color: #fce4ec;">{{ "%.2f"|format(vypocty|safe_sum('zaklad_bez_dph_bez_di')) }}</td>
+                                <td class="text-end fw-bold" style="border: 1px solid #d97706; font-size: 1rem; background-color: #fce4ec;">{{ "%.2f"|format(vypocty|safe_sum('castka_dph_bez_di')) }}</td>
+                                <td class="text-end fw-bold" style="border: 1px solid #d97706; font-size: 1rem; background-color: #fce4ec;">{{ "%.2f"|format(vypocty|safe_sum('celkem_vc_dph_bez_di')) }}</td>
                             </tr>
                         </tbody>
                     </table>

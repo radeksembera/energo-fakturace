@@ -200,6 +200,9 @@ def get_faktura_data(stredisko_id, rok, mesic):
     suma_dofakturace = float(sum(o.dofakturace or 0 for o in odecty))
     dofakturace_bonus = suma_dofakturace - suma_slevovy_bonus
 
+    # Zjisti, zda fakturovat jen distribuci nebo ne
+    fakturovat_jen_distribuci = faktura.fakturovat_jen_distribuci if faktura else False
+
     # Sumarizace položek faktury - převeď vše na float
     rekapitulace = {
         'mesicni_plat': float(sum(v.mesicni_plat or 0 for v in vypocty)),
@@ -214,11 +217,20 @@ def get_faktura_data(stredisko_id, rok, mesic):
         'dan_z_elektriny': float(sum(v.dan_z_elektriny or 0 for v in vypocty)),
         'dofakturace_bonus': dofakturace_bonus,  # [OK] DOFAKTURACE/BONUS
     }
-    
+
     sazba_dph = float(faktura.sazba_dph / 100) if faktura and faktura.sazba_dph else 0.21
-    zaklad_bez_dph = float(sum(rekapitulace.values()))
-    castka_dph = zaklad_bez_dph * sazba_dph
-    celkem_vc_dph = zaklad_bez_dph + castka_dph
+
+    # Použij předpočítané hodnoty z databáze pokud jsou k dispozici a fakturujeme jen distribuci
+    if fakturovat_jen_distribuci and vypocty and hasattr(vypocty[0], 'zaklad_bez_dph_bez_di'):
+        # Použij předpočítané hodnoty jen distribuce z databáze
+        zaklad_bez_dph = float(sum(v.zaklad_bez_dph_bez_di or 0 for v in vypocty))
+        castka_dph = float(sum(v.castka_dph_bez_di or 0 for v in vypocty))
+        celkem_vc_dph = float(sum(v.celkem_vc_dph_bez_di or 0 for v in vypocty))
+    else:
+        # Standardní výpočet (kompletní faktura)
+        zaklad_bez_dph = float(sum(rekapitulace.values()))
+        castka_dph = zaklad_bez_dph * sazba_dph
+        celkem_vc_dph = zaklad_bez_dph + castka_dph
     
     # Záloha - hodnota je už s DPH
     if zaloha and zaloha.zaloha:
@@ -746,9 +758,9 @@ def vygenerovat_fakturu_pdf(stredisko_id, rok, mesic):
         if error:
             raise Exception(f"Chyba při načítání dat: {error}")
 
-        # Vybraz šablonu na základě fakturovat_distribuci
-        if data['faktura'] and not data['faktura'].fakturovat_distribuci:
-            template_name = "print/faktura_bez_distribuce.html"
+        # Vybraz šablonu na základě fakturovat_jen_distribuci
+        if data['faktura'] and data['faktura'].fakturovat_jen_distribuci:
+            template_name = "print/faktura_jen_distribuce.html"
         else:
             template_name = "print/faktura.html"
 
@@ -1042,19 +1054,26 @@ def vygenerovat_prilohu2_html(stredisko_id, rok, mesic):
         # Vypočítej minimum z POZE - převeď na float
         poze_minimum = min(float(vypocet.poze_dle_jistice or 0), float(vypocet.poze_dle_spotreby or 0))
         
-        # Celková suma za OM - převeď všechny hodnoty na float
-        celkem_om = (
-            float(vypocet.mesicni_plat or 0) +
-            float(vypocet.platba_za_elektrinu_vt or 0) +
-            float(vypocet.platba_za_elektrinu_nt or 0) +
-            float(vypocet.platba_za_jistic or 0) +
-            float(vypocet.platba_za_distribuci_vt or 0) +
-            float(vypocet.platba_za_distribuci_nt or 0) +
-            float(vypocet.systemove_sluzby or 0) +
-            poze_minimum +
-            float(vypocet.nesitova_infrastruktura or 0) +
-            float(vypocet.dan_z_elektriny or 0)
-        )
+        # Zjisti zda fakturovat jen distribuci
+        fakturovat_jen_distribuci = faktura.fakturovat_jen_distribuci if faktura else False
+
+        # Celková suma za OM - použij předpočítané hodnoty bez distribuce pokud jsou k dispozici
+        if not fakturovat_distribuci and hasattr(vypocet, 'celkem_vc_dph_bez_di') and vypocet.celkem_vc_dph_bez_di:
+            celkem_om = float(vypocet.celkem_vc_dph_bez_di or 0) / (1 + sazba_dph)  # Převeď zpět na základ bez DPH
+        else:
+            # Standardní výpočet - převeď všechny hodnoty na float
+            celkem_om = (
+                float(vypocet.mesicni_plat or 0) +
+                float(vypocet.platba_za_elektrinu_vt or 0) +
+                float(vypocet.platba_za_elektrinu_nt or 0) +
+                (float(vypocet.platba_za_jistic or 0) if fakturovat_distribuci else 0) +
+                (float(vypocet.platba_za_distribuci_vt or 0) if fakturovat_distribuci else 0) +
+                (float(vypocet.platba_za_distribuci_nt or 0) if fakturovat_distribuci else 0) +
+                float(vypocet.systemove_sluzby or 0) +
+                poze_minimum +
+                float(vypocet.nesitova_infrastruktura or 0) +
+                float(vypocet.dan_z_elektriny or 0)
+            )
         
         # Načti odečet pro získání spotřeb
         odecet = Odecet.query.filter_by(
@@ -1101,9 +1120,9 @@ def vygenerovat_prilohu2_html(stredisko_id, rok, mesic):
 
     # [OK] OPRAVA: Renderuj template s UTF-8 kódováním
     try:
-        # Vybraz šablonu na základě fakturovat_distribuci
-        if faktura and not faktura.fakturovat_distribuci:
-            template_name = "print/priloha2_bez_distribuce.html"
+        # Vybraz šablonu na základě fakturovat_jen_distribuci
+        if faktura and faktura.fakturovat_jen_distribuci:
+            template_name = "print/priloha2_jen_distribuce.html"
         else:
             template_name = "print/priloha2.html"
 
@@ -1123,9 +1142,9 @@ def vygenerovat_prilohu2_html(stredisko_id, rok, mesic):
     except UnicodeEncodeError as e:
         # Fallback pro problematické znaky
         print(f"Unicode error: {e}")
-        # Vybraz šablonu na základě fakturovat_distribuci
-        if faktura and not faktura.fakturovat_distribuci:
-            template_name = "print/priloha2_bez_distribuce.html"
+        # Vybraz šablonu na základě fakturovat_jen_distribuci
+        if faktura and faktura.fakturovat_jen_distribuci:
+            template_name = "print/priloha2_jen_distribuce.html"
         else:
             template_name = "print/priloha2.html"
 
@@ -1182,19 +1201,27 @@ def priloha2_pdf_nova(stredisko_id, rok, mesic):
             # Vypočítej minimum z POZE - převeď na float - STEJNÝ VÝPOČET JAKO HTML
             poze_minimum = min(float(vypocet.poze_dle_jistice or 0), float(vypocet.poze_dle_spotreby or 0))
 
-            # Celková suma za OM - převeď všechny hodnoty na float - STEJNÝ VÝPOČET JAKO HTML
-            celkem_om = (
-                float(vypocet.mesicni_plat or 0) +
-                float(vypocet.platba_za_elektrinu_vt or 0) +
-                float(vypocet.platba_za_elektrinu_nt or 0) +
-                float(vypocet.platba_za_jistic or 0) +
-                float(vypocet.platba_za_distribuci_vt or 0) +
-                float(vypocet.platba_za_distribuci_nt or 0) +
-                float(vypocet.systemove_sluzby or 0) +
-                poze_minimum +
-                float(vypocet.nesitova_infrastruktura or 0) +
-                float(vypocet.dan_z_elektriny or 0)
-            )
+            # Zjisti zda fakturovat jen distribuci (tam kde ještě není)
+            if 'fakturovat_jen_distribuci' not in locals():
+                fakturovat_jen_distribuci = faktura.fakturovat_jen_distribuci if faktura else False
+
+            # Celková suma za OM - použij předpočítané hodnoty jen distribuce pokud jsou k dispozici
+            if fakturovat_jen_distribuci and hasattr(vypocet, 'celkem_vc_dph_bez_di') and vypocet.celkem_vc_dph_bez_di:
+                celkem_om = float(vypocet.celkem_vc_dph_bez_di or 0) / (1 + sazba_dph)  # Převeď zpět na základ bez DPH
+            else:
+                # Standardní výpočet (kompletní faktura) - převeď všechny hodnoty na float
+                celkem_om = (
+                    float(vypocet.mesicni_plat or 0) +
+                    float(vypocet.platba_za_elektrinu_vt or 0) +
+                    float(vypocet.platba_za_elektrinu_nt or 0) +
+                    float(vypocet.platba_za_jistic or 0) +
+                    float(vypocet.platba_za_distribuci_vt or 0) +
+                    float(vypocet.platba_za_distribuci_nt or 0) +
+                    float(vypocet.systemove_sluzby or 0) +
+                    poze_minimum +
+                    float(vypocet.nesitova_infrastruktura or 0) +
+                    float(vypocet.dan_z_elektriny or 0)
+                )
 
             # Načti odečet pro získání spotřeb - STEJNÝ ZPŮSOB JAKO HTML
             odecet = Odecet.query.filter_by(
@@ -1239,9 +1266,9 @@ def priloha2_pdf_nova(stredisko_id, rok, mesic):
                 'jednotkova_cena_dan': jednotkova_cena_dan
             })
 
-        # Vybraz šablonu na základě fakturovat_distribuci
-        if faktura and not faktura.fakturovat_distribuci:
-            template_name = "print/priloha2_bez_distribuce.html"
+        # Vybraz šablonu na základě fakturovat_jen_distribuci
+        if faktura and faktura.fakturovat_jen_distribuci:
+            template_name = "print/priloha2_jen_distribuce.html"
         else:
             template_name = "print/priloha2.html"
 
@@ -1301,10 +1328,10 @@ def vygenerovat_kompletni_pdf(stredisko_id, rok, mesic):
         if error:
             raise Exception(f"Chyba při načítání dat: {error}")
 
-        # 1. HTML FAKTURA (používá faktura.html nebo faktura_bez_distribuce.html)
+        # 1. HTML FAKTURA (používá faktura.html nebo faktura_jen_distribuce.html)
         print("[INFO] Generuji HTML fakturu...")
-        if data['faktura'] and not data['faktura'].fakturovat_distribuci:
-            faktura_template = "print/faktura_bez_distribuce.html"
+        if data['faktura'] and data['faktura'].fakturovat_jen_distribuci:
+            faktura_template = "print/faktura_jen_distribuce.html"
         else:
             faktura_template = "print/faktura.html"
         faktura_html = render_template(faktura_template, **data)
@@ -1369,19 +1396,27 @@ def vygenerovat_kompletni_pdf(stredisko_id, rok, mesic):
             # Vypočítej minimum z POZE - převeď na float - STEJNÝ VÝPOČET JAKO HTML
             poze_minimum = min(float(vypocet.poze_dle_jistice or 0), float(vypocet.poze_dle_spotreby or 0))
 
-            # Celková suma za OM - převeď všechny hodnoty na float - STEJNÝ VÝPOČET JAKO HTML
-            celkem_om = (
-                float(vypocet.mesicni_plat or 0) +
-                float(vypocet.platba_za_elektrinu_vt or 0) +
-                float(vypocet.platba_za_elektrinu_nt or 0) +
-                float(vypocet.platba_za_jistic or 0) +
-                float(vypocet.platba_za_distribuci_vt or 0) +
-                float(vypocet.platba_za_distribuci_nt or 0) +
-                float(vypocet.systemove_sluzby or 0) +
-                poze_minimum +
-                float(vypocet.nesitova_infrastruktura or 0) +
-                float(vypocet.dan_z_elektriny or 0)
-            )
+            # Zjisti zda fakturovat jen distribuci (tam kde ještě není)
+            if 'fakturovat_jen_distribuci' not in locals():
+                fakturovat_jen_distribuci = faktura.fakturovat_jen_distribuci if faktura else False
+
+            # Celková suma za OM - použij předpočítané hodnoty jen distribuce pokud jsou k dispozici
+            if fakturovat_jen_distribuci and hasattr(vypocet, 'celkem_vc_dph_bez_di') and vypocet.celkem_vc_dph_bez_di:
+                celkem_om = float(vypocet.celkem_vc_dph_bez_di or 0) / (1 + sazba_dph)  # Převeď zpět na základ bez DPH
+            else:
+                # Standardní výpočet (kompletní faktura) - převeď všechny hodnoty na float
+                celkem_om = (
+                    float(vypocet.mesicni_plat or 0) +
+                    float(vypocet.platba_za_elektrinu_vt or 0) +
+                    float(vypocet.platba_za_elektrinu_nt or 0) +
+                    float(vypocet.platba_za_jistic or 0) +
+                    float(vypocet.platba_za_distribuci_vt or 0) +
+                    float(vypocet.platba_za_distribuci_nt or 0) +
+                    float(vypocet.systemove_sluzby or 0) +
+                    poze_minimum +
+                    float(vypocet.nesitova_infrastruktura or 0) +
+                    float(vypocet.dan_z_elektriny or 0)
+                )
 
             # Načti odečet pro získání spotřeb - STEJNÝ ZPŮSOB JAKO HTML
             odecet = Odecet.query.filter_by(
@@ -1426,9 +1461,9 @@ def vygenerovat_kompletni_pdf(stredisko_id, rok, mesic):
                 'jednotkova_cena_dan': jednotkova_cena_dan
             })
 
-        # Vybraz šablonu pro přílohu 2 na základě fakturovat_distribuci
-        if faktura and not faktura.fakturovat_distribuci:
-            priloha2_template = "print/priloha2_bez_distribuce.html"
+        # Vybraz šablonu pro přílohu 2 na základě fakturovat_jen_distribuci
+        if faktura and faktura.fakturovat_jen_distribuci:
+            priloha2_template = "print/priloha2_jen_distribuce.html"
         else:
             priloha2_template = "print/priloha2.html"
 

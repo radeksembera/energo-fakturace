@@ -419,6 +419,25 @@ def prepocitat_koncove_ceny(stredisko_id):
                 # 14. celkem_vc_dph = zaklad_bez_dph + castka_dph
                 celkem_vc_dph = zaklad_bez_dph + castka_dph
 
+                # === VÝPOČTY JEN DISTRIBUCE ===
+                # Základ bez DPH jen distribučních poplatků
+                zaklad_bez_dph_bez_di = (
+                    # Jen distribuce: platba_za_jistic, platba_za_distribuci_vt, platba_za_distribuci_nt, systemove_sluzby, poze_minimum, nesitova_infrastruktura
+                    platba_za_jistic +
+                    platba_za_distribuci_vt +
+                    platba_za_distribuci_nt +
+                    systemove_sluzby +
+                    poze_minimum +
+                    nesitova_infrastruktura
+                    # Nezahrnuje: dan_z_elektriny, platba_za_elektrinu_vt, platba_za_elektrinu_nt, mesicni_plat
+                )
+
+                # DPH jen distribuce
+                castka_dph_bez_di = zaklad_bez_dph_bez_di * sazba_dph
+
+                # Celkem s DPH jen distribuce
+                celkem_vc_dph_bez_di = zaklad_bez_dph_bez_di + castka_dph_bez_di
+
                 # Vytvoř výpočet
                 vypocet = VypocetOM(
                     odberne_misto_id=om.id,
@@ -442,7 +461,12 @@ def prepocitat_koncove_ceny(stredisko_id):
                     # Celkové výpočty
                     zaklad_bez_dph=round(zaklad_bez_dph, 2),
                     castka_dph=round(castka_dph, 2),
-                    celkem_vc_dph=round(celkem_vc_dph, 2)
+                    celkem_vc_dph=round(celkem_vc_dph, 2),
+
+                    # Výpočty jen distribuce
+                    zaklad_bez_dph_bez_di=round(zaklad_bez_dph_bez_di, 2),
+                    castka_dph_bez_di=round(castka_dph_bez_di, 2),
+                    celkem_vc_dph_bez_di=round(celkem_vc_dph_bez_di, 2)
                 )
 
                 db.session.add(vypocet)
@@ -766,8 +790,8 @@ def ulozit_fakturu(stredisko_id, obdobi_id):
     faktura.forma_uhrady = request.form.get("forma_uhrady_f", "")
     faktura.popis_dodavky = request.form.get("popis", "")
 
-    # Zpracuj checkbox pro fakturování distribuce
-    faktura.fakturovat_distribuci = bool(request.form.get("fakturovat_distribuci"))
+    # Zpracuj checkbox pro fakturování jen distribuce
+    faktura.fakturovat_jen_distribuci = bool(request.form.get("fakturovat_jen_distribuci"))
 
     dph = request.form.get("dph")
     if dph:

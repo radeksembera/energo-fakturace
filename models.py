@@ -140,6 +140,11 @@ class VypocetOM(db.Model):
     castka_dph = db.Column(db.Numeric)
     celkem_vc_dph = db.Column(db.Numeric)
 
+    # Výpočty bez distribuce
+    zaklad_bez_dph_bez_di = db.Column(db.Numeric)
+    castka_dph_bez_di = db.Column(db.Numeric)
+    celkem_vc_dph_bez_di = db.Column(db.Numeric)
+
 # --- ODECTY ---
 class Odečet(db.Model):
     __tablename__ = 'odecty'
@@ -220,7 +225,7 @@ class Faktura(db.Model):
     sazba_dph = db.Column(db.Numeric)
     fakturace_od = db.Column(db.Date)
     fakturace_do = db.Column(db.Date)
-    fakturovat_distribuci = db.Column(db.Boolean, default=True, nullable=False)
+    fakturovat_jen_distribuci = db.Column(db.Boolean, default=False, nullable=False)
 
 # --- OBDOBI FAKTURACE ---
 class ObdobiFakturace(db.Model):

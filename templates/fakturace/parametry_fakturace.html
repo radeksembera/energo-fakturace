@@ -204,22 +204,19 @@
                                    placeholder="Dodávka elektrické energie">
                         </div>
 
-                        <!-- Fakturovat distribuci -->
+                        <!-- Fakturovat jen distribuci -->
                         <div class="col-12 mb-3">
                             <div class="form-check">
                                 <input type="checkbox"
                                        class="form-check-input"
-                                       id="fakturovat_distribuci"
-                                       name="fakturovat_distribuci"
+                                       id="fakturovat_jen_distribuci"
+                                       name="fakturovat_jen_distribuci"
                                        value="1"
-                                       {{ 'checked' if (fak and fak.fakturovat_distribuci) or (not fak) else '' }}>
-                                <label class="form-check-label" for="fakturovat_distribuci">
+                                       {{ 'checked' if (fak and fak.fakturovat_jen_distribuci) else '' }}>
+                                <label class="form-check-label" for="fakturovat_jen_distribuci">
                                     <i class="bi bi-lightning-charge me-2"></i>
-                                    Fakturovat distribuci
+                                    Fakturovat jen distribuci
                                 </label>
-                                <div class="form-text">
-                                    Při vypnutí bude faktura obsahovat pouze dodávku elektřiny a daň, bez distribučních služeb.
-                                </div>
                             </div>
                         </div>
                     </div>
