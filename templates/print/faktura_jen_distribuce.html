@@ -22,7 +22,7 @@
             color: #333;
         }
         
-        /* Layout pomocÃ­ tabulek mÃ­sto Bootstrap gridu */
+        /* Layout pomocí tabulek místo Bootstrap gridu */
         .header-table {
             width: 100%;
             margin-bottom: 15px;
@@ -148,7 +148,7 @@
             text-align: center;
         }
         
-        /* CelkovÃ© ÄÃ¡stky */
+        /* Celkové částky */
         .final-total {
             background-color: #007bff !important;
             color: white !important;
@@ -207,31 +207,31 @@
             page-break-inside: avoid;
         }
         
-        /* Format ÄÃ­sel s mezerami jako oddÄ›lovaÄi tisÃ­cÅ¯ */
+        /* Format čísel s mezerami jako oddělovači tisíců */
         .number-format {
             white-space: nowrap;
         }
     </style>
 </head>
 <body>
-    <!-- HLAVIÄŒKA -->
+    <!-- HLAVIČKA -->
     <table class="header-table">
         <tr>
             <td class="header-left">
                 <h1 class="invoice-title">FAKTURA</h1>
-                <h2 class="invoice-subtitle">DAÅ‡OVÃ DOKLAD</h2>
+                <h2 class="invoice-subtitle">DAŇOVÝ DOKLAD</h2>
                 
                 <div class="company-info">
                     <h5>{{ dodavatel.nazev_sro if dodavatel else 'Your energy, s.r.o.' }}</h5>
-                    <p>{{ dodavatel.adresa_radek_1 if dodavatel else 'ItalskÃ¡ 2584/69' }}</p>
+                    <p>{{ dodavatel.adresa_radek_1 if dodavatel else 'Italská 2584/69' }}</p>
                     <p>{{ dodavatel.adresa_radek_2 if dodavatel else '120 00 Praha 2 - Vinohrady' }}</p>
-                    <p><strong>DIÄŒ:</strong> {{ dodavatel.dic_sro if dodavatel else 'CZ24833851' }}</p>
-                    <p><strong>IÄŒO:</strong> {{ dodavatel.ico_sro if dodavatel else '24833851' }}</p>
+                    <p><strong>DIČ:</strong> {{ dodavatel.dic_sro if dodavatel else 'CZ24833851' }}</p>
+                    <p><strong>IČO:</strong> {{ dodavatel.ico_sro if dodavatel else '24833851' }}</p>
                 </div>
                 
                 <div class="company-info">
-                    <p><strong>Banka:</strong> {{ dodavatel.banka if dodavatel else 'BankovnÃ­ ÃºÄet Raiffeisenbank a.s. CZK' }}</p>
-                    <p><strong>ÄŒ.ÃºÄ.:</strong> {{ dodavatel.cislo_uctu if dodavatel else '5041011366/5500' }}</p>
+                    <p><strong>Banka:</strong> {{ dodavatel.banka if dodavatel else 'Bankovní účet Raiffeisenbank a.s. CZK' }}</p>
+                    <p><strong>Č.úč.:</strong> {{ dodavatel.cislo_uctu if dodavatel else '5041011366/5500' }}</p>
                     <p><strong>IBAN:</strong> {{ dodavatel.iban if dodavatel else 'CZ1055000000005041011366' }}</p>
                     <p><strong>SWIFT/BIC:</strong> {{ dodavatel.swift if dodavatel else 'RZBCCZPP' }}</p>
                 </div>
@@ -239,37 +239,37 @@
             
             <td class="header-right">
                 <div class="invoice-details">
-                    <h4>Faktura Ä. {{ faktura.cislo_faktury if faktura else '' }}</h4>
+                    <h4>Faktura č. {{ faktura.cislo_faktury if faktura else '' }}</h4>
                     <p><strong>Konst. symbol:</strong> {{ faktura.konstantni_symbol if faktura else '' }}</p>
                     <p><strong>VS:</strong> {{ faktura.variabilni_symbol if faktura else '' }}</p>
                 </div>
                 
                 <div class="address-block">
-                    <h6>OdbÄ›ratel:</h6>
+                    <h6>Odběratel:</h6>
                     <p><strong>{{ odberatel.nazev_sro if odberatel else '' }}</strong></p>
                     <p>{{ odberatel.adresa_radek_1 if odberatel else '' }}</p>
                     <p>{{ odberatel.adresa_radek_2 if odberatel else '' }}</p>
-                    <p><strong>IÄŒO:</strong> {{ odberatel.ico_sro if odberatel else '' }}</p>
-                    <p><strong>DIÄŒ:</strong> {{ odberatel.dic_sro if odberatel else '' }}</p>
+                    <p><strong>IČO:</strong> {{ odberatel.ico_sro if odberatel else '' }}</p>
+                    <p><strong>DIČ:</strong> {{ odberatel.dic_sro if odberatel else '' }}</p>
                 </div>
                 
                 <div class="mt-3">
-                    <p><strong>StÅ™edisko:</strong> {{ stredisko.stredisko }} {{ stredisko.nazev_strediska }}</p>
+                    <p><strong>Středisko:</strong> {{ stredisko.stredisko }} {{ stredisko.nazev_strediska }}</p>
                     <p>{{ stredisko.stredisko_mail if stredisko.stredisko_mail else 'info@yourenergy.cz' }}</p>
                 </div>
             </td>
         </tr>
     </table>
 
-    <!-- DODACÃ A PLATEBNÃ PODMÃNKY -->
+    <!-- DODACÍ A PLATEBNÍ PODMÍNKY -->
     <div class="no-break">
-        <h5 class="section-title">DodacÃ­ a platebnÃ­ podmÃ­nky</h5>
+        <h5 class="section-title">Dodací a platební podmínky</h5>
         <table class="custom-table">
             <thead>
                 <tr>
                     <th>Datum splatnosti</th>
-                    <th>Datum vystavenÃ­</th>
-                    <th>Datum zdanit. plnÄ›nÃ­</th>
+                    <th>Datum vystavení</th>
+                    <th>Datum zdanit. plnění</th>
                 </tr>
             </thead>
             <tbody>
@@ -284,15 +284,15 @@
         <table class="custom-table">
             <thead>
                 <tr>
-                    <th>Forma Ãºhrady</th>
-                    <th>Popis dodÃ¡vky</th>
+                    <th>Forma úhrady</th>
+                    <th>Popis dodávky</th>
                     <th></th>
                 </tr>
             </thead>
             <tbody>
                 <tr>
                     <td>{{ faktura.forma_uhrady if faktura else '' }}</td>
-                    <td>{{ faktura.popis_dodavky if faktura else 'VyÃºÄtovÃ¡nÃ­ ' + obdobi.rok|string + '%02d'|format(obdobi.mesic) }}</td>
+                    <td>{{ faktura.popis_dodavky if faktura else 'Vyúčtování ' + obdobi.rok|string + '%02d'|format(obdobi.mesic) }}</td>
                     <td></td>
                 </tr>
             </tbody>
@@ -306,54 +306,82 @@
             <thead>
                 <tr>
                     <th><strong>Rekapitulace</strong></th>
-                    <th>ZÃ¡klad danÄ›</th>
+                    <th>Základ daně</th>
                     <th>Sazba DPH</th>
-                    <th>ÄŒÃ¡stka DPH</th>
-                    <th>Celkem vÄ. DPH</th>
+                    <th>Částka DPH</th>
+                    <th>Celkem vč. DPH</th>
                 </tr>
             </thead>
             <tbody>
                 <tr>
-                    <td>MÄ›sÃ­ÄnÃ­ plat (za jistiÄ)</td>
+                    <td>Měsíční plat (za jistič)</td>
                     <td class="text-end number-format">{{ "{:,.2f}".format(rekapitulace.platba_za_jistic).replace(',', ' ') }}</td>
                     <td class="text-end">{{ (sazba_dph * 100)|round|int }}</td>
                     <td class="text-end number-format">{{ "{:,.2f}".format(rekapitulace.platba_za_jistic * sazba_dph).replace(',', ' ') }}</td>
                     <td class="text-end number-format">{{ "{:,.2f}".format(rekapitulace.platba_za_jistic * (1 + sazba_dph)).replace(',', ' ') }}</td>
                 </tr>
                 <tr>
-                    <td>Plat za elektÅ™inu ve VT</td>
+                    <td>Plat za elektřinu ve VT</td>
                     <td class="text-end number-format">{{ "{:,.2f}".format(rekapitulace.distribuce_vt).replace(',', ' ') }}</td>
                     <td class="text-end">{{ (sazba_dph * 100)|round|int }}</td>
                     <td class="text-end number-format">{{ "{:,.2f}".format(rekapitulace.distribuce_vt * sazba_dph).replace(',', ' ') }}</td>
                     <td class="text-end number-format">{{ "{:,.2f}".format(rekapitulace.distribuce_vt * (1 + sazba_dph)).replace(',', ' ') }}</td>
                 </tr>
                 <tr>
-                    <td>Plat za elektÅ™inu ve NT</td>
+                    <td>Plat za elektřinu ve NT</td>
                     <td class="text-end number-format">{{ "{:,.2f}".format(rekapitulace.distribuce_nt).replace(',', ' ') }}</td>
                     <td class="text-end">{{ (sazba_dph * 100)|round|int }}</td>
                     <td class="text-end number-format">{{ "{:,.2f}".format(rekapitulace.distribuce_nt * sazba_dph).replace(',', ' ') }}</td>
                     <td class="text-end number-format">{{ "{:,.2f}".format(rekapitulace.distribuce_nt * (1 + sazba_dph)).replace(',', ' ') }}</td>
                 </tr>
                 <tr>
-                    <td>Cena za systÃ©movÃ© sluÅ¾by</td>
+                    <td>Cena za systémové služby</td>
                     <td class="text-end number-format">{{ "{:,.2f}".format(rekapitulace.systemove_sluzby).replace(',', ' ') }}</td>
                     <td class="text-end">{{ (sazba_dph * 100)|round|int }}</td>
                     <td class="text-end number-format">{{ "{:,.2f}".format(rekapitulace.systemove_sluzby * sazba_dph).replace(',', ' ') }}</td>
                     <td class="text-end number-format">{{ "{:,.2f}".format(rekapitulace.systemove_sluzby * (1 + sazba_dph)).replace(',', ' ') }}</td>
                 </tr>
                 <tr>
-                    <td>Podpora elekt. z podporovanÃ½ch zdrojÅ¯ energie</td>
+                    <td>Podpora elekt. z podporovaných zdrojů energie</td>
                     <td class="text-end number-format">{{ "{:,.2f}".format(rekapitulace.poze_minimum).replace(',', ' ') }}</td>
                     <td class="text-end">{{ (sazba_dph * 100)|round|int }}</td>
                     <td class="text-end number-format">{{ "{:,.2f}".format(rekapitulace.poze_minimum * sazba_dph).replace(',', ' ') }}</td>
                     <td class="text-end number-format">{{ "{:,.2f}".format(rekapitulace.poze_minimum * (1 + sazba_dph)).replace(',', ' ') }}</td>
                 </tr>
                 <tr>
-                    <td>Poplatek za nesÃ­Å¥ovou infrastrukturu</td>
+                    <td>Poplatek za nesíťovou infrastrukturu</td>
                     <td class="text-end number-format">{{ "{:,.2f}".format(rekapitulace.nesitova_infrastruktura).replace(',', ' ') }}</td>
                     <td class="text-end">{{ (sazba_dph * 100)|round|int }}</td>
                     <td class="text-end number-format">{{ "{:,.2f}".format(rekapitulace.nesitova_infrastruktura * sazba_dph).replace(',', ' ') }}</td>
                     <td class="text-end number-format">{{ "{:,.2f}".format(rekapitulace.nesitova_infrastruktura * (1 + sazba_dph)).replace(',', ' ') }}</td>
+                </tr>
+                <tr>
+                    <td>Stálý plat (dodavatel)</td>
+                    <td class="text-end number-format">{{ "{:,.2f}".format(rekapitulace.mesicni_plat).replace(',', ' ') }}</td>
+                    <td class="text-end">{{ (sazba_dph * 100)|round|int }}</td>
+                    <td class="text-end number-format">{{ "{:,.2f}".format(rekapitulace.mesicni_plat * sazba_dph).replace(',', ' ') }}</td>
+                    <td class="text-end number-format">{{ "{:,.2f}".format(rekapitulace.mesicni_plat * (1 + sazba_dph)).replace(',', ' ') }}</td>
+                </tr>
+                <tr>
+                    <td>Plat za silovou elektřinu v VT (dodavatel)</td>
+                    <td class="text-end number-format">{{ "{:,.2f}".format(rekapitulace.elektrinu_vt).replace(',', ' ') }}</td>
+                    <td class="text-end">{{ (sazba_dph * 100)|round|int }}</td>
+                    <td class="text-end number-format">{{ "{:,.2f}".format(rekapitulace.elektrinu_vt * sazba_dph).replace(',', ' ') }}</td>
+                    <td class="text-end number-format">{{ "{:,.2f}".format(rekapitulace.elektrinu_vt * (1 + sazba_dph)).replace(',', ' ') }}</td>
+                </tr>
+                <tr>
+                    <td>Plat za silovou elektřinu v NT (dodavatel)</td>
+                    <td class="text-end number-format">{{ "{:,.2f}".format(rekapitulace.elektrinu_nt).replace(',', ' ') }}</td>
+                    <td class="text-end">{{ (sazba_dph * 100)|round|int }}</td>
+                    <td class="text-end number-format">{{ "{:,.2f}".format(rekapitulace.elektrinu_nt * sazba_dph).replace(',', ' ') }}</td>
+                    <td class="text-end number-format">{{ "{:,.2f}".format(rekapitulace.elektrinu_nt * (1 + sazba_dph)).replace(',', ' ') }}</td>
+                </tr>
+                <tr>
+                    <td>Daň</td>
+                    <td class="text-end number-format">{{ "{:,.2f}".format(rekapitulace.dan_z_elektriny).replace(',', ' ') }}</td>
+                    <td class="text-end">{{ (sazba_dph * 100)|round|int }}</td>
+                    <td class="text-end number-format">{{ "{:,.2f}".format(rekapitulace.dan_z_elektriny * sazba_dph).replace(',', ' ') }}</td>
+                    <td class="text-end number-format">{{ "{:,.2f}".format(rekapitulace.dan_z_elektriny * (1 + sazba_dph)).replace(',', ' ') }}</td>
                 </tr>
                 <tr>
                     <td>Dofakturace / Bonus</td>
@@ -370,7 +398,7 @@
                     <td class="text-end number-format"><strong>{{ "{:,.2f}".format(celkem_vc_dph).replace(',', ' ') }}</strong></td>
                 </tr>
                 <tr>
-                    <td>Zaplaceno zÃ¡lohou</td>
+                    <td>Zaplaceno zálohou</td>
                     <td class="text-end number-format">{{ "{:,.2f}".format(-zaloha_hodnota).replace(',', ' ') if zaloha else "0,00" }}</td>
                     <td class="text-end">{{ sazba_dph_procenta }}</td>
                     <td class="text-end number-format">{{ "{:,.2f}".format(-zaloha_dph).replace(',', ' ') if zaloha else "0,00" }}</td>
@@ -380,9 +408,9 @@
         </table>
     </div>
 
-    <!-- K PLATBÄš -->
+    <!-- K PLATBĚ -->
     <div class="total-section">
-        <h4 class="total-amount">K platbÄ› celkem {{ "{:,.2f}".format(k_platbe).replace(',', ' ') }} KÄ</h4>
+        <h4 class="total-amount">K platbě celkem {{ "{:,.2f}".format(k_platbe).replace(',', ' ') }} Kč</h4>
     </div>
 
     <!-- REKAPITULACE DPH -->
@@ -392,14 +420,14 @@
             <thead>
                 <tr>
                     <th>Sazba DPH</th>
-                    <th>ZÃ¡klad danÄ›</th>
+                    <th>Základ daně</th>
                     <th>DPH</th>
                     <th>Celkem</th>
                 </tr>
             </thead>
             <tbody>
                 <tr>
-                    <td>ZÃ¡kladnÃ­ sazba 21 %</td>
+                    <td>Základní sazba 21 %</td>
                     <td class="text-end number-format">{{ "{:,.2f}".format(k_platbe / (1 + sazba_dph)).replace(',', ' ') }}</td>
                     <td class="text-end number-format">{{ "{:,.2f}".format(k_platbe * sazba_dph / (1 + sazba_dph)).replace(',', ' ') }}</td>
                     <td class="text-end number-format">{{ "{:,.2f}".format(k_platbe).replace(',', ' ') }}</td>
@@ -410,7 +438,7 @@
 
     <!-- FOOTER -->
     <div class="footer-section">
-        <p>Rozpis jednotlivÃ½ch poloÅ¾ek faktury je uveden na nÃ¡sledujÃ­cÃ­ strÃ¡nÄ›.</p>
+        <p>Rozpis jednotlivých položek faktury je uveden na následující stráně.</p>
         <p><strong>FAKTURA:</strong> {{ faktura.cislo_faktury if faktura else '270325044' }}</p>
     </div>
 </body>
