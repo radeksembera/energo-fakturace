@@ -1,5 +1,5 @@
 from flask import Blueprint, render_template, request, redirect, url_for, session, flash, jsonify
-from models import db, Stredisko, InfoDodavatele, InfoVystavovatele, InfoOdberatele, ZalohovaFaktura, Faktura, ImportOdečtu, VypocetOM, OdberneMisto, CenaDistribuce, CenaDodavatel, Odečet, ObdobiFakturace
+from models import db, Stredisko, InfoDodavatele, InfoVystavovatele, InfoOdberatele, ZalohovaFaktura, Faktura, ImportOdečtu, VypocetOM, OdberneMisto, CenaDistribuce, CenaDodavatel, Odečet, ObdobiFakturace, CislaFaktur
 # Alias pro zpětnou kompatibilitu s kódem bez diakritiky
 Odecet = Odečet
 from session_helpers import handle_obdobi_selection, get_session_obdobi, get_dostupna_obdobi_pro_stredisko, set_session_obdobi
@@ -760,7 +760,16 @@ def ulozit_fakturu(stredisko_id, obdobi_id):
         faktura = Faktura(stredisko_id=stredisko_id, obdobi_id=obdobi_id)
 
     # Ulož data z formuláře
-    faktura.cislo_faktury = request.form.get("cislo_faktury", "")
+    # Převeď číslo faktury na integer (pokud není prázdné)
+    cislo_str = request.form.get("cislo_faktury", "").strip()
+    if cislo_str:
+        try:
+            faktura.cislo_faktury = int(cislo_str)
+        except ValueError:
+            flash("❌ Neplatné číslo faktury. Zadejte prosím číselnou hodnotu.")
+            return redirect(url_for("fakturace.parametry_fakturace", stredisko_id=stredisko_id, obdobi_id=obdobi_id))
+    else:
+        faktura.cislo_faktury = None
     faktura.konstantni_symbol = request.form.get("konst_symbol_f", type=int)
     faktura.variabilni_symbol = request.form.get("vs_f", type=int)
     
@@ -802,3 +811,104 @@ def ulozit_fakturu(stredisko_id, obdobi_id):
     
     flash("✅ Faktura byla úspěšně uložena.")
     return redirect(url_for("fakturace.parametry_fakturace", stredisko_id=stredisko_id, obdobi_id=obdobi_id))
+
+
+@fakturace_bp.route("/<int:stredisko_id>/predvyplnit_cislo_faktury", methods=["POST"])
+def predvyplnit_cislo_faktury(stredisko_id):
+    """
+    API endpoint pro předvyplnění dalšího čísla faktury.
+    Používá atomickou operaci s locking pro zabránění duplikátům.
+    """
+    if not session.get("user_id"):
+        return jsonify({"success": False, "error": "Nejste přihlášeni"}), 401
+
+    # Ověření vlastnictví střediska
+    stredisko = Stredisko.query.get_or_404(stredisko_id)
+    if stredisko.user_id != session["user_id"]:
+        return jsonify({"success": False, "error": "Nepovolený přístup"}), 403
+
+    try:
+        user_id = session["user_id"]
+
+        # Použij SELECT FOR UPDATE pro atomic increment
+        # Pokud záznam neexistuje, vytvoř ho
+        cisla_record = db.session.query(CislaFaktur).filter_by(
+            user_id=user_id,
+            typ_faktury='faktura'
+        ).with_for_update().first()
+
+        if not cisla_record:
+            # Vytvoř nový záznam s výchozí hodnotou
+            cisla_record = CislaFaktur(
+                user_id=user_id,
+                typ_faktury='faktura',
+                aktualni_cislo=270325130
+            )
+            db.session.add(cisla_record)
+            db.session.flush()  # Získej ID pro další operace
+
+        # Increment čísla faktury
+        nove_cislo = cisla_record.aktualni_cislo + 1
+
+        # Kontrola, zda číslo už neexistuje v databázi
+        # (double-check proti duplikátům)
+        existujici_faktura = Faktura.query.filter_by(cislo_faktury=nove_cislo).first()
+        if existujici_faktura:
+            # Pokud číslo existuje, najdi nejbližší volné
+            max_cislo = db.session.query(db.func.max(Faktura.cislo_faktury)).scalar() or nove_cislo
+            nove_cislo = max(nove_cislo, max_cislo + 1)
+
+        # Aktualizuj číslo v tabulce
+        cisla_record.aktualni_cislo = nove_cislo
+        cisla_record.updated_at = db.func.now()
+
+        db.session.commit()
+
+        # Vypočítej automatická data
+        from datetime import datetime, timedelta
+        import calendar
+
+        dnes = datetime.now().date()
+
+        # Datum vystavení = dnes
+        datum_vystaveni = dnes.strftime('%Y-%m-%d')
+
+        # Datum splatnosti = dnes + 14 dní
+        datum_splatnosti = (dnes + timedelta(days=14)).strftime('%Y-%m-%d')
+
+        # Předchozí měsíc
+        if dnes.month == 1:
+            predchozi_mesic = 12
+            predchozi_rok = dnes.year - 1
+        else:
+            predchozi_mesic = dnes.month - 1
+            predchozi_rok = dnes.year
+
+        # Fakturace od = první den předchozího měsíce
+        fakturace_od = datetime(predchozi_rok, predchozi_mesic, 1).strftime('%Y-%m-%d')
+
+        # Fakturace do = poslední den předchozího měsíce
+        posledni_den = calendar.monthrange(predchozi_rok, predchozi_mesic)[1]
+        fakturace_do = datetime(predchozi_rok, predchozi_mesic, posledni_den).strftime('%Y-%m-%d')
+
+        # Datum zdanitelného plnění = poslední den předchozího měsíce (stejné jako fakturace_do)
+        datum_zdanitelneho_plneni = fakturace_do
+
+        return jsonify({
+            "success": True,
+            "cislo_faktury": nove_cislo,
+            "variabilni_symbol": nove_cislo,  # Variabilní symbol = číslo faktury
+            "datum_vystaveni": datum_vystaveni,
+            "datum_splatnosti": datum_splatnosti,
+            "datum_zdanitelneho_plneni": datum_zdanitelneho_plneni,
+            "fakturace_od": fakturace_od,
+            "fakturace_do": fakturace_do,
+            "message": f"Předvyplněno číslo faktury: {nove_cislo} a všechna data"
+        })
+
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({
+            "success": False,
+            "error": f"Chyba při generování čísla faktury: {str(e)}"
+        }), 500

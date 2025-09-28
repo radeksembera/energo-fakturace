@@ -200,8 +200,8 @@ class ZalohovaFaktura(db.Model):
     # Přidáno období_id pro jednotnou správu
     obdobi_id = db.Column(db.Integer, db.ForeignKey('obdobi_fakturace.id'))
     cislo_zalohove_faktury = db.Column(db.Text)
-    konstantni_symbol = db.Column(db.Integer)
-    variabilni_symbol = db.Column(db.Integer)
+    konstantni_symbol = db.Column(db.Text)
+    variabilni_symbol = db.Column(db.Text)
     datum_splatnosti = db.Column(db.Date)
     forma_uhrady = db.Column(db.Text)
     datum_vystaveni = db.Column(db.Date)
@@ -214,9 +214,9 @@ class Faktura(db.Model):
     stredisko_id = db.Column(db.Integer, db.ForeignKey('strediska.id'))
     # Přidáno období_id pro jednotnou správu
     obdobi_id = db.Column(db.Integer, db.ForeignKey('obdobi_fakturace.id'))
-    cislo_faktury = db.Column(db.Text)
-    variabilni_symbol = db.Column(db.Integer)
-    konstantni_symbol = db.Column(db.Integer)
+    cislo_faktury = db.Column(db.BigInteger)
+    variabilni_symbol = db.Column(db.Text)
+    konstantni_symbol = db.Column(db.Text)
     datum_splatnosti = db.Column(db.Date)
     datum_vystaveni = db.Column(db.Date)
     datum_zdanitelneho_plneni = db.Column(db.Date)
@@ -226,6 +226,20 @@ class Faktura(db.Model):
     fakturace_od = db.Column(db.Date)
     fakturace_do = db.Column(db.Date)
     fakturovat_jen_distribuci = db.Column(db.Boolean, default=False, nullable=False)
+
+# --- CISLA FAKTUR ---
+class CislaFaktur(db.Model):
+    __tablename__ = 'cisla_faktur'
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
+    typ_faktury = db.Column(db.String(20), nullable=False, default='faktura')
+    aktualni_cislo = db.Column(db.BigInteger, nullable=False)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+    __table_args__ = (
+        db.UniqueConstraint('user_id', 'typ_faktury', name='unique_user_typ_faktury'),
+    )
 
 # --- OBDOBI FAKTURACE ---
 class ObdobiFakturace(db.Model):

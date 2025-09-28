@@ -69,36 +69,44 @@
                                 <i class="bi bi-receipt me-2"></i>
                                 Číslo faktury
                             </label>
-                            <input type="text" 
-                                   class="form-control form-control-custom" 
-                                   id="cislo_faktury" 
-                                   name="cislo_faktury" 
+                            <input type="number"
+                                   class="form-control form-control-custom"
+                                   id="cislo_faktury"
+                                   name="cislo_faktury"
                                    value="{{ fak.cislo_faktury if fak else '' }}"
-                                   placeholder="Např. 2025001">
+                                   placeholder="Např. 2025001"
+                                   min="1"
+                                   max="9999999999">
                         </div>
                         <div class="col-md-3 mb-3">
                             <label for="konst_symbol_f" class="form-label-custom">
                                 <i class="bi bi-hash me-2"></i>
                                 Konstantní symbol
                             </label>
-                            <input type="number" 
-                                   class="form-control form-control-custom" 
-                                   id="konst_symbol_f" 
-                                   name="konst_symbol_f" 
-                                   value="{{ fak.konstantni_symbol if fak else '' }}"
-                                   placeholder="0558">
+                            <input type="number"
+                                   class="form-control form-control-custom"
+                                   id="konst_symbol_f"
+                                   name="konst_symbol_f"
+                                   value="{{ fak.konstantni_symbol if fak else '0000' }}"
+                                   placeholder="0000"
+                                   min="0"
+                                   max="9999"
+                                   title="Konstantní symbol: 0-4 číslice (0-9999)">
                         </div>
                         <div class="col-md-3 mb-3">
                             <label for="vs_f" class="form-label-custom">
                                 <i class="bi bi-barcode me-2"></i>
                                 Variabilní symbol
                             </label>
-                            <input type="number" 
-                                   class="form-control form-control-custom" 
-                                   id="vs_f" 
-                                   name="vs_f" 
+                            <input type="number"
+                                   class="form-control form-control-custom"
+                                   id="vs_f"
+                                   name="vs_f"
                                    value="{{ fak.variabilni_symbol if fak else '' }}"
-                                   placeholder="202501001">
+                                   placeholder="202501001"
+                                   min="0"
+                                   max="9999999999"
+                                   title="Variabilní symbol: 0-10 číslic (0-9999999999)">
                         </div>
 
                         <!-- Druhý řádek - data -->
@@ -220,7 +228,15 @@
                             </div>
                         </div>
                     </div>
-                    <div class="d-flex justify-content-end">
+                    <div class="d-flex justify-content-between">
+                        <button type="button"
+                                class="btn btn-outline-primary"
+                                id="predvyplnit_cislo"
+                                onclick="predvyplnitCisloFaktury()"
+                                title="Předvyplnit číslo faktury a všechna automatická data">
+                            <i class="bi bi-arrow-clockwise me-2"></i>
+                            Předvyplnit vše
+                        </button>
                         <button type="submit" class="btn btn-primary-custom">
                             <i class="bi bi-save me-2"></i>
                             Uložit fakturu
@@ -258,24 +274,30 @@
                                 <i class="bi bi-hash me-2"></i>
                                 Konstantní symbol
                             </label>
-                            <input type="number" 
-                                   class="form-control form-control-custom" 
-                                   id="konst_symbol" 
-                                   name="konst_symbol" 
-                                   value="{{ zal.konstantni_symbol if zal else '' }}"
-                                   placeholder="0558">
+                            <input type="number"
+                                   class="form-control form-control-custom"
+                                   id="konst_symbol"
+                                   name="konst_symbol"
+                                   value="{{ zal.konstantni_symbol if zal else '0000' }}"
+                                   placeholder="0000"
+                                   min="0"
+                                   max="9999"
+                                   title="Konstantní symbol: 0-4 číslice (0-9999)">
                         </div>
                         <div class="col-md-3 mb-3">
                             <label for="vs" class="form-label-custom">
                                 <i class="bi bi-barcode me-2"></i>
                                 Variabilní symbol
                             </label>
-                            <input type="number" 
-                                   class="form-control form-control-custom" 
-                                   id="vs" 
-                                   name="vs" 
+                            <input type="number"
+                                   class="form-control form-control-custom"
+                                   id="vs"
+                                   name="vs"
                                    value="{{ zal.variabilni_symbol if zal else '' }}"
-                                   placeholder="202501001">
+                                   placeholder="202501001"
+                                   min="0"
+                                   max="9999999999"
+                                   title="Variabilní symbol: 0-10 číslic (0-9999999999)">
                         </div>
                         <div class="col-md-4 mb-3">
                             <label for="splatnost" class="form-label-custom">
@@ -456,6 +478,64 @@
                 }
             });
         }
+
+        // Předvyplnění čísla faktury
+        window.predvyplnitCisloFaktury = function() {
+            const button = document.getElementById('predvyplnit_cislo');
+            const input = document.getElementById('cislo_faktury');
+
+            // Disable tlačítko během načítání
+            button.disabled = true;
+            button.innerHTML = '<i class="bi bi-arrow-clockwise spin-icon"></i> Načítám...';
+
+            fetch(`{{ url_for('fakturace.predvyplnit_cislo_faktury', stredisko_id=stredisko.id) }}`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    // Vyplň všechna pole
+                    document.getElementById('cislo_faktury').value = data.cislo_faktury;
+                    document.getElementById('vs_f').value = data.variabilni_symbol;
+                    document.getElementById('vystaveni_f').value = data.datum_vystaveni;
+                    document.getElementById('splatnost_f').value = data.datum_splatnosti;
+                    document.getElementById('zdanitelne_plneni').value = data.datum_zdanitelneho_plneni;
+                    document.getElementById('od_date').value = data.fakturace_od;
+                    document.getElementById('do_date').value = data.fakturace_do;
+
+                    // Zobrazit krátkou zprávu o úspěchu
+                    button.innerHTML = '<i class="bi bi-check-circle text-success me-2"></i> Hotovo!';
+                    setTimeout(() => {
+                        button.innerHTML = '<i class="bi bi-arrow-clockwise me-2"></i> Předvyplnit vše';
+                        button.disabled = false;
+                    }, 3000);
+                } else {
+                    alert('Chyba při předvyplňování: ' + data.error);
+                    button.innerHTML = '<i class="bi bi-arrow-clockwise me-2"></i> Předvyplnit vše';
+                    button.disabled = false;
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                alert('Chyba při komunikaci se serverem');
+                button.innerHTML = '<i class="bi bi-arrow-clockwise me-2"></i> Předvyplnit vše';
+                button.disabled = false;
+            });
+        };
     });
 </script>
+
+<style>
+    .spin-icon {
+        animation: spin 1s linear infinite;
+    }
+
+    @keyframes spin {
+        0% { transform: rotate(0deg); }
+        100% { transform: rotate(360deg); }
+    }
+</style>
 {% endblock %}
