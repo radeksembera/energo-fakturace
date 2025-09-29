@@ -320,7 +320,7 @@
     });
 
     function showCreateUserModal() {
-        document.getElementById('createUserForm').action = '{{ url_for("admin_users") }}';
+        document.getElementById('createUserForm').action = '{{ url_for("admin.admin_users") }}';
         new bootstrap.Modal(document.getElementById('createUserModal')).show();
     }
 
