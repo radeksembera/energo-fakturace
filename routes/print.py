@@ -777,7 +777,9 @@ def vygenerovat_fakturu_pdf(stredisko_id, rok, mesic):
         # Vytvoř odpověď s PDF
         response = make_response(pdf_bytes)
         response.headers['Content-Type'] = 'application/pdf'
-        response.headers['Content-Disposition'] = f'inline; filename=faktura_{stredisko_id}_{rok}_{mesic:02d}.pdf'
+        # Název souboru podle čísla faktury
+        cislo_faktury = data['faktura'].cislo_faktury if data['faktura'] and data['faktura'].cislo_faktury else f'{stredisko_id}_{rok}_{mesic:02d}'
+        response.headers['Content-Disposition'] = f'inline; filename=faktura_{cislo_faktury}.pdf'
         return response
 
     except Exception as e:

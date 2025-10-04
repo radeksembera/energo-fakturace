@@ -39,10 +39,10 @@
             border: none;
         }
         .mereni-table th { 
-            /* ✅ Bez pozadí, pouze spodní čára */
+            /* ✅ Bez pozadí, pouze spodní šedá čára */
             background-color: transparent; 
             border: none;
-            border-bottom: 1px solid #000;
+            border-bottom: 1px solid #ccc;
             padding: 3px 6px; 
             text-align: left; 
             font-weight: bold;
@@ -63,7 +63,7 @@
         .mereni-table .date { text-align: left; }
         .mereni-table .unit { text-align: left; }
         
-        /* ✅ Odstranění barevného podbarvení */
+        /* ✅ Odstranění barevného podbarveníí */
         .vt-row { background-color: transparent; }
         .nt-row { background-color: transparent; }
         
@@ -86,7 +86,7 @@
             DIČ {{ dodavatel.dic_sro if dodavatel else 'CZ24833851' }} 
             IČO {{ dodavatel.ico_sro if dodavatel else '24833851' }}
         </div>
-        <div class="document-title">Příloha 1 - Hodnoty měření k dokladu</div>
+        <border class="document-title">Příloha 1 - Hodnoty měření k dokladu</div>
     </div>
 
     <!-- ✅ ODBĚRNÁ MÍSTA - nový design podle vzoru -->
