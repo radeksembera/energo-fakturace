@@ -6,7 +6,19 @@
     <meta charset="UTF-8">
     <title>Příloha 1 - Hodnoty měření k dokladu {{ faktura.cislo_faktury if faktura else 'XXXX' }}</title>
     <style>
-        @page { margin: 2cm; }
+        @page {
+            margin: 2cm;
+            @bottom-left {
+                content: "FAKTURA: {{ faktura.cislo_faktury if faktura else 'XXXX' }}";
+                font-family: Arial, sans-serif;
+                font-size: 9px;
+            }
+            @bottom-right {
+                content: "strana " counter(page) "/" counter(pages);
+                font-family: Arial, sans-serif;
+                font-size: 9px;
+            }
+        }
         body { font-family: Arial, sans-serif; font-size: 11px; line-height: 1.2; margin: 0; }
         
         .page-header { 

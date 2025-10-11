@@ -4,6 +4,19 @@
     <meta charset="UTF-8">
     <title>Příloha 2 - Rozpis položek za odběrná místa</title>
     <style>
+        @page {
+            margin: 2cm;
+            @bottom-left {
+                content: "FAKTURA: {{ faktura.cislo_faktury if faktura else 'XXXX' }}";
+                font-family: Arial, sans-serif;
+                font-size: 9px;
+            }
+            @bottom-right {
+                content: "strana " counter(page) "/" counter(pages);
+                font-family: Arial, sans-serif;
+                font-size: 9px;
+            }
+        }
         body {
             font-family: Arial, sans-serif;
             margin: 40px;

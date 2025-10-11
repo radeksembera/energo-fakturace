@@ -239,7 +239,7 @@
             <td class="header-right">
                 <div class="invoice-details">
                     <h4>Faktura č. {{ faktura.cislo_faktury if faktura else '' }}</h4>
-                    <p><strong>Konst. symbol:</strong> {{ faktura.konstantni_symbol if faktura else '' }}</p>
+                    <p><strong>Variabilní symbol:</strong> {{ faktura.variabilni_symbol if faktura else '' }}</p>
                 </div>
                 
                 <div class="address-block">
@@ -434,10 +434,5 @@
         </table>
     </div>
 
-    <!-- FOOTER -->
-    <div class="footer-section">
-        <p>Rozpis jednotlivých položek faktury je uveden na následující stránce.</p>
-        <p><strong>FAKTURA:</strong> {{ faktura.cislo_faktury if faktura else '270325044' }}</p>
-    </div>
 </body>
 </html>
