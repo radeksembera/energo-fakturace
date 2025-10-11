@@ -137,15 +137,23 @@ def prehled_odbernych_mist(stredisko_id):
         cislo_om = request.form["cislo_om"]
         nazev_om = request.form["nazev_om"]
         distribucni_sazba_om = request.form.get("distribucni_sazba_om", "")
-        
+        kategorie_jistice_om = request.form.get("kategorie_jistice_om", "")
+        hodnota_jistice_om = request.form.get("hodnota_jistice_om", "")
+        ean_om = request.form.get("ean_om", "")
+        poznamka_om = request.form.get("poznamka_om", "")
+
         if OdberneMisto.query.filter_by(stredisko_id=stredisko_id, cislo_om=cislo_om).first():
             flash(f"❌ Odběrné místo s kódem {cislo_om} již existuje!")
         else:
             nove_om = OdberneMisto(
                 stredisko_id=stredisko_id,
                 cislo_om=cislo_om,
+                ean_om=ean_om,
                 nazev_om=nazev_om,
-                distribucni_sazba_om=distribucni_sazba_om
+                distribucni_sazba_om=distribucni_sazba_om,
+                kategorie_jistice_om=kategorie_jistice_om,
+                hodnota_jistice_om=hodnota_jistice_om,
+                poznamka_om=poznamka_om
             )
             db.session.add(nove_om)
             db.session.commit()

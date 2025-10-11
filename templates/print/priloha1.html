@@ -76,17 +76,7 @@
 <body>
     <!-- HLAVIČKA -->
     <div class="page-header">
-        <div class="header-line1">
-            Číslo {{ faktura.cislo_faktury if faktura else '' }}
-        </div>
-        <div style="margin: 5px 0; font-size: 10px;">
-            {{ dodavatel.nazev_sro if dodavatel else 'Your energy, s.r.o.' }}, 
-            {{ dodavatel.adresa_radek_1 if dodavatel else 'Italská 2584/69' }} 
-            {{ dodavatel.adresa_radek_2 if dodavatel else '120 00 Praha 2 - Vinohrady' }}, 
-            DIČ {{ dodavatel.dic_sro if dodavatel else 'CZ24833851' }} 
-            IČO {{ dodavatel.ico_sro if dodavatel else '24833851' }}
-        </div>
-        <border class="document-title">Příloha 1 - Hodnoty měření k dokladu</div>
+        <div class="document-title">Příloha 1 - Hodnoty měření k dokladu</div>
     </div>
 
     <!-- ✅ ODBĚRNÁ MÍSTA - nový design podle vzoru -->

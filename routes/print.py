@@ -1040,7 +1040,7 @@ def vygenerovat_prilohu2_html(stredisko_id, rok, mesic):
     # Načti všechny výpočty s odběrnými místy pro dané období
     vypocty_om = db.session.query(VypocetOM, OdberneMisto)\
         .join(OdberneMisto, VypocetOM.odberne_misto_id == OdberneMisto.id)\
-        .filter(VypocetOM.id > 0)\
+        .filter(VypocetOM.obdobi_id == obdobi.id)\
         .filter(OdberneMisto.stredisko_id == stredisko_id)\
         .order_by(OdberneMisto.cislo_om)\
         .all()
@@ -1060,7 +1060,7 @@ def vygenerovat_prilohu2_html(stredisko_id, rok, mesic):
         fakturovat_jen_distribuci = faktura.fakturovat_jen_distribuci if faktura else False
 
         # Celková suma za OM - použij předpočítané hodnoty bez distribuce pokud jsou k dispozici
-        if not fakturovat_distribuci and hasattr(vypocet, 'celkem_vc_dph_bez_di') and vypocet.celkem_vc_dph_bez_di:
+        if not fakturovat_jen_distribuci and hasattr(vypocet, 'celkem_vc_dph_bez_di') and vypocet.celkem_vc_dph_bez_di:
             celkem_om = float(vypocet.celkem_vc_dph_bez_di or 0) / (1 + sazba_dph)  # Převeď zpět na základ bez DPH
         else:
             # Standardní výpočet - převeď všechny hodnoty na float
@@ -1068,9 +1068,9 @@ def vygenerovat_prilohu2_html(stredisko_id, rok, mesic):
                 float(vypocet.mesicni_plat or 0) +
                 float(vypocet.platba_za_elektrinu_vt or 0) +
                 float(vypocet.platba_za_elektrinu_nt or 0) +
-                (float(vypocet.platba_za_jistic or 0) if fakturovat_distribuci else 0) +
-                (float(vypocet.platba_za_distribuci_vt or 0) if fakturovat_distribuci else 0) +
-                (float(vypocet.platba_za_distribuci_nt or 0) if fakturovat_distribuci else 0) +
+                (float(vypocet.platba_za_jistic or 0) if not fakturovat_jen_distribuci else 0) +
+                (float(vypocet.platba_za_distribuci_vt or 0) if not fakturovat_jen_distribuci else 0) +
+                (float(vypocet.platba_za_distribuci_nt or 0) if not fakturovat_jen_distribuci else 0) +
                 float(vypocet.systemove_sluzby or 0) +
                 poze_minimum +
                 float(vypocet.nesitova_infrastruktura or 0) +
@@ -1187,7 +1187,7 @@ def priloha2_pdf_nova(stredisko_id, rok, mesic):
         # Načti všechny výpočty s odběrnými místy pro dané období - STEJNÝ QUERY JAKO HTML
         vypocty_om = db.session.query(VypocetOM, OdberneMisto)\
             .join(OdberneMisto, VypocetOM.odberne_misto_id == OdberneMisto.id)\
-            .filter(VypocetOM.id > 0)\
+            .filter(VypocetOM.obdobi_id == obdobi.id)\
             .filter(OdberneMisto.stredisko_id == stredisko_id)\
             .order_by(OdberneMisto.cislo_om)\
             .all()
@@ -1385,7 +1385,7 @@ def vygenerovat_kompletni_pdf(stredisko_id, rok, mesic):
         # Připrav data pro přílohu 2 STEJNĚ jako v HTML route vygenerovat_prilohu2_html
         vypocty_om = db.session.query(VypocetOM, OdberneMisto)\
             .join(OdberneMisto, VypocetOM.odberne_misto_id == OdberneMisto.id)\
-            .filter(VypocetOM.id > 0)\
+            .filter(VypocetOM.obdobi_id == obdobi.id)\
             .filter(OdberneMisto.stredisko_id == stredisko_id)\
             .order_by(OdberneMisto.cislo_om)\
             .all()
