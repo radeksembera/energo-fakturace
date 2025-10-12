@@ -131,7 +131,7 @@
             font-weight: bold;
             padding: 4px 3px;
             border: none;
-            text-align: right;
+            text-align: center;
         }
         
         .custom-table th:first-child {
@@ -142,6 +142,11 @@
             padding: 3px;
             border: none;
             vertical-align: top;
+            text-align: center;
+        }
+        
+        .custom-table td:first-child {
+            text-align: left;
         }
         
         .custom-table .text-end {
@@ -284,14 +289,12 @@
                 <tr>
                     <th>Forma úhrady</th>
                     <th>Popis dodávky</th>
-                    <th></th>
                 </tr>
             </thead>
             <tbody>
                 <tr>
                     <td>{{ faktura.forma_uhrady if faktura else '' }}</td>
                     <td>{{ faktura.popis_dodavky if faktura else 'Vyúčtování ' + obdobi.rok|string + '%02d'|format(obdobi.mesic) }}</td>
-                    <td></td>
                 </tr>
             </tbody>
         </table>
