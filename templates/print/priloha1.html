@@ -115,7 +115,8 @@
                 </tr>
             </thead>
             <tbody>
-                <!-- VT řádek -->
+                <!-- VT řádek - zobrazit pouze pokud je spotřeba nenulová -->
+                {% if odecet.spotreba_vt and odecet.spotreba_vt != 0 %}
                 <tr>
                     <td class="description">Spotřeba VT</td>
                     <td class="date">{{ odecet.zacatek_periody_mereni.strftime('%d.%m.%Y') if odecet.zacatek_periody_mereni else '' }}</td>
@@ -126,8 +127,10 @@
                     <td class="unit">kWh</td>
                     <td class="description">{{ odecet.priznak if odecet.priznak else '' }}</td>
                 </tr>
-                
-                <!-- NT řádek - vždy zobrazit -->
+                {% endif %}
+
+                <!-- NT řádek - zobrazit pouze pokud je spotřeba nenulová -->
+                {% if odecet.spotreba_nt and odecet.spotreba_nt != 0 %}
                 <tr>
                     <td class="description">Spotřeba NT</td>
                     <td class="date">{{ odecet.zacatek_periody_mereni.strftime('%d.%m.%Y') if odecet.zacatek_periody_mereni else '' }}</td>
@@ -138,6 +141,7 @@
                     <td class="unit">kWh</td>
                     <td class="description">{{ odecet.priznak if odecet.priznak else '' }}</td>
                 </tr>
+                {% endif %}
             </tbody>
         </table>
     </div>

@@ -127,7 +127,7 @@
         <div class="om-info">
             <p><strong>Odběrné místo:</strong> {{ data.om.cislo_om }} {{ data.om.nazev_om }}<br>
             {{ stredisko.adresa if stredisko.adresa else 'Nádražní 762/32, Praha 5 - Smíchov, PSČ 150 00' }}<br>
-            <strong>EAN:</strong> {{ data.om.ean_om if data.om.ean_om else '859182403280020114' }}</p>
+            <strong>EAN:</strong> {{ data.om.ean_om if data.om.ean_om else 'nezadáno' }}</p>
 
             <p>
                 <strong>Distribuční sazba:</strong> {{ data.om.distribucni_sazba_om }}<br>

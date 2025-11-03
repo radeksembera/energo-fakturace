@@ -127,7 +127,7 @@
         <div class="om-info">
             <p><strong>Odběrné místo:</strong> {{ data.om.cislo_om }} {{ data.om.nazev_om }}<br>
             {{ stredisko.adresa if stredisko.adresa else 'Nádražní 762/32, Praha 5 - Smíchov, PSČ 150 00' }}<br>
-            <strong>EAN:</strong> {{ data.om.ean_om if data.om.ean_om else '859182403280020114' }}</p>
+            <strong>EAN:</strong> {{ data.om.ean_om if data.om.ean_om else 'nezadáno' }}</p>
 
             <p>
                 <strong>Distribuční sazba:</strong> {{ data.om.distribucni_sazba_om }}<br>
@@ -152,9 +152,12 @@
             </thead>
             <tbody>
                 <!-- Dodávka elektřiny -->
+                {% set has_dodavka = (data.vypocet.mesicni_plat and data.vypocet.mesicni_plat != 0) or (data.vypocet.platba_za_elektrinu_vt and data.vypocet.platba_za_elektrinu_vt != 0) or (data.vypocet.platba_za_elektrinu_nt and data.vypocet.platba_za_elektrinu_nt != 0) %}
+                {% if has_dodavka %}
                 <tr class="category-row">
                     <td colspan="5"><strong>Dodávka elektřiny</strong></td>
                 </tr>
+                {% if data.vypocet.mesicni_plat and data.vypocet.mesicni_plat != 0 %}
                 <tr class="item-row">
                     <td>Stálý plat</td>
                     <td class="right">1</td>
@@ -162,6 +165,8 @@
                     <td class="right">{{ (data.vypocet.mesicni_plat or 0)|number_format }}</td>
                     <td class="right">{{ (data.vypocet.mesicni_plat or 0)|number_format }}</td>
                 </tr>
+                {% endif %}
+                {% if data.vypocet.platba_za_elektrinu_vt and data.vypocet.platba_za_elektrinu_vt != 0 %}
                 <tr class="item-row">
                     <td>Plat za silovou elektřinu v VT</td>
                     <td class="right">{{ "%.4f"|format(data.spotreba_vt_mwh) }}</td>
@@ -169,6 +174,8 @@
                     <td class="right">{{ data.jednotkova_cena_elektriny_vt|number_format }}</td>
                     <td class="right">{{ (data.vypocet.platba_za_elektrinu_vt or 0)|number_format }}</td>
                 </tr>
+                {% endif %}
+                {% if data.vypocet.platba_za_elektrinu_nt and data.vypocet.platba_za_elektrinu_nt != 0 %}
                 <tr class="item-row">
                     <td>Plat za silovou elektřinu v NT</td>
                     <td class="right">{{ "%.4f"|format(data.spotreba_nt_mwh) }}</td>
@@ -176,11 +183,16 @@
                     <td class="right">{{ data.jednotkova_cena_elektriny_nt|number_format }}</td>
                     <td class="right">{{ (data.vypocet.platba_za_elektrinu_nt or 0)|number_format }}</td>
                 </tr>
+                {% endif %}
+                {% endif %}
                 
                 <!-- Distribuční služby -->
+                {% set has_distribuce = (data.vypocet.platba_za_jistic and data.vypocet.platba_za_jistic != 0) or (data.vypocet.platba_za_distribuci_vt and data.vypocet.platba_za_distribuci_vt != 0) or (data.vypocet.platba_za_distribuci_nt and data.vypocet.platba_za_distribuci_nt != 0) or (data.vypocet.systemove_sluzby and data.vypocet.systemove_sluzby != 0) or (data.poze_minimum and data.poze_minimum != 0) or (data.vypocet.nesitova_infrastruktura and data.vypocet.nesitova_infrastruktura != 0) %}
+                {% if has_distribuce %}
                 <tr class="category-row">
                     <td colspan="5"><strong>Distribuční služby</strong></td>
                 </tr>
+                {% if data.vypocet.platba_za_jistic and data.vypocet.platba_za_jistic != 0 %}
                 <tr class="item-row">
                     <td>Měsíční plat</td>
                     <td class="right">1</td>
@@ -188,6 +200,8 @@
                     <td class="right">{{ (data.vypocet.platba_za_jistic or 0)|number_format }}</td>
                     <td class="right">{{ (data.vypocet.platba_za_jistic or 0)|number_format }}</td>
                 </tr>
+                {% endif %}
+                {% if data.vypocet.platba_za_distribuci_vt and data.vypocet.platba_za_distribuci_vt != 0 %}
                 <tr class="item-row">
                     <td>Plat za elektřinu ve VT</td>
                     <td class="right">{{ "%.4f"|format(data.spotreba_vt_mwh) }}</td>
@@ -195,6 +209,8 @@
                     <td class="right">{{ data.jednotkova_cena_distribuce_vt|number_format }}</td>
                     <td class="right">{{ (data.vypocet.platba_za_distribuci_vt or 0)|number_format }}</td>
                 </tr>
+                {% endif %}
+                {% if data.vypocet.platba_za_distribuci_nt and data.vypocet.platba_za_distribuci_nt != 0 %}
                 <tr class="item-row">
                     <td>Plat za elektřinu ve NT</td>
                     <td class="right">{{ "%.4f"|format(data.spotreba_nt_mwh) }}</td>
@@ -202,6 +218,8 @@
                     <td class="right">{{ data.jednotkova_cena_distribuce_nt|number_format }}</td>
                     <td class="right">{{ (data.vypocet.platba_za_distribuci_nt or 0)|number_format }}</td>
                 </tr>
+                {% endif %}
+                {% if data.vypocet.systemove_sluzby and data.vypocet.systemove_sluzby != 0 %}
                 <tr class="item-row">
                     <td>Cena za systémové služby</td>
                     <td class="right">{{ "%.4f"|format(data.celkova_spotreba_mwh) }}</td>
@@ -209,6 +227,8 @@
                     <td class="right">{{ data.jednotkova_cena_systemove_sluzby|number_format }}</td>
                     <td class="right">{{ (data.vypocet.systemove_sluzby or 0)|number_format }}</td>
                 </tr>
+                {% endif %}
+                {% if data.poze_minimum and data.poze_minimum != 0 %}
                 <tr class="item-row">
                     <td>Podpora elekt. z podporovaných zdrojů energie</td>
                     <td class="right">{{ "%.4f"|format(data.celkova_spotreba_mwh) }}</td>
@@ -216,6 +236,8 @@
                     <td class="right">{{ data.jednotkova_cena_poze|number_format }}</td>
                     <td class="right">{{ (data.poze_minimum or 0)|number_format }}</td>
                 </tr>
+                {% endif %}
+                {% if data.vypocet.nesitova_infrastruktura and data.vypocet.nesitova_infrastruktura != 0 %}
                 <tr class="item-row">
                     <td>Poplatek za nesíťovou infrastrukturu</td>
                     <td class="right">1</td>
@@ -223,8 +245,11 @@
                     <td class="right">{{ (data.vypocet.nesitova_infrastruktura or 0)|number_format }}</td>
                     <td class="right">{{ (data.vypocet.nesitova_infrastruktura or 0)|number_format }}</td>
                 </tr>
+                {% endif %}
+                {% endif %}
                 
                 <!-- Daň -->
+                {% if data.vypocet.dan_z_elektriny and data.vypocet.dan_z_elektriny != 0 %}
                 <tr class="category-row">
                     <td colspan="5"><strong>Daň</strong></td>
                 </tr>
@@ -235,6 +260,7 @@
                     <td class="right">{{ data.jednotkova_cena_dan|number_format }}</td>
                     <td class="right">{{ (data.vypocet.dan_z_elektriny or 0)|number_format }}</td>
                 </tr>
+                {% endif %}
             </tbody>
         </table>
 

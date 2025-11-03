@@ -42,7 +42,6 @@ class CenaDodavatel(db.Model):
     obdobi_id = db.Column(db.Integer, db.ForeignKey('obdobi_fakturace.id'))
     distribuce = db.Column(db.Text)
     sazba = db.Column(db.Text)
-    jistic = db.Column(db.Text)
     platba_za_elektrinu_vt = db.Column(db.Numeric)
     platba_za_elektrinu_nt = db.Column(db.Numeric)
     mesicni_plat = db.Column(db.Numeric)

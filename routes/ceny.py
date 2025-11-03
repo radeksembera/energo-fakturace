@@ -218,7 +218,6 @@ def nahrat_ceny_dodavatele(stredisko_id):
                 obdobi_id=obdobi.id,
                 distribuce=row["distribuce"],
                 sazba=row["sazba"],
-                jistic=row["jistic"],
                 platba_za_elektrinu_vt=row["platba_za_elektrinu_vt"],
                 platba_za_elektrinu_nt=row["platba_za_elektrinu_nt"],
                 mesicni_plat=row["mesicni_plat"]
@@ -336,7 +335,6 @@ def kopirovat_ceny_dodavatele(stredisko_id):
                 obdobi_id=cilove_obdobi.id,  # Nové období
                 distribuce=puvodni_cena.distribuce,
                 sazba=puvodni_cena.sazba,
-                jistic=puvodni_cena.jistic,
                 platba_za_elektrinu_vt=puvodni_cena.platba_za_elektrinu_vt,
                 platba_za_elektrinu_nt=puvodni_cena.platba_za_elektrinu_nt,
                 mesicni_plat=puvodni_cena.mesicni_plat

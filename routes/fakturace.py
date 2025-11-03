@@ -346,8 +346,7 @@ def prepocitat_koncove_ceny(stredisko_id):
                 cena_dodavatel = CenaDodavatel.query.filter_by(
                     obdobi_id=obdobi_vypoctu.id,
                     distribuce=stredisko.distribuce,
-                    sazba=om.distribucni_sazba_om,
-                    jistic=om.kategorie_jistice_om
+                    sazba=om.distribucni_sazba_om
                 ).first()
 
                 if not cena_dodavatel:

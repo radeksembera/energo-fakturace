@@ -314,6 +314,7 @@
                 </tr>
             </thead>
             <tbody>
+                {% if rekapitulace.platba_za_jistic != 0 %}
                 <tr>
                     <td>Měsíční plat (za jistič)</td>
                     <td class="text-end number-format">{{ "{:,.2f}".format(rekapitulace.platba_za_jistic).replace(',', ' ') }}</td>
@@ -321,6 +322,8 @@
                     <td class="text-end number-format">{{ "{:,.2f}".format(rekapitulace.platba_za_jistic * sazba_dph).replace(',', ' ') }}</td>
                     <td class="text-end number-format">{{ "{:,.2f}".format(rekapitulace.platba_za_jistic * (1 + sazba_dph)).replace(',', ' ') }}</td>
                 </tr>
+                {% endif %}
+                {% if rekapitulace.distribuce_vt != 0 %}
                 <tr>
                     <td>Plat za elektřinu ve VT</td>
                     <td class="text-end number-format">{{ "{:,.2f}".format(rekapitulace.distribuce_vt).replace(',', ' ') }}</td>
@@ -328,6 +331,8 @@
                     <td class="text-end number-format">{{ "{:,.2f}".format(rekapitulace.distribuce_vt * sazba_dph).replace(',', ' ') }}</td>
                     <td class="text-end number-format">{{ "{:,.2f}".format(rekapitulace.distribuce_vt * (1 + sazba_dph)).replace(',', ' ') }}</td>
                 </tr>
+                {% endif %}
+                {% if rekapitulace.distribuce_nt != 0 %}
                 <tr>
                     <td>Plat za elektřinu ve NT</td>
                     <td class="text-end number-format">{{ "{:,.2f}".format(rekapitulace.distribuce_nt).replace(',', ' ') }}</td>
@@ -335,6 +340,8 @@
                     <td class="text-end number-format">{{ "{:,.2f}".format(rekapitulace.distribuce_nt * sazba_dph).replace(',', ' ') }}</td>
                     <td class="text-end number-format">{{ "{:,.2f}".format(rekapitulace.distribuce_nt * (1 + sazba_dph)).replace(',', ' ') }}</td>
                 </tr>
+                {% endif %}
+                {% if rekapitulace.systemove_sluzby != 0 %}
                 <tr>
                     <td>Cena za systémové služby</td>
                     <td class="text-end number-format">{{ "{:,.2f}".format(rekapitulace.systemove_sluzby).replace(',', ' ') }}</td>
@@ -342,6 +349,8 @@
                     <td class="text-end number-format">{{ "{:,.2f}".format(rekapitulace.systemove_sluzby * sazba_dph).replace(',', ' ') }}</td>
                     <td class="text-end number-format">{{ "{:,.2f}".format(rekapitulace.systemove_sluzby * (1 + sazba_dph)).replace(',', ' ') }}</td>
                 </tr>
+                {% endif %}
+                {% if rekapitulace.poze_minimum != 0 %}
                 <tr>
                     <td>Podpora elekt. z podporovaných zdrojů energie</td>
                     <td class="text-end number-format">{{ "{:,.2f}".format(rekapitulace.poze_minimum).replace(',', ' ') }}</td>
@@ -349,6 +358,8 @@
                     <td class="text-end number-format">{{ "{:,.2f}".format(rekapitulace.poze_minimum * sazba_dph).replace(',', ' ') }}</td>
                     <td class="text-end number-format">{{ "{:,.2f}".format(rekapitulace.poze_minimum * (1 + sazba_dph)).replace(',', ' ') }}</td>
                 </tr>
+                {% endif %}
+                {% if rekapitulace.nesitova_infrastruktura != 0 %}
                 <tr>
                     <td>Poplatek za nesíťovou infrastrukturu</td>
                     <td class="text-end number-format">{{ "{:,.2f}".format(rekapitulace.nesitova_infrastruktura).replace(',', ' ') }}</td>
@@ -356,6 +367,8 @@
                     <td class="text-end number-format">{{ "{:,.2f}".format(rekapitulace.nesitova_infrastruktura * sazba_dph).replace(',', ' ') }}</td>
                     <td class="text-end number-format">{{ "{:,.2f}".format(rekapitulace.nesitova_infrastruktura * (1 + sazba_dph)).replace(',', ' ') }}</td>
                 </tr>
+                {% endif %}
+                {% if rekapitulace.mesicni_plat != 0 %}
                 <tr>
                     <td>Stálý plat (dodavatel)</td>
                     <td class="text-end number-format">{{ "{:,.2f}".format(rekapitulace.mesicni_plat).replace(',', ' ') }}</td>
@@ -363,6 +376,8 @@
                     <td class="text-end number-format">{{ "{:,.2f}".format(rekapitulace.mesicni_plat * sazba_dph).replace(',', ' ') }}</td>
                     <td class="text-end number-format">{{ "{:,.2f}".format(rekapitulace.mesicni_plat * (1 + sazba_dph)).replace(',', ' ') }}</td>
                 </tr>
+                {% endif %}
+                {% if rekapitulace.elektrinu_vt != 0 %}
                 <tr>
                     <td>Plat za silovou elektřinu v VT (dodavatel)</td>
                     <td class="text-end number-format">{{ "{:,.2f}".format(rekapitulace.elektrinu_vt).replace(',', ' ') }}</td>
@@ -370,6 +385,8 @@
                     <td class="text-end number-format">{{ "{:,.2f}".format(rekapitulace.elektrinu_vt * sazba_dph).replace(',', ' ') }}</td>
                     <td class="text-end number-format">{{ "{:,.2f}".format(rekapitulace.elektrinu_vt * (1 + sazba_dph)).replace(',', ' ') }}</td>
                 </tr>
+                {% endif %}
+                {% if rekapitulace.elektrinu_nt != 0 %}
                 <tr>
                     <td>Plat za silovou elektřinu v NT (dodavatel)</td>
                     <td class="text-end number-format">{{ "{:,.2f}".format(rekapitulace.elektrinu_nt).replace(',', ' ') }}</td>
@@ -377,6 +394,8 @@
                     <td class="text-end number-format">{{ "{:,.2f}".format(rekapitulace.elektrinu_nt * sazba_dph).replace(',', ' ') }}</td>
                     <td class="text-end number-format">{{ "{:,.2f}".format(rekapitulace.elektrinu_nt * (1 + sazba_dph)).replace(',', ' ') }}</td>
                 </tr>
+                {% endif %}
+                {% if rekapitulace.dan_z_elektriny != 0 %}
                 <tr>
                     <td>Daň</td>
                     <td class="text-end number-format">{{ "{:,.2f}".format(rekapitulace.dan_z_elektriny).replace(',', ' ') }}</td>
@@ -384,6 +403,8 @@
                     <td class="text-end number-format">{{ "{:,.2f}".format(rekapitulace.dan_z_elektriny * sazba_dph).replace(',', ' ') }}</td>
                     <td class="text-end number-format">{{ "{:,.2f}".format(rekapitulace.dan_z_elektriny * (1 + sazba_dph)).replace(',', ' ') }}</td>
                 </tr>
+                {% endif %}
+                {% if rekapitulace.dofakturace_bonus != 0 %}
                 <tr>
                     <td>Dofakturace / Bonus</td>
                     <td class="text-end number-format">{{ "{:,.2f}".format(rekapitulace.dofakturace_bonus).replace(',', ' ') }}</td>
@@ -391,6 +412,7 @@
                     <td class="text-end number-format">{{ "{:,.2f}".format(rekapitulace.dofakturace_bonus * sazba_dph).replace(',', ' ') }}</td>
                     <td class="text-end number-format">{{ "{:,.2f}".format(rekapitulace.dofakturace_bonus * (1 + sazba_dph)).replace(',', ' ') }}</td>
                 </tr>
+                {% endif %}
                 <tr class="final-total">
                     <td><strong>Celkem za doklad</strong></td>
                     <td class="text-end number-format"><strong>{{ "{:,.2f}".format(zaklad_bez_dph).replace(',', ' ') }}</strong></td>
