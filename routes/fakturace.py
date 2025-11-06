@@ -376,12 +376,12 @@ def prepocitat_koncove_ceny(stredisko_id):
                 hodnota_jistice = float(om.hodnota_jistice_om or 0)
 
                 # === VÝPOČTY PODLE VZORCŮ ===
-                
-                # 1. platba_za_jistic
+
+                # 1. platba_za_jistic (vynásobeno poměrem období)
                 if om.kategorie_jistice_om in ["nad 1x25A za každou 1A", "nad 3x160A za každou 1A", "nad 3x63A za každou 1A"]:
-                    platba_za_jistic = float(cena_distribuce.platba_za_jistic or 0) * hodnota_jistice
+                    platba_za_jistic = float(cena_distribuce.platba_za_jistic or 0) * hodnota_jistice * delka_obdobi_fakturace
                 else:
-                    platba_za_jistic = float(cena_distribuce.platba_za_jistic or 0)
+                    platba_za_jistic = float(cena_distribuce.platba_za_jistic or 0) * delka_obdobi_fakturace
 
                 # 2. platba_za_distribuci_vt = spotreba_vt/1000 * cena_vt
                 platba_za_distribuci_vt = (spotreba_vt / 1000) * float(cena_distribuce.platba_za_distribuci_vt or 0)
@@ -392,17 +392,19 @@ def prepocitat_koncove_ceny(stredisko_id):
                 # 4. systemove_sluzby = (spotreba_vt + spotreba_nt)/1000 * cena
                 systemove_sluzby = (celkova_spotreba / 1000) * float(cena_distribuce.systemove_sluzby or 0)
 
-                # 5. poze_dle_jistice = cena * hodnota_jistice
+                # 5. poze_dle_jistice = cena * hodnota_jistice * poměr období
                 # U třífázových jističů (obsahují "3x") násobíme ještě 3 (3 fáze)
                 poze_dle_jistice = float(cena_distribuce.poze_dle_jistice or 0) * hodnota_jistice
                 if om.kategorie_jistice_om and "3x" in om.kategorie_jistice_om:
                     poze_dle_jistice = poze_dle_jistice * 3
+                # Vynásobit poměrem období
+                poze_dle_jistice = poze_dle_jistice * delka_obdobi_fakturace
 
                 # 6. poze_dle_spotreby = celkova_spotreba/1000 * cena
                 poze_dle_spotreby = (celkova_spotreba / 1000) * float(cena_distribuce.poze_dle_spotreby or 0)
 
-                # 7. nesitova_infrastruktura = prostě cena
-                nesitova_infrastruktura = float(cena_distribuce.nesitova_infrastruktura or 0)
+                # 7. nesitova_infrastruktura = cena * poměr období
+                nesitova_infrastruktura = float(cena_distribuce.nesitova_infrastruktura or 0) * delka_obdobi_fakturace
 
                 # 8. dan_z_elektriny = cena * celkova_spotreba/1000
                 dan_z_elektriny = float(cena_distribuce.dan_z_elektriny or 0) * (celkova_spotreba / 1000)
@@ -413,8 +415,8 @@ def prepocitat_koncove_ceny(stredisko_id):
                 # 10. platba_za_elektrinu_nt = spotreba_nt/1000 * cena
                 platba_za_elektrinu_nt = (spotreba_nt / 1000) * float(cena_dodavatel.platba_za_elektrinu_nt or 0)
 
-                # 11. mesicni_plat = prostě cena
-                mesicni_plat = float(cena_dodavatel.mesicni_plat or 0)
+                # 11. mesicni_plat = cena * poměr období
+                mesicni_plat = float(cena_dodavatel.mesicni_plat or 0) * delka_obdobi_fakturace
 
                 # 12. zaklad_bez_dph = suma všech složek + MIN(poze_dle_jistice, poze_dle_spotreby)
                 poze_minimum = min(poze_dle_jistice, poze_dle_spotreby)
