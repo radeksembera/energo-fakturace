@@ -33,118 +33,6 @@
             </div>
         </div>
 
-        <!-- Informace o středisku -->
-        <div class="row mb-4">
-            <div class="col-12">
-                <div class="card-custom">
-                    <div class="card-header-custom">
-                        <h5 class="card-title">
-                            <i class="bi bi-info-circle icon-primary me-2"></i>
-                            Informace o středisku
-                        </h5>
-                    </div>
-                    <div class="card-body p-4">
-                        <form method="post" action="{{ url_for('strediska.upravit_stredisko', stredisko_id=stredisko.id) }}">
-                            <div class="row">
-                                <div class="col-md-6 mb-3">
-                                    <label for="nazev_strediska" class="form-label-custom">
-                                        <i class="bi bi-building me-2"></i>
-                                        Název střediska
-                                    </label>
-                                    <input type="text" 
-                                           class="form-control form-control-custom" 
-                                           id="nazev_strediska" 
-                                           name="nazev_strediska" 
-                                           value="{{ stredisko.nazev_strediska }}"
-                                           required>
-                                </div>
-                                <div class="col-md-6 mb-3">
-                                    <label for="stredisko_kod" class="form-label-custom">
-                                        <i class="bi bi-hash me-2"></i>
-                                        Kód střediska
-                                    </label>
-                                    <input type="text" 
-                                           class="form-control form-control-custom" 
-                                           id="stredisko_kod" 
-                                           name="stredisko_kod" 
-                                           value="{{ stredisko.stredisko }}">
-                                </div>
-                                <div class="col-md-6 mb-3">
-                                    <label for="adresa" class="form-label-custom">
-                                        <i class="bi bi-geo-alt me-2"></i>
-                                        Adresa
-                                    </label>
-                                    <input type="text" 
-                                           class="form-control form-control-custom" 
-                                           id="adresa" 
-                                           name="adresa" 
-                                           value="{{ stredisko.adresa or '' }}">
-                                </div>
-                                <div class="col-md-6 mb-3">
-                                    <label for="misto" class="form-label-custom">
-                                        <i class="bi bi-pin-map me-2"></i>
-                                        Místo
-                                    </label>
-                                    <input type="text" 
-                                           class="form-control form-control-custom" 
-                                           id="misto" 
-                                           name="misto" 
-                                           value="{{ stredisko.misto or '' }}">
-                                </div>
-                                <div class="col-md-6 mb-3">
-                                    <label for="stredisko_mail" class="form-label-custom">
-                                        <i class="bi bi-envelope me-2"></i>
-                                        Email
-                                    </label>
-                                    <input type="email" 
-                                           class="form-control form-control-custom" 
-                                           id="stredisko_mail" 
-                                           name="stredisko_mail" 
-                                           value="{{ stredisko.stredisko_mail or '' }}">
-                                </div>
-                                <div class="col-md-6 mb-3">
-                                    <label for="distribuce" class="form-label-custom">
-                                        <i class="bi bi-diagram-2 me-2"></i>
-                                        Distribuce
-                                    </label>
-                                    <select class="form-select form-control-custom" 
-                                            id="distribuce" 
-                                            name="distribuce">
-                                        <option value="">Vyberte distribuci</option>
-                                        <option value="ČEZ" {% if stredisko.distribuce == 'ČEZ' %}selected{% endif %}>ČEZ Distribuce</option>
-                                        <option value="EGD" {% if stredisko.distribuce == 'EGD' %}selected{% endif %}>EGD Distribuce</option>
-                                        <option value="PRE" {% if stredisko.distribuce == 'PRE' %}selected{% endif %}>PRE Distribuce</option>
-                                    </select>
-                                </div>
-                                <div class="col-12 mb-3">
-                                    <label for="poznamka" class="form-label-custom">
-                                        <i class="bi bi-chat-text me-2"></i>
-                                        Poznámka
-                                    </label>
-                                    <textarea class="form-control form-control-custom" 
-                                              id="poznamka" 
-                                              name="poznamka" 
-                                              rows="3">{{ stredisko.poznamka or '' }}</textarea>
-                                </div>
-                            </div>
-                            <div class="d-flex justify-content-between">
-                                <button type="button" 
-                                        class="btn btn-danger" 
-                                        onclick="smazatStredisko({{ stredisko.id }}, '{{ stredisko.nazev_strediska }}')">
-                                    <i class="bi bi-trash me-2"></i>
-                                    Smazat středisko
-                                </button>
-                                <button type="submit" class="btn btn-primary-custom">
-                                    <i class="bi bi-save me-2"></i>
-                                    Uložit změny
-                                </button>
-                            </div>
-                        </form>
-                    </div>
-                </div>
-            </div>
-        </div>
-
         <!-- Hlavní menu -->
         <div class="row">
         <!-- Správa odběrných míst -->
@@ -323,6 +211,131 @@
                     </div>
                 </div>
             </div>
+
+            <!-- Informace o středisku -->
+            <div class="col-12 mb-4">
+                <div class="card-custom">
+                    <div class="card-header-custom">
+                        <h5 class="card-title">
+                            <i class="bi bi-info-circle icon-primary me-2"></i>
+                            Informace o středisku
+                        </h5>
+                    </div>
+                    <div class="card-body p-4">
+                        <form method="post" action="{{ url_for('strediska.upravit_stredisko', stredisko_id=stredisko.id) }}">
+                            <div class="row">
+                                <div class="col-md-6 mb-3">
+                                    <label for="nazev_strediska" class="form-label-custom">
+                                        <i class="bi bi-building me-2"></i>
+                                        Název střediska
+                                    </label>
+                                    <input type="text"
+                                           class="form-control form-control-custom"
+                                           id="nazev_strediska"
+                                           name="nazev_strediska"
+                                           value="{{ stredisko.nazev_strediska }}"
+                                           required>
+                                </div>
+                                <div class="col-md-6 mb-3">
+                                    <label for="stredisko_kod" class="form-label-custom">
+                                        <i class="bi bi-hash me-2"></i>
+                                        Kód střediska
+                                    </label>
+                                    <input type="text"
+                                           class="form-control form-control-custom"
+                                           id="stredisko_kod"
+                                           name="stredisko_kod"
+                                           value="{{ stredisko.stredisko }}">
+                                </div>
+                                <div class="col-md-6 mb-3">
+                                    <label for="adresa" class="form-label-custom">
+                                        <i class="bi bi-geo-alt me-2"></i>
+                                        Adresa
+                                    </label>
+                                    <input type="text"
+                                           class="form-control form-control-custom"
+                                           id="adresa"
+                                           name="adresa"
+                                           value="{{ stredisko.adresa or '' }}">
+                                </div>
+                                <div class="col-md-6 mb-3">
+                                    <label for="misto" class="form-label-custom">
+                                        <i class="bi bi-pin-map me-2"></i>
+                                        Místo
+                                    </label>
+                                    <input type="text"
+                                           class="form-control form-control-custom"
+                                           id="misto"
+                                           name="misto"
+                                           value="{{ stredisko.misto or '' }}">
+                                </div>
+                                <div class="col-md-6 mb-3">
+                                    <label for="stredisko_mail" class="form-label-custom">
+                                        <i class="bi bi-envelope me-2"></i>
+                                        Email
+                                    </label>
+                                    <input type="email"
+                                           class="form-control form-control-custom"
+                                           id="stredisko_mail"
+                                           name="stredisko_mail"
+                                           value="{{ stredisko.stredisko_mail or '' }}">
+                                </div>
+                                <div class="col-md-6 mb-3">
+                                    <label for="distribuce" class="form-label-custom">
+                                        <i class="bi bi-diagram-2 me-2"></i>
+                                        Distribuce
+                                    </label>
+                                    <select class="form-select form-control-custom"
+                                            id="distribuce"
+                                            name="distribuce">
+                                        <option value="">Vyberte distribuci</option>
+                                        <option value="ČEZ" {% if stredisko.distribuce == 'ČEZ' %}selected{% endif %}>ČEZ Distribuce</option>
+                                        <option value="EGD" {% if stredisko.distribuce == 'EGD' %}selected{% endif %}>EGD Distribuce</option>
+                                        <option value="PRE" {% if stredisko.distribuce == 'PRE' %}selected{% endif %}>PRE Distribuce</option>
+                                    </select>
+                                </div>
+                                <div class="col-md-6 mb-3">
+                                    <label for="nazev_faktury" class="form-label-custom">
+                                        <i class="bi bi-file-earmark-text me-2"></i>
+                                        Název faktury
+                                    </label>
+                                    <input type="text"
+                                           class="form-control form-control-custom"
+                                           id="nazev_faktury"
+                                           name="nazev_faktury"
+                                           value="{{ stredisko.nazev_faktury or '' }}"
+                                           pattern="[a-zA-Z0-9]*"
+                                           title="Pouze písmena (a-z, A-Z) a čísla (0-9), bez mezer a speciálních znaků"
+                                           placeholder="např. YourEnergy">
+                                    <small class="text-muted">Pouze písmena a čísla, bez mezer. Použije se v názvech PDF souborů.</small>
+                                </div>
+                                <div class="col-12 mb-3">
+                                    <label for="poznamka" class="form-label-custom">
+                                        <i class="bi bi-chat-text me-2"></i>
+                                        Poznámka
+                                    </label>
+                                    <textarea class="form-control form-control-custom"
+                                              id="poznamka"
+                                              name="poznamka"
+                                              rows="3">{{ stredisko.poznamka or '' }}</textarea>
+                                </div>
+                            </div>
+                            <div class="d-flex justify-content-between">
+                                <button type="button"
+                                        class="btn btn-danger"
+                                        onclick="smazatStredisko({{ stredisko.id }}, '{{ stredisko.nazev_strediska }}')">
+                                    <i class="bi bi-trash me-2"></i>
+                                    Smazat středisko
+                                </button>
+                                <button type="submit" class="btn btn-primary-custom">
+                                    <i class="bi bi-save me-2"></i>
+                                    Uložit změny
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            </div>
         </div>
     </div>
 </div>
@@ -333,18 +346,39 @@
     .hover-shadow {
         transition: all 0.2s ease;
     }
-    
+
     .hover-shadow:hover {
         box-shadow: var(--shadow-lg);
         transform: translateY(-2px);
     }
-    
+
     .icon-info {
         color: #0ea5e9;
     }
-    
+
     .icon-secondary {
         color: var(--secondary-color);
+    }
+
+    /* Placeholder styling - více šedý text */
+    .form-control-custom::placeholder {
+        color: #cbd5e1;
+        opacity: 1;
+    }
+
+    .form-control-custom::-webkit-input-placeholder {
+        color: #cbd5e1;
+        opacity: 1;
+    }
+
+    .form-control-custom::-moz-placeholder {
+        color: #cbd5e1;
+        opacity: 1;
+    }
+
+    .form-control-custom:-ms-input-placeholder {
+        color: #cbd5e1;
+        opacity: 1;
     }
 </style>
 {% endblock %}

@@ -92,6 +92,7 @@ class Stredisko(db.Model):
     stredisko_mail = db.Column(db.Text)
     distribuce = db.Column(db.Text)
     poznamka = db.Column(db.Text)
+    nazev_faktury = db.Column(db.Text)
     role = db.Column(db.Text, nullable=False)
 
     odberna_mista = db.relationship('OdberneMisto', backref='stredisko', cascade="all, delete")
@@ -124,6 +125,7 @@ class VypocetOM(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     odberne_misto_id = db.Column(db.Integer, db.ForeignKey('odberna_mista.id'))
     obdobi_id = db.Column(db.Integer, db.ForeignKey('obdobi_fakturace.id'))
+    delka_obdobi_fakturace = db.Column(db.Numeric)  # Poměr období fakturace
     platba_za_jistic = db.Column(db.Numeric)
     platba_za_distribuci_vt = db.Column(db.Numeric)
     platba_za_distribuci_nt = db.Column(db.Numeric)

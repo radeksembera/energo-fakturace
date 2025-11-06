@@ -110,7 +110,8 @@ def upravit_stredisko(stredisko_id):
     stredisko.stredisko_mail = request.form["stredisko_mail"]
     stredisko.distribuce = request.form["distribuce"]
     stredisko.poznamka = request.form["poznamka"]
-    
+    stredisko.nazev_faktury = request.form.get("nazev_faktury", "")
+
     db.session.commit()
     flash("✅ Středisko bylo úspěšně upraveno.")
     

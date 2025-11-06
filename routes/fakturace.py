@@ -243,8 +243,9 @@ def prepocitat_koncove_ceny(stredisko_id):
 
     try:
         from datetime import datetime
+        import calendar
         vybrane_obdobi = get_session_obdobi(stredisko_id)
-        aktualni_rok = vybrane_obdobi.rok         # 2025  
+        aktualni_rok = vybrane_obdobi.rok         # 2025
         aktualni_mesic = vybrane_obdobi.mesic     # 6 (červen!)
         
         # Načti všechna odběrná místa
@@ -306,15 +307,30 @@ def prepocitat_koncove_ceny(stredisko_id):
                     chyby.append(f"OM {om.cislo_om}: Nenalezen odečet")
                     continue
 
-                # ✅ VYPOČÍTEJ POČET DNÍ OBDOBÍ PRO KONKRÉTNÍ OM
-                delka_obdobi_om = 30  # výchozí = 30 dní
+                # ✅ VYPOČÍTEJ POMĚR OBDOBÍ FAKTURACE
+                delka_obdobi_fakturace = 1.0  # výchozí = celý měsíc
                 if odecet.zacatek_periody_mereni and odecet.konec_periody_mereni:
                     # Vypočítej počet dní v období
-                    delka_obdobi_om = (odecet.konec_periody_mereni - odecet.zacatek_periody_mereni).days + 1
-                    
-                    print(f"📅 OM {om.cislo_om}: {odecet.zacatek_periody_mereni.strftime('%d.%m')} - {odecet.konec_periody_mereni.strftime('%d.%m')} = {delka_obdobi_om} dní")
+                    pocet_dni_obdobi = (odecet.konec_periody_mereni - odecet.zacatek_periody_mereni).days + 1
+
+                    # Zjisti měsíc z konce období měření (protože chceme počet dní toho měsíce)
+                    mesic_mereni = odecet.konec_periody_mereni.month
+                    rok_mereni = odecet.konec_periody_mereni.year
+
+                    # Zjisti počet dní v daném měsíci
+                    pocet_dni_mesice = calendar.monthrange(rok_mereni, mesic_mereni)[1]
+
+                    # Vypočítej poměr
+                    if pocet_dni_obdobi == pocet_dni_mesice:
+                        # Období je celý měsíc
+                        delka_obdobi_fakturace = 1.0
+                    else:
+                        # Poměr = počet dní období / celkový počet dní měsíce
+                        delka_obdobi_fakturace = round(pocet_dni_obdobi / pocet_dni_mesice, 3)
+
+                    print(f"📅 OM {om.cislo_om}: {odecet.zacatek_periody_mereni.strftime('%d.%m')} - {odecet.konec_periody_mereni.strftime('%d.%m')} = {pocet_dni_obdobi}/{pocet_dni_mesice} dní, poměr = {delka_obdobi_fakturace}")
                 else:
-                    print(f"⚠️ OM {om.cislo_om}: Chybí data o periodě měření, používám výchozí {delka_obdobi_om} dní")
+                    print(f"⚠️ OM {om.cislo_om}: Chybí data o periodě měření, používám výchozí poměr 1.0")
                 
                 # Najdi ceny distribuce
                 print(f"🔍 Hledám ceny distribuce pro:")
@@ -377,7 +393,10 @@ def prepocitat_koncove_ceny(stredisko_id):
                 systemove_sluzby = (celkova_spotreba / 1000) * float(cena_distribuce.systemove_sluzby or 0)
 
                 # 5. poze_dle_jistice = cena * hodnota_jistice
+                # U třífázových jističů (obsahují "3x") násobíme ještě 3 (3 fáze)
                 poze_dle_jistice = float(cena_distribuce.poze_dle_jistice or 0) * hodnota_jistice
+                if om.kategorie_jistice_om and "3x" in om.kategorie_jistice_om:
+                    poze_dle_jistice = poze_dle_jistice * 3
 
                 # 6. poze_dle_spotreby = celkova_spotreba/1000 * cena
                 poze_dle_spotreby = (celkova_spotreba / 1000) * float(cena_distribuce.poze_dle_spotreby or 0)
@@ -441,7 +460,8 @@ def prepocitat_koncove_ceny(stredisko_id):
                 vypocet = VypocetOM(
                     odberne_misto_id=om.id,
                     obdobi_id=obdobi_vypoctu.id,
-                    
+                    delka_obdobi_fakturace=delka_obdobi_fakturace,
+
                     # Distribuce
                     platba_za_jistic=round(platba_za_jistic, 2),
                     platba_za_distribuci_vt=round(platba_za_distribuci_vt, 2),
@@ -869,8 +889,9 @@ def predvyplnit_cislo_faktury(stredisko_id):
 
         dnes = datetime.now().date()
 
-        # Datum vystavení = dnes
-        datum_vystaveni = dnes.strftime('%Y-%m-%d')
+        # Datum vystavení = 15. den aktuálního měsíce
+        datum_vystaveni_date = dnes.replace(day=15)
+        datum_vystaveni = datum_vystaveni_date.strftime('%Y-%m-%d')
 
         # Datum splatnosti = dnes + 14 dní
         datum_splatnosti = (dnes + timedelta(days=14)).strftime('%Y-%m-%d')

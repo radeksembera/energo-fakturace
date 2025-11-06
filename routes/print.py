@@ -1507,9 +1507,19 @@ def vygenerovat_kompletni_pdf(stredisko_id, rok, mesic):
         else:
             raise Exception("WeasyPrint není dostupný pro kompletní PDF")
 
+        # Sestavení názvu souboru
+        cislo_faktury = faktura.cislo_faktury if faktura and faktura.cislo_faktury else "faktura"
+        nazev_faktury = stredisko.nazev_faktury if stredisko and stredisko.nazev_faktury else ""
+
+        # Formát: {nazev_faktury}_{cislo_faktury}_{mesic}-{rok}.pdf nebo {cislo_faktury}_{mesic}-{rok}.pdf
+        if nazev_faktury:
+            filename = f"{nazev_faktury}_{cislo_faktury}_{mesic:02d}-{rok}.pdf"
+        else:
+            filename = f"{cislo_faktury}_{mesic:02d}-{rok}.pdf"
+
         response = make_response(final_pdf)
         response.headers['Content-Type'] = 'application/pdf'
-        response.headers['Content-Disposition'] = f'inline; filename=kompletni_faktura_{rok}_{mesic:02d}.pdf'
+        response.headers['Content-Disposition'] = f'inline; filename={filename}'
         return response
 
     except Exception as e:
