@@ -4,12 +4,12 @@
 <html lang="cs">
 <head>
     <meta charset="UTF-8">
-    <title>Příloha 1 - Hodnoty měření k dokladu {{ faktura.cislo_faktury if faktura else 'XXXX' }}</title>
+    <title>Příloha 1 - Hodnoty měření k dokladu {{ faktura.cislo_faktury if faktura else '' }}</title>
     <style>
         @page {
             margin: 2cm;
             @bottom-left {
-                content: "FAKTURA: {{ faktura.cislo_faktury if faktura else 'XXXX' }}";
+                content: "FAKTURA: {{ faktura.cislo_faktury if faktura else '' }}";
                 font-family: Arial, sans-serif;
                 font-size: 9px;
             }
@@ -121,9 +121,9 @@
                     <td class="description">Spotřeba VT</td>
                     <td class="date">{{ odecet.zacatek_periody_mereni.strftime('%d.%m.%Y') if odecet.zacatek_periody_mereni else '' }}</td>
                     <td class="date">{{ odecet.konec_periody_mereni.strftime('%d.%m.%Y') if odecet.konec_periody_mereni else '' }}</td>
-                    <td class="number">{{ "{:,.2f}".format(odecet.pocatecni_hodnota_vt).replace(',', ' ') if odecet.pocatecni_hodnota_vt else '0,00' }}</td>
-                    <td class="number">{{ "{:,.2f}".format(odecet.hodnota_odectu_vt).replace(',', ' ') if odecet.hodnota_odectu_vt else '0,00' }}</td>
-                    <td class="number">{{ "{:,.2f}".format(odecet.spotreba_vt).replace(',', ' ') if odecet.spotreba_vt else '0,00' }}</td>
+                    <td class="number">{{ odecet.pocatecni_hodnota_vt|number_format if odecet.pocatecni_hodnota_vt else '' }}</td>
+                    <td class="number">{{ odecet.hodnota_odectu_vt|number_format if odecet.hodnota_odectu_vt else '' }}</td>
+                    <td class="number">{{ odecet.spotreba_vt|number_format if odecet.spotreba_vt else '' }}</td>
                     <td class="unit">kWh</td>
                     <td class="description">{{ odecet.priznak if odecet.priznak else '' }}</td>
                 </tr>
@@ -135,9 +135,9 @@
                     <td class="description">Spotřeba NT</td>
                     <td class="date">{{ odecet.zacatek_periody_mereni.strftime('%d.%m.%Y') if odecet.zacatek_periody_mereni else '' }}</td>
                     <td class="date">{{ odecet.konec_periody_mereni.strftime('%d.%m.%Y') if odecet.konec_periody_mereni else '' }}</td>
-                    <td class="number">{{ "{:,.2f}".format(odecet.pocatecni_hodnota_nt).replace(',', ' ') if odecet.pocatecni_hodnota_nt else '0,00' }}</td>
-                    <td class="number">{{ "{:,.2f}".format(odecet.hodnota_odectu_nt).replace(',', ' ') if odecet.hodnota_odectu_nt else '0,00' }}</td>
-                    <td class="number">{{ "{:,.2f}".format(odecet.spotreba_nt).replace(',', ' ') if odecet.spotreba_nt else '0,00' }}</td>
+                    <td class="number">{{ odecet.pocatecni_hodnota_nt|number_format if odecet.pocatecni_hodnota_nt else '' }}</td>
+                    <td class="number">{{ odecet.hodnota_odectu_nt|number_format if odecet.hodnota_odectu_nt else '' }}</td>
+                    <td class="number">{{ odecet.spotreba_nt|number_format if odecet.spotreba_nt else '' }}</td>
                     <td class="unit">kWh</td>
                     <td class="description">{{ odecet.priznak if odecet.priznak else '' }}</td>
                 </tr>

@@ -22,7 +22,7 @@ errorlog = '-'
 loglevel = 'info'
 
 # Process naming
-proc_name = 'energo_fakturace'
+proc_name = 'flow_fakturace'
 
 # Server mechanics
 daemon = False

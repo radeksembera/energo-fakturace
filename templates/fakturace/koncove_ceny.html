@@ -139,8 +139,8 @@
                                 <th rowspan="2" class="text-center align-middle" style="color: #1e293b; font-weight: 600; border: 1px solid #cbd5e1;">Sazba</th>
                                 <th rowspan="2" class="text-center align-middle" style="color: #1e293b; font-weight: 600; border: 1px solid #cbd5e1;">Jistič</th>
                                 <th rowspan="2" class="text-center align-middle" style="color: #1e293b; font-weight: 600; border: 1px solid #cbd5e1;">Poměr období<br>fakturace</th>
-                                <th colspan="8" class="text-center" style="background-color: #e3f2fd; color: #1e293b; font-weight: 600; border: 1px solid #cbd5e1;">Distribuce (Kč/měsíc nebo Kč/MWh)</th>
-                                <th colspan="3" class="text-center" style="background-color: #fff3e0; color: #1e293b; font-weight: 600; border: 1px solid #cbd5e1;">Dodavatel (Kč/měsíc nebo Kč/MWh)</th>
+                                <th colspan="7" class="text-center" style="background-color: #e3f2fd; color: #1e293b; font-weight: 600; border: 1px solid #cbd5e1;">Distribuce (Kč/měsíc nebo Kč/MWh)</th>
+                                <th colspan="4" class="text-center" style="background-color: #fff3e0; color: #1e293b; font-weight: 600; border: 1px solid #cbd5e1;">Dodavatel (Kč/měsíc nebo Kč/MWh)</th>
                                 <th colspan="3" class="text-center" style="background-color: #e8f5e8; color: #1e293b; font-weight: 600; border: 1px solid #cbd5e1;">Celkem</th>
                                 <th colspan="3" class="text-center" style="background-color: #fce4ec; color: #1e293b; font-weight: 600; border: 1px solid #cbd5e1;">Jen distribuce</th>
                             </tr>
@@ -153,11 +153,11 @@
                                 <th class="text-center" style="background-color: #e3f2fd; color: #1e293b; font-weight: 600; border: 1px solid #cbd5e1;">POZE jistič</th>
                                 <th class="text-center" style="background-color: #e3f2fd; color: #1e293b; font-weight: 600; border: 1px solid #cbd5e1;">POZE spot.</th>
                                 <th class="text-center" style="background-color: #e3f2fd; color: #1e293b; font-weight: 600; border: 1px solid #cbd5e1;">Nesíť. infr.</th>
-                                <th class="text-center" style="background-color: #e3f2fd; color: #1e293b; font-weight: 600; border: 1px solid #cbd5e1;">Daň elektř.</th>
                                 <!-- Dodavatel -->
                                 <th class="text-center" style="background-color: #fff3e0; color: #1e293b; font-weight: 600; border: 1px solid #cbd5e1;">Elektř. VT</th>
                                 <th class="text-center" style="background-color: #fff3e0; color: #1e293b; font-weight: 600; border: 1px solid #cbd5e1;">Elektř. NT</th>
                                 <th class="text-center" style="background-color: #fff3e0; color: #1e293b; font-weight: 600; border: 1px solid #cbd5e1;">Měs. plat</th>
+                                <th class="text-center" style="background-color: #fff3e0; color: #1e293b; font-weight: 600; border: 1px solid #cbd5e1;">Daň elektř.</th>
                                 <!-- Celkem -->
                                 <th class="text-center" style="background-color: #e8f5e8; color: #1e293b; font-weight: 600; border: 1px solid #cbd5e1;">Bez DPH</th>
                                 <th class="text-center" style="background-color: #e8f5e8; color: #1e293b; font-weight: 600; border: 1px solid #cbd5e1;">DPH</th>
@@ -199,12 +199,12 @@
                                 <td class="text-end" style="background-color: #f3f9ff;">{{ "%.2f"|format(vypocet.poze_dle_jistice or 0) }}</td>
                                 <td class="text-end" style="background-color: #f3f9ff;">{{ "%.2f"|format(vypocet.poze_dle_spotreby or 0) }}</td>
                                 <td class="text-end" style="background-color: #f3f9ff;">{{ "%.2f"|format(vypocet.nesitova_infrastruktura or 0) }}</td>
-                                <td class="text-end" style="background-color: #f3f9ff;">{{ "%.2f"|format(vypocet.dan_z_elektriny or 0) }}</td>
-                                
+
                                 <!-- Dodavatel -->
                                 <td class="text-end" style="background-color: #fffaf0;">{{ "%.2f"|format(vypocet.platba_za_elektrinu_vt or 0) }}</td>
                                 <td class="text-end" style="background-color: #fffaf0;">{{ "%.2f"|format(vypocet.platba_za_elektrinu_nt or 0) }}</td>
                                 <td class="text-end" style="background-color: #fffaf0;">{{ "%.2f"|format(vypocet.mesicni_plat or 0) }}</td>
+                                <td class="text-end" style="background-color: #fffaf0;">{{ "%.2f"|format(vypocet.dan_z_elektriny or 0) }}</td>
                                 
                                 <!-- Celkem -->
                                 <td class="text-end fw-bold" style="background-color: #f8fff8;">{{ "%.2f"|format(vypocet.zaklad_bez_dph or 0) }}</td>
@@ -232,11 +232,11 @@
                                 <td class="text-end fw-bold" style="border: 1px solid #d97706;">{{ "%.2f"|format(vypocty|safe_sum('poze_dle_jistice')) }}</td>
                                 <td class="text-end fw-bold" style="border: 1px solid #d97706;">{{ "%.2f"|format(vypocty|safe_sum('poze_dle_spotreby')) }}</td>
                                 <td class="text-end fw-bold" style="border: 1px solid #d97706;">{{ "%.2f"|format(vypocty|safe_sum('nesitova_infrastruktura')) }}</td>
-                                <td class="text-end fw-bold" style="border: 1px solid #d97706;">{{ "%.2f"|format(vypocty|safe_sum('dan_z_elektriny')) }}</td>
                                 <!-- Dodavatel sumy -->
                                 <td class="text-end fw-bold" style="border: 1px solid #d97706;">{{ "%.2f"|format(vypocty|safe_sum('platba_za_elektrinu_vt')) }}</td>
                                 <td class="text-end fw-bold" style="border: 1px solid #d97706;">{{ "%.2f"|format(vypocty|safe_sum('platba_za_elektrinu_nt')) }}</td>
                                 <td class="text-end fw-bold" style="border: 1px solid #d97706;">{{ "%.2f"|format(vypocty|safe_sum('mesicni_plat')) }}</td>
+                                <td class="text-end fw-bold" style="border: 1px solid #d97706;">{{ "%.2f"|format(vypocty|safe_sum('dan_z_elektriny')) }}</td>
                                 <!-- Celkem sumy -->
                                 <td class="text-end fw-bold" style="border: 1px solid #d97706; font-size: 1rem;">{{ "%.2f"|format(vypocty|safe_sum('zaklad_bez_dph')) }}</td>
                                 <td class="text-end fw-bold" style="border: 1px solid #d97706; font-size: 1rem;">{{ "%.2f"|format(vypocty|safe_sum('castka_dph')) }}</td>

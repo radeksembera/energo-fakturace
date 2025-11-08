@@ -106,8 +106,56 @@ def number_format(value, decimals=2):
     except (ValueError, TypeError):
         return "0"
 
+def czech_number(value, decimals=4, thousands_sep=False):
+    """
+    Formátuje číslo s českým desetinným oddělovačem (čárkou) pro faktury a PDF výstupy.
+
+    Args:
+        value: Číslo k formátování
+        decimals: Počet desetinných míst (default 4)
+        thousands_sep: Pokud True, přidá mezery jako oddělovače tisíců (default False)
+
+    Returns:
+        Formátované číslo s čárkou jako desetinným oddělovačem
+    """
+    try:
+        # Převeď na float pokud není
+        if isinstance(value, str):
+            value = float(value.replace(',', '.'))
+        elif value is None:
+            value = 0.0
+        else:
+            value = float(value)
+
+        # Formátuj s požadovaným počtem desetinných míst
+        formatted = f"{value:.{decimals}f}"
+
+        # Rozděl na celou a desetinnou část
+        parts = formatted.split('.')
+        whole_part = parts[0]
+        decimal_part = parts[1] if len(parts) > 1 else ""
+
+        # Volitelně přidej mezery jako oddělovače tisíců
+        if thousands_sep:
+            whole_formatted = ""
+            for i, digit in enumerate(reversed(whole_part)):
+                if i > 0 and i % 3 == 0:
+                    whole_formatted = " " + whole_formatted
+                whole_formatted = digit + whole_formatted
+        else:
+            whole_formatted = whole_part
+
+        # Spoj s desetinnou částí pomocí čárky
+        if decimal_part:
+            return f"{whole_formatted},{decimal_part}"
+        else:
+            return whole_formatted
+    except (ValueError, TypeError):
+        return "0"
+
 app.jinja_env.filters['safe_sum'] = safe_sum_filter
 app.jinja_env.filters['number_format'] = number_format
+app.jinja_env.filters['czech_number'] = czech_number
 app.jinja_env.globals['get_obdobi_display_name'] = get_obdobi_display_name
 
 @app.route("/")

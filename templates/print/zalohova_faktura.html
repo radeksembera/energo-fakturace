@@ -163,8 +163,8 @@
                     <td class="description">
                         {{ stredisko.nazev_strediska }} na období {{ obdobi.mesic }}/{{ obdobi.rok }}
                     </td>
-                    <td>{{ "%.0f"|format(zaloha.zaloha if zaloha and zaloha.zaloha else 0) }}</td>
-                    <td>{{ "%.0f"|format(zaloha.zaloha if zaloha and zaloha.zaloha else 0) }}</td>
+                    <td>{{ (zaloha.zaloha if zaloha and zaloha.zaloha else 0)|czech_number(0) }}</td>
+                    <td>{{ (zaloha.zaloha if zaloha and zaloha.zaloha else 0)|czech_number(0) }}</td>
                 </tr>
             </tbody>
         </table>
@@ -185,15 +185,15 @@
             <tr>
                 <td>Faktura</td>
                 <td>DPH 0%</td>
-                <td>{{ "%.0f"|format(zaloha.zaloha if zaloha and zaloha.zaloha else 0) }}</td>
-                <td>{{ "%.0f"|format(zaloha.zaloha if zaloha and zaloha.zaloha else 0) }}</td>
+                <td>{{ (zaloha.zaloha if zaloha and zaloha.zaloha else 0)|czech_number(0) }}</td>
+                <td>{{ (zaloha.zaloha if zaloha and zaloha.zaloha else 0)|czech_number(0) }}</td>
             </tr>
         </table>
     </div>
 
     <!-- CELKOVÁ ČÁSTKA -->
     <div class="total-amount">
-        <strong>Celkem k úhradě v Kč: {{ "%.0f"|format(zaloha.zaloha if zaloha and zaloha.zaloha else 0) }}</strong>
+        <strong>Celkem k úhradě v Kč: {{ (zaloha.zaloha if zaloha and zaloha.zaloha else 0)|czech_number(0) }}</strong>
     </div>
 
     <!-- FOOTER -->

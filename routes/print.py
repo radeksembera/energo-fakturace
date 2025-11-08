@@ -1054,8 +1054,13 @@ def vygenerovat_prilohu2_html(stredisko_id, rok, mesic):
     
     for vypocet, om in vypocty_om:
         # Vypočítej minimum z POZE - převeď na float
-        poze_minimum = min(float(vypocet.poze_dle_jistice or 0), float(vypocet.poze_dle_spotreby or 0))
-        
+        poze_jistic = float(vypocet.poze_dle_jistice or 0)
+        poze_spotreba = float(vypocet.poze_dle_spotreby or 0)
+        poze_minimum = min(poze_jistic, poze_spotreba)
+
+        # Zjisti, jestli se použila POZE jistič nebo POZE spotřeba
+        poze_je_jistic = (poze_jistic > 0 and poze_jistic < poze_spotreba) or (poze_jistic > 0 and poze_spotreba == 0)
+
         # Zjisti zda fakturovat jen distribuci
         fakturovat_jen_distribuci = faktura.fakturovat_jen_distribuci if faktura else False
 
@@ -1099,11 +1104,23 @@ def vygenerovat_prilohu2_html(stredisko_id, rok, mesic):
         jednotkova_cena_poze = float(poze_minimum) / celkova_spotreba_mwh if celkova_spotreba_mwh > 0 else 0
         jednotkova_cena_dan = float(vypocet.dan_z_elektriny or 0) / celkova_spotreba_mwh if celkova_spotreba_mwh > 0 else 0
 
+        # Výpočet jednotkové ceny POZE pro jistič (pokud se použila POZE jistič)
+        delka_obdobi = float(vypocet.delka_obdobi_fakturace or 1)
+        jednotkova_cena_poze_jistic = poze_jistic / delka_obdobi if delka_obdobi > 0 else 0
+
+        # Výpočet jednotkových cen přepočtených podle poměru období fakturace
+        jednotkova_cena_mesicni_plat = float(vypocet.mesicni_plat or 0) / delka_obdobi if delka_obdobi > 0 else 0
+        jednotkova_cena_jistic = float(vypocet.platba_za_jistic or 0) / delka_obdobi if delka_obdobi > 0 else 0
+        jednotkova_cena_nesitova_infra = float(vypocet.nesitova_infrastruktura or 0) / delka_obdobi if delka_obdobi > 0 else 0
+
         vypocty_data.append({
             'om': om,
             'vypocet': vypocet,
             'odecet': odecet,
             'poze_minimum': poze_minimum,
+            'poze_je_jistic': poze_je_jistic,
+            'poze_jistic': poze_jistic,
+            'poze_spotreba': poze_spotreba,
             'celkem_om': celkem_om,
             'sazba_dph': sazba_dph,
             # Spotřeby v MWh
@@ -1117,7 +1134,11 @@ def vygenerovat_prilohu2_html(stredisko_id, rok, mesic):
             'jednotkova_cena_distribuce_nt': jednotkova_cena_distribuce_nt,
             'jednotkova_cena_systemove_sluzby': jednotkova_cena_systemove_sluzby,
             'jednotkova_cena_poze': jednotkova_cena_poze,
-            'jednotkova_cena_dan': jednotkova_cena_dan
+            'jednotkova_cena_poze_jistic': jednotkova_cena_poze_jistic,
+            'jednotkova_cena_dan': jednotkova_cena_dan,
+            'jednotkova_cena_mesicni_plat': jednotkova_cena_mesicni_plat,
+            'jednotkova_cena_jistic': jednotkova_cena_jistic,
+            'jednotkova_cena_nesitova_infra': jednotkova_cena_nesitova_infra
         })
 
     # [OK] OPRAVA: Renderuj template s UTF-8 kódováním
@@ -1201,7 +1222,12 @@ def priloha2_pdf_nova(stredisko_id, rok, mesic):
 
         for vypocet, om in vypocty_om:
             # Vypočítej minimum z POZE - převeď na float - STEJNÝ VÝPOČET JAKO HTML
-            poze_minimum = min(float(vypocet.poze_dle_jistice or 0), float(vypocet.poze_dle_spotreby or 0))
+            poze_jistic = float(vypocet.poze_dle_jistice or 0)
+            poze_spotreba = float(vypocet.poze_dle_spotreby or 0)
+            poze_minimum = min(poze_jistic, poze_spotreba)
+
+            # Zjisti, jestli se použila POZE jistič nebo POZE spotřeba
+            poze_je_jistic = (poze_jistic > 0 and poze_jistic < poze_spotreba) or (poze_jistic > 0 and poze_spotreba == 0)
 
             # Zjisti zda fakturovat jen distribuci (tam kde ještě není)
             if 'fakturovat_jen_distribuci' not in locals():
@@ -1247,11 +1273,23 @@ def priloha2_pdf_nova(stredisko_id, rok, mesic):
             jednotkova_cena_poze = float(poze_minimum) / celkova_spotreba_mwh if celkova_spotreba_mwh > 0 else 0
             jednotkova_cena_dan = float(vypocet.dan_z_elektriny or 0) / celkova_spotreba_mwh if celkova_spotreba_mwh > 0 else 0
 
+            # Výpočet jednotkové ceny POZE pro jistič (pokud se použila POZE jistič)
+            delka_obdobi = float(vypocet.delka_obdobi_fakturace or 1)
+            jednotkova_cena_poze_jistic = poze_jistic / delka_obdobi if delka_obdobi > 0 else 0
+
+            # Výpočet jednotkových cen přepočtených podle poměru období fakturace
+            jednotkova_cena_mesicni_plat = float(vypocet.mesicni_plat or 0) / delka_obdobi if delka_obdobi > 0 else 0
+            jednotkova_cena_jistic = float(vypocet.platba_za_jistic or 0) / delka_obdobi if delka_obdobi > 0 else 0
+            jednotkova_cena_nesitova_infra = float(vypocet.nesitova_infrastruktura or 0) / delka_obdobi if delka_obdobi > 0 else 0
+
             vypocty_data.append({
                 'om': om,
                 'vypocet': vypocet,
                 'odecet': odecet,
                 'poze_minimum': poze_minimum,
+                'poze_je_jistic': poze_je_jistic,
+                'poze_jistic': poze_jistic,
+                'poze_spotreba': poze_spotreba,
                 'celkem_om': celkem_om,
                 'sazba_dph': sazba_dph,
                 # Spotřeby v MWh
@@ -1265,7 +1303,11 @@ def priloha2_pdf_nova(stredisko_id, rok, mesic):
                 'jednotkova_cena_distribuce_nt': jednotkova_cena_distribuce_nt,
                 'jednotkova_cena_systemove_sluzby': jednotkova_cena_systemove_sluzby,
                 'jednotkova_cena_poze': jednotkova_cena_poze,
-                'jednotkova_cena_dan': jednotkova_cena_dan
+                'jednotkova_cena_poze_jistic': jednotkova_cena_poze_jistic,
+                'jednotkova_cena_dan': jednotkova_cena_dan,
+                'jednotkova_cena_mesicni_plat': jednotkova_cena_mesicni_plat,
+                'jednotkova_cena_jistic': jednotkova_cena_jistic,
+                'jednotkova_cena_nesitova_infra': jednotkova_cena_nesitova_infra
             })
 
         # Vybraz šablonu na základě fakturovat_jen_distribuci
@@ -1396,7 +1438,12 @@ def vygenerovat_kompletni_pdf(stredisko_id, rok, mesic):
 
         for vypocet, om in vypocty_om:
             # Vypočítej minimum z POZE - převeď na float - STEJNÝ VÝPOČET JAKO HTML
-            poze_minimum = min(float(vypocet.poze_dle_jistice or 0), float(vypocet.poze_dle_spotreby or 0))
+            poze_jistic = float(vypocet.poze_dle_jistice or 0)
+            poze_spotreba = float(vypocet.poze_dle_spotreby or 0)
+            poze_minimum = min(poze_jistic, poze_spotreba)
+
+            # Zjisti, jestli se použila POZE jistič nebo POZE spotřeba
+            poze_je_jistic = (poze_jistic > 0 and poze_jistic < poze_spotreba) or (poze_jistic > 0 and poze_spotreba == 0)
 
             # Zjisti zda fakturovat jen distribuci (tam kde ještě není)
             if 'fakturovat_jen_distribuci' not in locals():
@@ -1442,11 +1489,23 @@ def vygenerovat_kompletni_pdf(stredisko_id, rok, mesic):
             jednotkova_cena_poze = float(poze_minimum) / celkova_spotreba_mwh if celkova_spotreba_mwh > 0 else 0
             jednotkova_cena_dan = float(vypocet.dan_z_elektriny or 0) / celkova_spotreba_mwh if celkova_spotreba_mwh > 0 else 0
 
+            # Výpočet jednotkové ceny POZE pro jistič (pokud se použila POZE jistič)
+            delka_obdobi = float(vypocet.delka_obdobi_fakturace or 1)
+            jednotkova_cena_poze_jistic = poze_jistic / delka_obdobi if delka_obdobi > 0 else 0
+
+            # Výpočet jednotkových cen přepočtených podle poměru období fakturace
+            jednotkova_cena_mesicni_plat = float(vypocet.mesicni_plat or 0) / delka_obdobi if delka_obdobi > 0 else 0
+            jednotkova_cena_jistic = float(vypocet.platba_za_jistic or 0) / delka_obdobi if delka_obdobi > 0 else 0
+            jednotkova_cena_nesitova_infra = float(vypocet.nesitova_infrastruktura or 0) / delka_obdobi if delka_obdobi > 0 else 0
+
             vypocty_data.append({
                 'om': om,
                 'vypocet': vypocet,
                 'odecet': odecet,
                 'poze_minimum': poze_minimum,
+                'poze_je_jistic': poze_je_jistic,
+                'poze_jistic': poze_jistic,
+                'poze_spotreba': poze_spotreba,
                 'celkem_om': celkem_om,
                 'sazba_dph': sazba_dph,
                 # Spotřeby v MWh
@@ -1460,7 +1519,11 @@ def vygenerovat_kompletni_pdf(stredisko_id, rok, mesic):
                 'jednotkova_cena_distribuce_nt': jednotkova_cena_distribuce_nt,
                 'jednotkova_cena_systemove_sluzby': jednotkova_cena_systemove_sluzby,
                 'jednotkova_cena_poze': jednotkova_cena_poze,
-                'jednotkova_cena_dan': jednotkova_cena_dan
+                'jednotkova_cena_poze_jistic': jednotkova_cena_poze_jistic,
+                'jednotkova_cena_dan': jednotkova_cena_dan,
+                'jednotkova_cena_mesicni_plat': jednotkova_cena_mesicni_plat,
+                'jednotkova_cena_jistic': jednotkova_cena_jistic,
+                'jednotkova_cena_nesitova_infra': jednotkova_cena_nesitova_infra
             })
 
         # Vybraz šablonu pro přílohu 2 na základě fakturovat_jen_distribuci
