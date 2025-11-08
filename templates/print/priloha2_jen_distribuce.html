@@ -151,36 +151,13 @@
                 </tr>
             </thead>
             <tbody>
-                <!-- Dodávka elektřiny -->
-                <tr class="category-row">
-                    <td colspan="5"><strong>Dodávka elektřiny</strong></td>
-                </tr>
-                <tr class="item-row">
-                    <td>Stálý plat</td>
-                    <td class="right">{{ (data.vypocet.delka_obdobi_fakturace or 1)|czech_number(3) }}</td>
-                    <td class="right">měs.</td>
-                    <td class="right">{{ data.jednotkova_cena_mesicni_plat|number_format }}</td>
-                    <td class="right">{{ (data.vypocet.mesicni_plat or 0)|number_format }}</td>
-                </tr>
-                <tr class="item-row">
-                    <td>Plat za silovou elektřinu v VT</td>
-                    <td class="right">{{ data.spotreba_vt_mwh|czech_number(4) }}</td>
-                    <td class="right">MWh</td>
-                    <td class="right">{{ data.jednotkova_cena_elektriny_vt|number_format }}</td>
-                    <td class="right">{{ (data.vypocet.platba_za_elektrinu_vt or 0)|number_format }}</td>
-                </tr>
-                <tr class="item-row">
-                    <td>Plat za silovou elektřinu v NT</td>
-                    <td class="right">{{ data.spotreba_nt_mwh|czech_number(4) }}</td>
-                    <td class="right">MWh</td>
-                    <td class="right">{{ data.jednotkova_cena_elektriny_nt|number_format }}</td>
-                    <td class="right">{{ (data.vypocet.platba_za_elektrinu_nt or 0)|number_format }}</td>
-                </tr>
-                
                 <!-- Distribuční služby -->
+                {% set has_distribuce = (data.vypocet.platba_za_jistic and data.vypocet.platba_za_jistic != 0) or (data.vypocet.platba_za_distribuci_vt and data.vypocet.platba_za_distribuci_vt != 0) or (data.vypocet.platba_za_distribuci_nt and data.vypocet.platba_za_distribuci_nt != 0) or (data.vypocet.systemove_sluzby and data.vypocet.systemove_sluzby != 0) or (data.poze_minimum and data.poze_minimum != 0) or (data.vypocet.nesitova_infrastruktura and data.vypocet.nesitova_infrastruktura != 0) %}
+                {% if has_distribuce %}
                 <tr class="category-row">
                     <td colspan="5"><strong>Distribuční služby</strong></td>
                 </tr>
+                {% if data.vypocet.platba_za_jistic and data.vypocet.platba_za_jistic != 0 %}
                 <tr class="item-row">
                     <td>Měsíční plat</td>
                     <td class="right">{{ (data.vypocet.delka_obdobi_fakturace or 1)|czech_number(3) }}</td>
@@ -188,6 +165,8 @@
                     <td class="right">{{ data.jednotkova_cena_jistic|number_format }}</td>
                     <td class="right">{{ (data.vypocet.platba_za_jistic or 0)|number_format }}</td>
                 </tr>
+                {% endif %}
+                {% if data.vypocet.platba_za_distribuci_vt and data.vypocet.platba_za_distribuci_vt != 0 %}
                 <tr class="item-row">
                     <td>Plat za elektřinu ve VT</td>
                     <td class="right">{{ data.spotreba_vt_mwh|czech_number(4) }}</td>
@@ -195,6 +174,8 @@
                     <td class="right">{{ data.jednotkova_cena_distribuce_vt|number_format }}</td>
                     <td class="right">{{ (data.vypocet.platba_za_distribuci_vt or 0)|number_format }}</td>
                 </tr>
+                {% endif %}
+                {% if data.vypocet.platba_za_distribuci_nt and data.vypocet.platba_za_distribuci_nt != 0 %}
                 <tr class="item-row">
                     <td>Plat za elektřinu ve NT</td>
                     <td class="right">{{ data.spotreba_nt_mwh|czech_number(4) }}</td>
@@ -202,6 +183,8 @@
                     <td class="right">{{ data.jednotkova_cena_distribuce_nt|number_format }}</td>
                     <td class="right">{{ (data.vypocet.platba_za_distribuci_nt or 0)|number_format }}</td>
                 </tr>
+                {% endif %}
+                {% if data.vypocet.systemove_sluzby and data.vypocet.systemove_sluzby != 0 %}
                 <tr class="item-row">
                     <td>Cena za systémové služby</td>
                     <td class="right">{{ data.celkova_spotreba_mwh|czech_number(4) }}</td>
@@ -209,6 +192,8 @@
                     <td class="right">{{ data.jednotkova_cena_systemove_sluzby|number_format }}</td>
                     <td class="right">{{ (data.vypocet.systemove_sluzby or 0)|number_format }}</td>
                 </tr>
+                {% endif %}
+                {% if data.poze_minimum and data.poze_minimum != 0 %}
                 <tr class="item-row">
                     <td>Podpora elekt. z podporovaných zdrojů energie</td>
                     {% if data.poze_je_jistic %}
@@ -222,6 +207,8 @@
                     {% endif %}
                     <td class="right">{{ (data.poze_minimum or 0)|number_format }}</td>
                 </tr>
+                {% endif %}
+                {% if data.vypocet.nesitova_infrastruktura and data.vypocet.nesitova_infrastruktura != 0 %}
                 <tr class="item-row">
                     <td>Poplatek za nesíťovou infrastrukturu</td>
                     <td class="right">{{ (data.vypocet.delka_obdobi_fakturace or 1)|czech_number(3) }}</td>
@@ -229,30 +216,19 @@
                     <td class="right">{{ data.jednotkova_cena_nesitova_infra|number_format }}</td>
                     <td class="right">{{ (data.vypocet.nesitova_infrastruktura or 0)|number_format }}</td>
                 </tr>
-                
-                <!-- Daň -->
-                <tr class="category-row">
-                    <td colspan="5"><strong>Daň</strong></td>
-                </tr>
-                <tr class="item-row">
-                    <td>Daň</td>
-                    <td class="right">{{ data.celkova_spotreba_mwh|czech_number(4) }}</td>
-                    <td class="right">MWh</td>
-                    <td class="right">{{ data.jednotkova_cena_dan|number_format }}</td>
-                    <td class="right">{{ (data.vypocet.dan_z_elektriny or 0)|number_format }}</td>
-                </tr>
+                {% endif %}
+                {% endif %}
             </tbody>
         </table>
 
         <div class="line"></div>
 
-        <div class="total">Celkem: {{ data.celkem_om|number_format }}</div>
+        <div class="total">Celkem: {{ (data.vypocet.zaklad_bez_dph_bez_di or 0)|number_format }}</div>
     </div>
     {% endfor %}
 
     <!-- Další důležité informace -->
-    <div class="page-break"></div>
-    <div style="margin-top: 20px;">
+    <div style="margin-top: 40px; padding-top: 20px; border-top: 2px solid #ccc;">
         <h1 style="font-size: 1.3em; margin: 0 0 0.8rem 0; font-weight: bold;">Další důležité informace</h1>
 
         <section style="margin-bottom: 1rem;">

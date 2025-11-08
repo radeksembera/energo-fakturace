@@ -422,10 +422,10 @@
                 </tr>
                 <tr>
                     <td>Zaplaceno zálohou</td>
-                    <td class="text-end number-format">{{ (-zaloha_hodnota).replace(',', ' ') if zaloha else "0,00" }}</td>
+                    <td class="text-end number-format">{{ (-zaloha_hodnota)|number_format if zaloha else "0,00" }}</td>
                     <td class="text-end">{{ sazba_dph_procenta }}</td>
-                    <td class="text-end number-format">{{ (-zaloha_dph).replace(',', ' ') if zaloha else "0,00" }}</td>
-                    <td class="text-end number-format">{{ (-zaloha_celkem_vc_dph).replace(',', ' ') if zaloha else "0,00" }}</td>
+                    <td class="text-end number-format">{{ (-zaloha_dph)|number_format if zaloha else "0,00" }}</td>
+                    <td class="text-end number-format">{{ (-zaloha_celkem_vc_dph)|number_format if zaloha else "0,00" }}</td>
                 </tr>
             </tbody>
         </table>

@@ -1,0 +1,232 @@
+{% extends "base.html" %}
+
+{% block title %}Reporting{% endblock %}
+
+{% block breadcrumb %}
+<nav aria-label="breadcrumb">
+    <ol class="breadcrumb breadcrumb-custom">
+        <li class="breadcrumb-item">
+            <a href="{{ url_for('strediska.strediska') }}">
+                <i class="bi bi-house-door me-1"></i>
+                Střediska
+            </a>
+        </li>
+        <li class="breadcrumb-item active">Reporting</li>
+    </ol>
+</nav>
+{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-12">
+        <!-- Page Header -->
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <div>
+                <h1 class="h2 mb-1">
+                    <i class="bi bi-file-earmark-spreadsheet icon-success me-2"></i>
+                    Reporting
+                </h1>
+                <p class="text-muted mb-0">Export dat z výpočtů koncových cen</p>
+            </div>
+            <div class="d-flex gap-2">
+                <a href="{{ url_for('strediska.strediska') }}"
+                   class="btn btn-outline-primary-custom">
+                    <i class="bi bi-arrow-left me-2"></i>
+                    Zpět na střediska
+                </a>
+            </div>
+        </div>
+
+        <!-- Export Form -->
+        <form method="POST" action="{{ url_for('reporting.export') }}" id="exportForm">
+
+            <!-- Sekce 1: Výběr období -->
+            <div class="card-custom mb-4">
+                <div class="card-header-custom">
+                    <h5 class="card-title">
+                        <i class="bi bi-calendar-range icon-primary me-2"></i>
+                        1. Výběr období
+                    </h5>
+                </div>
+                <div class="card-body p-4">
+                    {% if obdobi_list %}
+                    <div class="d-flex align-items-center gap-3 flex-wrap">
+                        <label for="obdobi" class="form-label-custom mb-0">
+                            <i class="bi bi-calendar me-2"></i>
+                            Exportovat data za období:
+                        </label>
+                        <select name="obdobi" id="obdobi" class="form-select form-control-custom" style="width: auto;" required>
+                            <option value="">-- Vyberte období --</option>
+                            {% for obdobi in obdobi_list %}
+                            <option value="{{ obdobi.key }}">{{ obdobi.label }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    {% else %}
+                    <div class="alert alert-warning-custom mb-0">
+                        <i class="bi bi-exclamation-triangle me-2"></i>
+                        Nejsou k dispozici žádná období. Vytvořte nejprve období v některém středisku.
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+
+            <!-- Sekce 2: Výběr středisek -->
+            <div class="card-custom mb-4">
+                <div class="card-header-custom">
+                    <h5 class="card-title">
+                        <i class="bi bi-building icon-warning me-2"></i>
+                        2. Výběr středisek
+                    </h5>
+                </div>
+                <div class="card-body p-4">
+                    {% if strediska %}
+                    <div class="row">
+                        <div class="col-12 mb-3">
+                            <button type="button" class="btn btn-sm btn-outline-secondary" id="toggleAllStrediska">
+                                <i class="bi bi-check-all me-1"></i>
+                                Vybrat vše / Zrušit výběr
+                            </button>
+                        </div>
+                    </div>
+                    <div class="row ms-2">
+                        {% for stredisko in strediska %}
+                        <div class="col-md-6 col-lg-4 mb-2">
+                            <div class="form-check">
+                                <input class="form-check-input stredisko-checkbox" type="checkbox"
+                                       name="strediska[]" value="{{ stredisko.id }}"
+                                       id="stredisko_{{ stredisko.id }}" checked>
+                                <label class="form-check-label" for="stredisko_{{ stredisko.id }}">
+                                    {{ stredisko.nazev_strediska }}
+                                    <span class="text-muted">(ID: {{ stredisko.id }})</span>
+                                </label>
+                            </div>
+                        </div>
+                        {% endfor %}
+                    </div>
+                    {% else %}
+                    <div class="alert alert-warning-custom mb-0">
+                        <i class="bi bi-exclamation-triangle me-2"></i>
+                        Nemáte vytvořena žádná střediska.
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+
+            <!-- Sekce 3: Výběr metrik -->
+            <div class="card-custom mb-4">
+                <div class="card-header-custom">
+                    <h5 class="card-title">
+                        <i class="bi bi-list-check icon-info me-2"></i>
+                        3. Výběr metrik pro export
+                    </h5>
+                </div>
+                <div class="card-body p-4">
+                    {% if metriky %}
+                    <div class="row">
+                        <div class="col-12 mb-3">
+                            <button type="button" class="btn btn-sm btn-outline-secondary" id="toggleAllMetriky">
+                                <i class="bi bi-check-all me-1"></i>
+                                Vybrat vše / Zrušit výběr
+                            </button>
+                        </div>
+                    </div>
+                    <div class="row ms-2">
+                        {% for metrika in metriky %}
+                        <div class="col-md-6 col-lg-4 mb-2">
+                            <div class="form-check">
+                                <input class="form-check-input metrika-checkbox" type="checkbox"
+                                       name="metriky[]" value="{{ metrika.name }}"
+                                       id="metrika_{{ metrika.name }}">
+                                <label class="form-check-label" for="metrika_{{ metrika.name }}">
+                                    {{ metrika.label }}
+                                </label>
+                            </div>
+                        </div>
+                        {% endfor %}
+                    </div>
+                    {% else %}
+                    <div class="alert alert-warning-custom mb-0">
+                        <i class="bi bi-exclamation-triangle me-2"></i>
+                        Nejsou k dispozici žádné metriky.
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+
+            <!-- Export button -->
+            {% if obdobi_list and strediska and metriky %}
+            <div class="d-flex justify-content-end mb-4">
+                <button type="submit" class="btn btn-primary-custom">
+                    <i class="bi bi-file-earmark-arrow-down me-2"></i>
+                    Exportovat do XLSX
+                </button>
+            </div>
+            {% endif %}
+
+        </form>
+
+    </div>
+</div>
+
+<script>
+    // Toggle all strediska
+    document.getElementById('toggleAllStrediska')?.addEventListener('click', function() {
+        const checkboxes = document.querySelectorAll('.stredisko-checkbox');
+        const allChecked = Array.from(checkboxes).every(cb => cb.checked);
+        checkboxes.forEach(cb => cb.checked = !allChecked);
+    });
+
+    // Toggle all metriky
+    document.getElementById('toggleAllMetriky')?.addEventListener('click', function() {
+        const checkboxes = document.querySelectorAll('.metrika-checkbox');
+        const allChecked = Array.from(checkboxes).every(cb => cb.checked);
+        checkboxes.forEach(cb => cb.checked = !allChecked);
+    });
+
+    // Validace formuláře a handling stahování souboru
+    const exportForm = document.getElementById('exportForm');
+    if (exportForm) {
+        exportForm.addEventListener('submit', function(e) {
+            const obdobi = document.getElementById('obdobi').value;
+            const strediska = document.querySelectorAll('.stredisko-checkbox:checked');
+            const metriky = document.querySelectorAll('.metrika-checkbox:checked');
+
+            if (!obdobi) {
+                e.preventDefault();
+                alert('Vyberte období pro export.');
+                return false;
+            }
+
+            if (strediska.length === 0) {
+                e.preventDefault();
+                alert('Vyberte alespoň jedno středisko pro export.');
+                return false;
+            }
+
+            if (metriky.length === 0) {
+                e.preventDefault();
+                alert('Vyberte alespoň jednu metriku pro export.');
+                return false;
+            }
+
+            // Manuálně zakázat tlačítko (pro file download)
+            const submitBtn = this.querySelector('button[type="submit"]');
+            if (submitBtn) {
+                const originalHtml = submitBtn.innerHTML;
+                submitBtn.innerHTML = '<div class="spinner-custom d-inline-block me-2"></div> Generuji export...';
+                submitBtn.disabled = true;
+
+                // Po 3 sekundách znovu povolit tlačítko (soubor by měl být už stažený)
+                setTimeout(function() {
+                    submitBtn.innerHTML = originalHtml;
+                    submitBtn.disabled = false;
+                }, 3000);
+            }
+
+            // Zastavit propagaci, aby base.html neaplikoval svůj handler
+            e.stopImmediatePropagation();
+        });
+    }
+</script>
+{% endblock %}

@@ -463,6 +463,7 @@ def prepocitat_koncove_ceny(stredisko_id):
                     odberne_misto_id=om.id,
                     obdobi_id=obdobi_vypoctu.id,
                     delka_obdobi_fakturace=delka_obdobi_fakturace,
+                    spotreba_om=round(celkova_spotreba, 2),  # Celková spotřeba OM (VT + NT) v kWh
 
                     # Distribuce
                     platba_za_jistic=round(platba_za_jistic, 2),

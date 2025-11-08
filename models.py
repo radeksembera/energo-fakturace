@@ -126,6 +126,7 @@ class VypocetOM(db.Model):
     odberne_misto_id = db.Column(db.Integer, db.ForeignKey('odberna_mista.id'))
     obdobi_id = db.Column(db.Integer, db.ForeignKey('obdobi_fakturace.id'))
     delka_obdobi_fakturace = db.Column(db.Numeric)  # Poměr období fakturace
+    spotreba_om = db.Column(db.Numeric)  # Celková spotřeba OM (VT + NT) v kWh
     platba_za_jistic = db.Column(db.Numeric)
     platba_za_distribuci_vt = db.Column(db.Numeric)
     platba_za_distribuci_nt = db.Column(db.Numeric)
