@@ -238,8 +238,9 @@ def nahrat_odberna_mista(stredisko_id):
             return redirect(url_for("strediska.prehled_odbernych_mist", stredisko_id=stredisko_id))
         
         # Načti Excel soubor
+        # Explicitně specifikuj, že cislo_om a ean_om mají být načteny jako text (aby se zachovaly úvodní nuly)
         try:
-            df = pd.read_excel(file)
+            df = pd.read_excel(file, dtype={'cislo_om': str, 'ean_om': str})
         except Exception as e:
             flash(f"❌ Chyba při čtení Excel souboru: {str(e)}")
             return redirect(url_for("strediska.prehled_odbernych_mist", stredisko_id=stredisko_id))
