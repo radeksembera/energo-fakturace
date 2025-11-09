@@ -46,7 +46,7 @@ def strediska():
     
     # Admin vidí všechna střediska
     if user and user.is_admin:
-        strediska = Stredisko.query.all()
+        strediska = Stredisko.query.order_by(Stredisko.nazev_strediska).all()
         print(f"Admin vidi {len(strediska)} stredisek")
     else:
         # Kombinuj oba přístupy - původní + nový systém
@@ -383,16 +383,11 @@ def smazat_stredisko(stredisko_id):
         
         # Smaž všechna odběrná místa tohoto střediska
         for om in odberna_mista:
-            # Smaž také všechny odečty pro toto odběrné místo
-            odecty = Odečet.query.filter_by(odberne_misto_id=om.id).all()
-            for odecet in odecty:
-                db.session.delete(odecet)
-            
             # Smaž všechny výpočty pro toto odběrné místo
             vypocty = VypocetOM.query.filter_by(odberne_misto_id=om.id).all()
             for vypocet in vypocty:
                 db.session.delete(vypocet)
-            
+
             # Smaž odběrné místo
             db.session.delete(om)
         
