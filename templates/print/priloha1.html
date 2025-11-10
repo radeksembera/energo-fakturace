@@ -125,7 +125,7 @@
                     <td class="number">{{ odecet.hodnota_odectu_vt|number_format if odecet.hodnota_odectu_vt else '' }}</td>
                     <td class="number">{{ odecet.spotreba_vt|number_format if odecet.spotreba_vt else '' }}</td>
                     <td class="unit">kWh</td>
-                    <td class="description">{{ odecet.priznak if odecet.priznak else '' }}</td>
+                    <td class="description">{{ '' if not odecet.priznak or odecet.priznak == 'N' else odecet.priznak }}</td>
                 </tr>
                 {% endif %}
 
@@ -139,7 +139,7 @@
                     <td class="number">{{ odecet.hodnota_odectu_nt|number_format if odecet.hodnota_odectu_nt else '' }}</td>
                     <td class="number">{{ odecet.spotreba_nt|number_format if odecet.spotreba_nt else '' }}</td>
                     <td class="unit">kWh</td>
-                    <td class="description">{{ odecet.priznak if odecet.priznak else '' }}</td>
+                    <td class="description">{{ '' if not odecet.priznak or odecet.priznak == 'N' else odecet.priznak }}</td>
                 </tr>
                 {% endif %}
             </tbody>

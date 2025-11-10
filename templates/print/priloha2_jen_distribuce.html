@@ -223,7 +223,7 @@
 
         <div class="line"></div>
 
-        <div class="total">Celkem: {{ (data.vypocet.zaklad_bez_dph_bez_di or 0)|number_format }}</div>
+        <div class="total">Celkem bez DPH: {{ (data.vypocet.zaklad_bez_dph_bez_di or 0)|number_format }} Kč</div>
     </div>
     {% endfor %}
 
