@@ -78,7 +78,11 @@ def strediska():
         print(f"Uzivatel {user_id} vidi {len(strediska)} stredisek")
         print(f"   - Puvodni system: {len(strediska_puvodni)}")
         print(f"   - Novy system: {len(strediska_nova)}")
-    
+
+    # Přidej počet odběrných míst pro každé středisko
+    for stredisko in strediska:
+        stredisko.pocet_om = OdberneMisto.query.filter_by(stredisko_id=stredisko.id).count()
+
     return render_template("prehled_stredisek.html", strediska=strediska)
 
 @strediska_bp.route("/<int:stredisko_id>")

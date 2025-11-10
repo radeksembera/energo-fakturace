@@ -82,11 +82,11 @@
                     <div class="card-body p-4">
                         <div class="mb-3">
                             <div class="row">
-                                <div class="col-sm-6 mb-2">
+                                <div class="col-sm-4 mb-2">
                                     <small class="text-muted d-block">Kód střediska</small>
                                     <strong>{{ s.stredisko }}</strong>
                                 </div>
-                                <div class="col-sm-6 mb-2">
+                                <div class="col-sm-4 mb-2">
                                     <small class="text-muted d-block">Distribuce</small>
                                     {% if s.distribuce == 'ČEZ' %}
                                         <span class="badge bg-success">{{ s.distribuce }}</span>
@@ -98,25 +98,13 @@
                                         <span class="badge bg-secondary">{{ s.distribuce }}</span>
                                     {% endif %}
                                 </div>
+                                <div class="col-sm-4 mb-2">
+                                    <small class="text-muted d-block">Odběrná místa</small>
+                                    <strong>{{ s.pocet_om }}</strong>
+                                </div>
                             </div>
                         </div>
-                        
-                        {% if s.adresa %}
-                        <div class="mb-3">
-                            <small class="text-muted d-block">Adresa</small>
-                            <div class="text-sm">{{ s.adresa }}{% if s.misto %}, {{ s.misto }}{% endif %}</div>
-                        </div>
-                        {% endif %}
-                        
-                        {% if s.stredisko_mail %}
-                        <div class="mb-3">
-                            <small class="text-muted d-block">Email</small>
-                            <a href="mailto:{{ s.stredisko_mail }}" class="text-primary-custom text-decoration-none">
-                                <i class="bi bi-envelope me-1"></i>{{ s.stredisko_mail }}
-                            </a>
-                        </div>
-                        {% endif %}
-                        
+
                         {% if s.poznamka %}
                         <div class="mb-3">
                             <small class="text-muted d-block">Poznámka</small>
