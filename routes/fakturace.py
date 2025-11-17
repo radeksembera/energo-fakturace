@@ -1,5 +1,6 @@
 from flask import Blueprint, render_template, request, redirect, url_for, session, flash, jsonify
-from models import db, Stredisko, InfoDodavatele, InfoVystavovatele, InfoOdberatele, ZalohovaFaktura, Faktura, ImportOdečtu, VypocetOM, OdberneMisto, CenaDistribuce, CenaDodavatel, Odečet, ObdobiFakturace, CislaFaktur
+from models import db, Stredisko, InfoDodavatele, InfoVystavovatele, InfoOdberatele, ZalohovaFaktura, Faktura, ImportOdečtu, VypocetOM, OdberneMisto, CenaDistribuce, CenaDodavatel, Odečet, ObdobiFakturace, CislaFaktur, SumarizaceStrediska
+from sqlalchemy import func
 # Alias pro zpětnou kompatibilitu s kódem bez diakritiky
 Odecet = Odečet
 from session_helpers import handle_obdobi_selection, get_session_obdobi, get_dostupna_obdobi_pro_stredisko, set_session_obdobi
@@ -496,6 +497,39 @@ def prepocitat_koncove_ceny(stredisko_id):
 
             except Exception as e:
                 chyby.append(f"OM {om.cislo_om}: Chyba při výpočtu - {str(e)}")
+
+        # ✅ SUMARIZACE STŘEDISKA - Vypočítej a ulož celkové sumy pro středisko a období
+        if uspesne_vypocty > 0:
+            # Sečti všechny spotřeby a ceny pro toto středisko a období
+            sumy = db.session.query(
+                func.sum(VypocetOM.spotreba_om).label('celkova_spotreba'),
+                func.sum(VypocetOM.celkem_vc_dph).label('celkova_cena_s_dph')
+            ).join(OdberneMisto)\
+             .filter(OdberneMisto.stredisko_id == stredisko_id)\
+             .filter(VypocetOM.obdobi_id == obdobi_vypoctu.id)\
+             .first()
+
+            celkova_spotreba = float(sumy.celkova_spotreba) if sumy.celkova_spotreba else 0.0
+            celkova_cena_s_dph = float(sumy.celkova_cena_s_dph) if sumy.celkova_cena_s_dph else 0.0
+
+            # Najdi nebo vytvoř záznam sumarizace
+            sumarizace = SumarizaceStrediska.query.filter_by(
+                stredisko_id=stredisko_id,
+                obdobi_id=obdobi_vypoctu.id
+            ).first()
+
+            if not sumarizace:
+                sumarizace = SumarizaceStrediska(
+                    stredisko_id=stredisko_id,
+                    obdobi_id=obdobi_vypoctu.id,
+                    rok=aktualni_rok,
+                    mesic=aktualni_mesic
+                )
+
+            sumarizace.celkova_spotreba = celkova_spotreba
+            sumarizace.celkova_cena_s_dph = celkova_cena_s_dph
+
+            db.session.add(sumarizace)
 
         db.session.commit()
 

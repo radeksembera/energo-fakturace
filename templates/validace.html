@@ -1,0 +1,358 @@
+{% extends "base.html" %}
+
+{% block title %}Validace - Flow fakturace{% endblock %}
+
+{% block breadcrumb %}
+<nav aria-label="breadcrumb">
+    <ol class="breadcrumb breadcrumb-custom">
+        <li class="breadcrumb-item">
+            <a href="{{ url_for('strediska.strediska') }}">
+                <i class="bi bi-house-door me-1"></i>
+                Přehled středisek
+            </a>
+        </li>
+        <li class="breadcrumb-item active">
+            <i class="bi bi-check-circle me-1"></i>
+            Validace
+        </li>
+    </ol>
+</nav>
+{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-12">
+        <!-- Page Header -->
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <div>
+                <h1 class="h2 mb-1">
+                    <i class="bi bi-check-circle icon-primary me-2"></i>
+                    Validace dat
+                </h1>
+                <p class="text-muted mb-0">Kontrola a validace dat v systému</p>
+            </div>
+        </div>
+
+        <!-- Hlavní jističe -->
+        <div class="card-custom mb-4">
+            <div class="card-header-custom">
+                <h5 class="card-title">
+                    <i class="bi bi-lightning-charge icon-primary me-2"></i>
+                    Hlavní jističe
+                </h5>
+            </div>
+            <div class="card-body p-4">
+                <!-- Výběr období -->
+                <form method="get" class="mb-4">
+                    <div class="row align-items-end">
+                        <div class="col-md-4">
+                            <label for="obdobi_select" class="form-label-custom">
+                                <i class="bi bi-calendar me-2"></i>
+                                Vyberte období:
+                            </label>
+                            <select name="obdobi" id="obdobi_select" class="form-select form-control-custom">
+                                {% for obdobi in obdobi_list %}
+                                <option value="{{ obdobi.rok }}-{{ obdobi.mesic }}"
+                                        {% if vybrane_obdobi and obdobi.rok == vybrane_obdobi.rok and obdobi.mesic == vybrane_obdobi.mesic %}selected{% endif %}>
+                                    {{ '%02d'|format(obdobi.mesic) }}/{{ obdobi.rok }}
+                                </option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                    </div>
+                </form>
+
+                {% if vybrane_obdobi %}
+                <!-- Tabulka hlavních jističů -->
+                <div class="table-responsive">
+                    <table class="table table-bordered table-hover">
+                        <thead class="table-light">
+                            <tr>
+                                <th>Projekt</th>
+                                <th>Kód střediska</th>
+                                <th class="text-end">Spotřeba hlavní jistič (MWh)</th>
+                                <th class="text-end">Spotřeba podružné elektroměry (MWh)</th>
+                                <th class="text-end">Rozdíl</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% set suma_hlavni = 0 %}
+                            {% set suma_podruzne = 0 %}
+                            {% set suma_rozdil = 0 %}
+
+                            {% for row in data_hlavnich_jisticu %}
+                            {% set suma_hlavni = suma_hlavni + row.spotreba_hlavni_mwh %}
+                            {% set suma_podruzne = suma_podruzne + row.spotreba_podruzne_mwh %}
+                            {% set suma_rozdil = suma_rozdil + row.rozdil %}
+                            <tr>
+                                <td>{{ row.projekt }}</td>
+                                <td class="text-center">{{ row.kombinovany_kod }}</td>
+                                <td class="text-end">
+                                    <input type="number"
+                                           step="0.001"
+                                           class="form-control form-control-sm text-end spotreba-input"
+                                           data-kod="{{ row.kombinovany_kod }}"
+                                           data-rok="{{ vybrane_obdobi.rok }}"
+                                           data-mesic="{{ vybrane_obdobi.mesic }}"
+                                           value="{{ '%.3f'|format(row.spotreba_hlavni_mwh) }}"
+                                           style="max-width: 150px; display: inline-block;">
+                                </td>
+                                <td class="text-end">{{ '%.3f'|format(row.spotreba_podruzne_mwh) }}</td>
+                                <td class="text-end rozdil-cell"
+                                    data-kod="{{ row.kombinovany_kod }}"
+                                    style="{% if row.rozdil < 0 %}color: red; font-weight: bold;{% endif %}">
+                                    {{ '%.3f'|format(row.rozdil) }}
+                                </td>
+                            </tr>
+                            {% endfor %}
+
+                            <!-- Suma řádek -->
+                            <tr class="table-warning fw-bold">
+                                <td colspan="2" class="text-center">SUMA</td>
+                                <td class="text-end suma-hlavni">{{ '%.3f'|format(suma_hlavni) }}</td>
+                                <td class="text-end suma-podruzne">{{ '%.3f'|format(suma_podruzne) }}</td>
+                                <td class="text-end suma-rozdil"
+                                    style="{% if suma_rozdil < 0 %}color: red;{% endif %}">
+                                    {{ '%.3f'|format(suma_rozdil) }}
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+                {% else %}
+                <div class="alert alert-warning-custom alert-custom">
+                    <i class="bi bi-exclamation-triangle me-2"></i>
+                    Nejsou dostupná žádná období pro validaci.
+                </div>
+                {% endif %}
+            </div>
+        </div>
+
+        <!-- Střediska -->
+        <div class="card-custom mb-4">
+            <div class="card-header-custom">
+                <h5 class="card-title">
+                    <i class="bi bi-building icon-primary me-2"></i>
+                    Střediska
+                </h5>
+            </div>
+            <div class="card-body p-4">
+                <!-- Výběr střediska -->
+                <form method="get" class="mb-4">
+                    <div class="row align-items-end">
+                        <div class="col-md-6">
+                            <label for="stredisko_select" class="form-label-custom">
+                                <i class="bi bi-building me-2"></i>
+                                Vyberte středisko:
+                            </label>
+                            <select name="stredisko_id" id="stredisko_select" class="form-select form-control-custom">
+                                {% for stredisko in strediska %}
+                                <option value="{{ stredisko.id }}"
+                                        {% if vybrane_stredisko_id and stredisko.id == vybrane_stredisko_id %}selected{% endif %}>
+                                    {{ stredisko.nazev_strediska }} (ID: {{ stredisko.id }})
+                                </option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                    </div>
+                </form>
+
+                <!-- Tabulka středisek -->
+                {% if data_strediska %}
+                <div class="table-responsive">
+                    <table class="table table-bordered table-hover">
+                        <thead class="table-light">
+                            <tr>
+                                <th>Období</th>
+                                <th class="text-end">Celková spotřeba (kWh)</th>
+                                <th class="text-end">Cena Celkem s DPH (Kč)</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for row in data_strediska %}
+                            <tr>
+                                <td class="text-center">{{ '%02d'|format(row.mesic) }}/{{ row.rok }}</td>
+                                <td class="text-end">
+                                    {% if row.celkova_spotreba is not none %}
+                                        {{ "{:,.0f}".format(row.celkova_spotreba).replace(",", " ") }}
+                                    {% else %}
+                                        <span class="text-muted">-</span>
+                                    {% endif %}
+                                </td>
+                                <td class="text-end">
+                                    {% if row.celkova_cena_s_dph is not none %}
+                                        {{ "{:,.2f}".format(row.celkova_cena_s_dph).replace(",", " ") }}
+                                    {% else %}
+                                        <span class="text-muted">-</span>
+                                    {% endif %}
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                {% else %}
+                <div class="alert alert-warning-custom alert-custom">
+                    <i class="bi bi-exclamation-triangle me-2"></i>
+                    Nejsou dostupná žádná data pro vybrané středisko.
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Automatické ukládání při změně spotřeby hlavního jističe
+    const spotrebaInputs = document.querySelectorAll('.spotreba-input');
+
+    spotrebaInputs.forEach(input => {
+        // Uložení původní hodnoty pro porovnání
+        let originalValue = input.value;
+
+        input.addEventListener('blur', function() {
+            const newValue = parseFloat(this.value) || 0;
+
+            // Pouze pokud se hodnota změnila
+            if (newValue !== parseFloat(originalValue)) {
+                ulozitSpotrebu(this);
+                originalValue = this.value;
+            }
+        });
+
+        // Také uložit při stisknutí Enter
+        input.addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') {
+                this.blur();
+            }
+        });
+    });
+
+    function ulozitSpotrebu(inputElement) {
+        const kod = inputElement.dataset.kod;
+        const rok = parseInt(inputElement.dataset.rok);
+        const mesic = parseInt(inputElement.dataset.mesic);
+        const spotreba = parseFloat(inputElement.value) || 0;
+
+        // Najdi řádek pro tento kód
+        const row = inputElement.closest('tr');
+        const spotrebaPodruzneCell = row.querySelector('td:nth-child(4)');
+        const rozdilCell = row.querySelector('.rozdil-cell');
+
+        const spotrebaPodruzne = parseFloat(spotrebaPodruzneCell.textContent.trim());
+
+        // Odešli AJAX request
+        fetch('{{ url_for("validace.ulozit_spotrebu") }}', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                kod_strediska: kod,
+                rok: rok,
+                mesic: mesic,
+                spotreba_mwh: spotreba
+            })
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                // Vypočítej a aktualizuj rozdíl (Spotřeba podružné elektroměry - Spotřeba hlavní jistič)
+                const rozdil = spotrebaPodruzne - spotreba;
+                rozdilCell.textContent = rozdil.toFixed(3);
+
+                // Změň barvu pokud je záporný
+                if (rozdil < 0) {
+                    rozdilCell.style.color = 'red';
+                    rozdilCell.style.fontWeight = 'bold';
+                } else {
+                    rozdilCell.style.color = '';
+                    rozdilCell.style.fontWeight = '';
+                }
+
+                // Přepočítej sumy
+                prepocitejSumy();
+
+                // Vizuální feedback
+                inputElement.style.backgroundColor = '#d4edda';
+                setTimeout(() => {
+                    inputElement.style.backgroundColor = '';
+                }, 1000);
+            } else {
+                alert('Chyba při ukládání: ' + data.error);
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            alert('Chyba při komunikaci se serverem');
+        });
+    }
+
+    function prepocitejSumy() {
+        let sumaHlavni = 0;
+        let sumaPodruzne = 0;
+        let sumaRozdil = 0;
+
+        document.querySelectorAll('.spotreba-input').forEach(input => {
+            const row = input.closest('tr');
+            const spotrebaHlavni = parseFloat(input.value) || 0;
+            const spotrebaPodruzneCell = row.querySelector('td:nth-child(4)');
+            const spotrebaPodruzne = parseFloat(spotrebaPodruzneCell.textContent.trim()) || 0;
+            // Rozdíl = Spotřeba podružné elektroměry - Spotřeba hlavní jistič
+            const rozdil = spotrebaPodruzne - spotrebaHlavni;
+
+            sumaHlavni += spotrebaHlavni;
+            sumaPodruzne += spotrebaPodruzne;
+            sumaRozdil += rozdil;
+        });
+
+        // Aktualizuj suma řádek
+        document.querySelector('.suma-hlavni').textContent = sumaHlavni.toFixed(3);
+        document.querySelector('.suma-podruzne').textContent = sumaPodruzne.toFixed(3);
+
+        const sumaRozdilCell = document.querySelector('.suma-rozdil');
+        sumaRozdilCell.textContent = sumaRozdil.toFixed(3);
+
+        if (sumaRozdil < 0) {
+            sumaRozdilCell.style.color = 'red';
+        } else {
+            sumaRozdilCell.style.color = '';
+        }
+    }
+
+    // Pro změnu období pomocí selectu - zachovej vybrané středisko
+    const obdobiSelect = document.getElementById('obdobi_select');
+    if (obdobiSelect) {
+        obdobiSelect.addEventListener('change', function() {
+            const value = this.value;
+            const [rok, mesic] = value.split('-');
+            const strediskoId = new URLSearchParams(window.location.search).get('stredisko_id');
+            let url = `{{ url_for('validace.index') }}?rok=${rok}&mesic=${mesic}`;
+            if (strediskoId) {
+                url += `&stredisko_id=${strediskoId}`;
+            }
+            window.location.href = url;
+        });
+    }
+
+    // Pro změnu střediska - zachovej vybrané období
+    const strediskoSelect = document.getElementById('stredisko_select');
+    if (strediskoSelect) {
+        strediskoSelect.addEventListener('change', function(e) {
+            e.preventDefault();
+            const strediskoId = this.value;
+            const rok = new URLSearchParams(window.location.search).get('rok');
+            const mesic = new URLSearchParams(window.location.search).get('mesic');
+            let url = `{{ url_for('validace.index') }}?stredisko_id=${strediskoId}`;
+            if (rok && mesic) {
+                url += `&rok=${rok}&mesic=${mesic}`;
+            }
+            window.location.href = url;
+        });
+    }
+});
+</script>
+{% endblock %}

@@ -408,15 +408,30 @@
                                 {{ session.email }}
                             </a>
                             <ul class="dropdown-menu">
+                                <!-- ✅ ODKAZY PRO BĚŽNÉ UŽIVATELE -->
+                                <li><a class="dropdown-item" href="{{ url_for('strediska.strediska') }}">
+                                    <i class="bi bi-pin-map me-2"></i>
+                                    Přehled středisek
+                                </a></li>
+                                <li><a class="dropdown-item" href="{{ url_for('reporting.index') }}">
+                                    <i class="bi bi-file-earmark-spreadsheet me-2"></i>
+                                    Reporting
+                                </a></li>
+                                <li><a class="dropdown-item" href="{{ url_for('validace.index') }}">
+                                    <i class="bi bi-check-circle me-2"></i>
+                                    Validace
+                                </a></li>
+
                                 <!-- ✅ ADMIN MENU - zobraz pouze pro administrátory -->
                                 {% if session.is_admin %}
+                                <li><hr class="dropdown-divider"></li>
                                 <li><a class="dropdown-item" href="{{ url_for('admin.admin_users') }}">
                                     <i class="bi bi-people me-2"></i>
                                     Správa uživatelů
                                 </a></li>
-                                <li><hr class="dropdown-divider"></li>
                                 {% endif %}
-                                
+
+                                <li><hr class="dropdown-divider"></li>
                                 <li><a class="dropdown-item" href="{{ url_for('auth.logout') }}">
                                     <i class="bi bi-box-arrow-right me-2"></i>
                                     Odhlásit se

@@ -17,6 +17,7 @@ from routes.fakturace import fakturace_bp
 from routes.odecty import odecty_bp
 from routes.print import print_bp
 from routes.reporting import reporting_bp
+from routes.validace import validace_bp
 
 from session_helpers import (
     get_session_obdobi, 
@@ -69,6 +70,7 @@ app.register_blueprint(fakturace_bp, url_prefix="/strediska")
 app.register_blueprint(odecty_bp, url_prefix="/strediska")
 app.register_blueprint(print_bp, url_prefix="/faktury")
 app.register_blueprint(reporting_bp)
+app.register_blueprint(validace_bp)
 
 # Template filters and functions
 from utils.helpers import safe_sum_filter

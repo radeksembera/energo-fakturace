@@ -251,3 +251,33 @@ class ObdobiFakturace(db.Model):
     rok = db.Column(db.Integer, nullable=False)
     mesic = db.Column(db.Integer, nullable=False)
     # Odstranil jsem nazev, stav a created_at - nejsou v existující tabulce
+
+# --- SPOTŘEBA HLAVNÍHO JISTIČE (VALIDACE) ---
+class SpotrebaHlavnihoJistice(db.Model):
+    __tablename__ = 'spotreba_hlavniho_jistice'
+    id = db.Column(db.Integer, primary_key=True)
+    kod_strediska = db.Column(db.Text, nullable=False)  # např. "0001", "0002"
+    rok = db.Column(db.Integer, nullable=False)
+    mesic = db.Column(db.Integer, nullable=False)
+    spotreba_mwh = db.Column(db.Numeric, default=0.0)  # spotřeba v MWh
+
+    # Jedinečný constraint pro kombinaci kódu střediska, roku a měsíce
+    __table_args__ = (
+        db.UniqueConstraint('kod_strediska', 'rok', 'mesic', name='unique_kod_rok_mesic'),
+    )
+
+# --- SUMARIZACE STŘEDISKA (VALIDACE) ---
+class SumarizaceStrediska(db.Model):
+    __tablename__ = 'sumarizace_strediska'
+    id = db.Column(db.Integer, primary_key=True)
+    stredisko_id = db.Column(db.Integer, db.ForeignKey('strediska.id'), nullable=False)
+    obdobi_id = db.Column(db.Integer, db.ForeignKey('obdobi_fakturace.id'), nullable=False)
+    rok = db.Column(db.Integer, nullable=False)
+    mesic = db.Column(db.Integer, nullable=False)
+    celkova_spotreba = db.Column(db.Numeric, default=0.0)  # Suma spotreba_om v kWh
+    celkova_cena_s_dph = db.Column(db.Numeric, default=0.0)  # Suma celkem_vc_dph
+
+    # Jedinečný constraint pro kombinaci střediska a období
+    __table_args__ = (
+        db.UniqueConstraint('stredisko_id', 'obdobi_id', name='unique_stredisko_obdobi'),
+    )
