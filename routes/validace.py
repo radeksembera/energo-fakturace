@@ -29,8 +29,8 @@ def index():
 
     user_id = session["user_id"]
 
-    # Načti všechna střediska uživatele
-    strediska = Stredisko.query.filter_by(user_id=user_id).all()
+    # Načti všechna střediska uživatele (seřazená podle názvu)
+    strediska = Stredisko.query.filter_by(user_id=user_id).order_by(Stredisko.nazev_strediska).all()
 
     if not strediska:
         flash("❌ Nemáte vytvořena žádná střediska.", "warning")
@@ -40,7 +40,7 @@ def index():
     obdobi_list = ObdobiFakturace.query\
         .join(Stredisko)\
         .filter(Stredisko.user_id == user_id)\
-        .order_by(ObdobiFakturace.rok.desc(), ObdobiFakturace.mesic.desc())\
+        .order_by(ObdobiFakturace.rok.asc(), ObdobiFakturace.mesic.asc())\
         .distinct(ObdobiFakturace.rok, ObdobiFakturace.mesic)\
         .all()
 

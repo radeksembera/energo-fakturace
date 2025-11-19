@@ -31,7 +31,7 @@ def index():
     obdobi_list = []
     for stredisko in strediska:
         obdobi = ObdobiFakturace.query.filter_by(stredisko_id=stredisko.id)\
-            .order_by(ObdobiFakturace.rok.desc(), ObdobiFakturace.mesic.desc())\
+            .order_by(ObdobiFakturace.rok.asc(), ObdobiFakturace.mesic.asc())\
             .all()
         for obj in obdobi:
             key = f"{obj.rok}-{obj.mesic:02d}"
@@ -43,8 +43,8 @@ def index():
                     'label': f"{obj.mesic:02d}/{obj.rok}"
                 })
 
-    # Seřaď období podle roku a měsíce (sestupně)
-    obdobi_list.sort(key=lambda x: (x['rok'], x['mesic']), reverse=True)
+    # Seřaď období podle roku a měsíce (vzestupně)
+    obdobi_list.sort(key=lambda x: (x['rok'], x['mesic']), reverse=False)
 
     # Definuj dostupné metriky z tabulky vypocty_om
     metriky = [
