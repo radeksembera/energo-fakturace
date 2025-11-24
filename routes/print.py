@@ -1130,4 +1130,216 @@ def vygenerovat_kompletni_pdf(stredisko_id, rok, mesic):
         print(f"[ERROR] Chyba při generování kompletního PDF: {str(e)}")
         return f"Chyba při generování kompletního PDF: {str(e)}", 500
 
+
+# ==== KOMPLETNÍ HTML - FAKTURA + PŘÍLOHA 1 + PŘÍLOHA 2 ====
+
+@print_bp.route("/<int:stredisko_id>/<int:rok>-<int:mesic>/kompletni/html")
+def vygenerovat_kompletni_html(stredisko_id, rok, mesic):
+    """Generuje kompletní HTML - faktura + příloha 1 + příloha 2 v jednom dokumentu"""
+    if not session.get("user_id"):
+        return redirect("/login")
+
+    stredisko = Stredisko.query.get_or_404(stredisko_id)
+    if stredisko.user_id != session["user_id"]:
+        return "Nepovolený přístup", 403
+
+    try:
+        print("[INFO] Generuji kompletní HTML dokument...")
+
+        # Načti data pro HTML šablony
+        data, error = get_faktura_data(stredisko_id, rok, mesic)
+        if error:
+            raise Exception(f"Chyba při načítání dat: {error}")
+
+        # 1. HTML FAKTURA
+        print("[INFO] Generuji HTML fakturu...")
+        if data['faktura'] and data['faktura'].fakturovat_jen_distribuci:
+            faktura_template = "print/faktura_jen_distribuce.html"
+        else:
+            faktura_template = "print/faktura.html"
+        faktura_html = render_template(faktura_template, **data)
+
+        # 2. HTML PŘÍLOHA 1
+        print("[INFO] Generuji HTML přílohu 1...")
+        stredisko_obj = data['stredisko']
+        obdobi = data['obdobi']
+        faktura = data['faktura']
+        dodavatel = data['dodavatel']
+
+        # Načti odečty
+        odecty_raw = Odečet.query\
+            .filter_by(stredisko_id=stredisko_id, obdobi_id=obdobi.id)\
+            .order_by(Odečet.oznaceni)\
+            .all()
+
+        odberna_mista = {om.cislo_om: om for om in OdberneMisto.query.filter_by(stredisko_id=stredisko_id).all()}
+
+        odecty_data = []
+        for odecet in odecty_raw:
+            om = None
+            if odecet.oznaceni in odberna_mista:
+                om = odberna_mista[odecet.oznaceni]
+            else:
+                oznaceni_padded = odecet.oznaceni.zfill(7) if odecet.oznaceni else ""
+                if oznaceni_padded in odberna_mista:
+                    om = odberna_mista[oznaceni_padded]
+                else:
+                    oznaceni_stripped = odecet.oznaceni.lstrip('0') if odecet.oznaceni else ""
+                    if oznaceni_stripped in odberna_mista:
+                        om = odberna_mista[oznaceni_stripped]
+
+            if om:
+                setattr(odecet, 'odberne_misto', om)
+                odecty_data.append(odecet)
+
+        priloha1_html = render_template("print/priloha1.html",
+                                       stredisko=stredisko_obj,
+                                       obdobi=obdobi,
+                                       faktura=faktura,
+                                       dodavatel=dodavatel,
+                                       odecty=odecty_data)
+
+        # 3. HTML PŘÍLOHA 2
+        print("[INFO] Generuji HTML přílohu 2...")
+        vypocty_om = db.session.query(VypocetOM, OdberneMisto)\
+            .join(OdberneMisto, VypocetOM.odberne_misto_id == OdberneMisto.id)\
+            .filter(VypocetOM.obdobi_id == obdobi.id)\
+            .filter(OdberneMisto.stredisko_id == stredisko_id)\
+            .order_by(OdberneMisto.cislo_om)\
+            .all()
+
+        vypocty_data = []
+        sazba_dph = float(faktura.sazba_dph / 100) if faktura and faktura.sazba_dph else 0.21
+
+        for vypocet, om in vypocty_om:
+            poze_jistic = float(vypocet.poze_dle_jistice or 0)
+            poze_spotreba = float(vypocet.poze_dle_spotreby or 0)
+            poze_minimum = min(poze_jistic, poze_spotreba)
+            poze_je_jistic = (poze_jistic > 0 and poze_jistic < poze_spotreba) or (poze_jistic > 0 and poze_spotreba == 0)
+
+            fakturovat_jen_distribuci = faktura.fakturovat_jen_distribuci if faktura else False
+
+            if fakturovat_jen_distribuci and hasattr(vypocet, 'celkem_vc_dph_bez_di') and vypocet.celkem_vc_dph_bez_di:
+                celkem_om = float(vypocet.celkem_vc_dph_bez_di or 0) / (1 + sazba_dph)
+            else:
+                celkem_om = (
+                    float(vypocet.mesicni_plat or 0) +
+                    float(vypocet.platba_za_elektrinu_vt or 0) +
+                    float(vypocet.platba_za_elektrinu_nt or 0) +
+                    float(vypocet.platba_za_jistic or 0) +
+                    float(vypocet.platba_za_distribuci_vt or 0) +
+                    float(vypocet.platba_za_distribuci_nt or 0) +
+                    float(vypocet.systemove_sluzby or 0) +
+                    poze_minimum +
+                    float(vypocet.nesitova_infrastruktura or 0) +
+                    float(vypocet.dan_z_elektriny or 0)
+                )
+
+            odecet = Odecet.query.filter_by(
+                stredisko_id=stredisko_id,
+                obdobi_id=obdobi.id,
+                oznaceni=om.cislo_om.zfill(7) if om.cislo_om else None
+            ).first()
+
+            spotreba_vt_mwh = float(odecet.spotreba_vt or 0) / 1000 if odecet else 0
+            spotreba_nt_mwh = float(odecet.spotreba_nt or 0) / 1000 if odecet else 0
+            celkova_spotreba_mwh = spotreba_vt_mwh + spotreba_nt_mwh
+
+            jednotkova_cena_elektriny_vt = float(vypocet.platba_za_elektrinu_vt or 0) / spotreba_vt_mwh if spotreba_vt_mwh > 0 else 0
+            jednotkova_cena_elektriny_nt = float(vypocet.platba_za_elektrinu_nt or 0) / spotreba_nt_mwh if spotreba_nt_mwh > 0 else 0
+            jednotkova_cena_distribuce_vt = float(vypocet.platba_za_distribuci_vt or 0) / spotreba_vt_mwh if spotreba_vt_mwh > 0 else 0
+            jednotkova_cena_distribuce_nt = float(vypocet.platba_za_distribuci_nt or 0) / spotreba_nt_mwh if spotreba_nt_mwh > 0 else 0
+            jednotkova_cena_systemove_sluzby = float(vypocet.systemove_sluzby or 0) / celkova_spotreba_mwh if celkova_spotreba_mwh > 0 else 0
+            jednotkova_cena_poze = float(poze_minimum) / celkova_spotreba_mwh if celkova_spotreba_mwh > 0 else 0
+            jednotkova_cena_dan = float(vypocet.dan_z_elektriny or 0) / celkova_spotreba_mwh if celkova_spotreba_mwh > 0 else 0
+
+            delka_obdobi = float(vypocet.delka_obdobi_fakturace or 1)
+            jednotkova_cena_poze_jistic = poze_jistic / delka_obdobi if delka_obdobi > 0 else 0
+            jednotkova_cena_mesicni_plat = float(vypocet.mesicni_plat or 0) / delka_obdobi if delka_obdobi > 0 else 0
+            jednotkova_cena_jistic = float(vypocet.platba_za_jistic or 0) / delka_obdobi if delka_obdobi > 0 else 0
+            jednotkova_cena_nesitova_infra = float(vypocet.nesitova_infrastruktura or 0) / delka_obdobi if delka_obdobi > 0 else 0
+
+            vypocty_data.append({
+                'om': om,
+                'vypocet': vypocet,
+                'odecet': odecet,
+                'poze_minimum': poze_minimum,
+                'poze_je_jistic': poze_je_jistic,
+                'poze_jistic': poze_jistic,
+                'poze_spotreba': poze_spotreba,
+                'celkem_om': celkem_om,
+                'sazba_dph': sazba_dph,
+                'spotreba_vt_mwh': spotreba_vt_mwh,
+                'spotreba_nt_mwh': spotreba_nt_mwh,
+                'celkova_spotreba_mwh': celkova_spotreba_mwh,
+                'jednotkova_cena_elektriny_vt': jednotkova_cena_elektriny_vt,
+                'jednotkova_cena_elektriny_nt': jednotkova_cena_elektriny_nt,
+                'jednotkova_cena_distribuce_vt': jednotkova_cena_distribuce_vt,
+                'jednotkova_cena_distribuce_nt': jednotkova_cena_distribuce_nt,
+                'jednotkova_cena_systemove_sluzby': jednotkova_cena_systemove_sluzby,
+                'jednotkova_cena_poze': jednotkova_cena_poze,
+                'jednotkova_cena_poze_jistic': jednotkova_cena_poze_jistic,
+                'jednotkova_cena_dan': jednotkova_cena_dan,
+                'jednotkova_cena_mesicni_plat': jednotkova_cena_mesicni_plat,
+                'jednotkova_cena_jistic': jednotkova_cena_jistic,
+                'jednotkova_cena_nesitova_infra': jednotkova_cena_nesitova_infra
+            })
+
+        if faktura and faktura.fakturovat_jen_distribuci:
+            priloha2_template = "print/priloha2_jen_distribuce.html"
+        else:
+            priloha2_template = "print/priloha2.html"
+
+        priloha2_html = render_template(priloha2_template,
+                                       stredisko=stredisko_obj,
+                                       obdobi=obdobi,
+                                       faktura=faktura,
+                                       dodavatel=dodavatel,
+                                       vypocty_data=vypocty_data)
+
+        # 4. KOMBINUJ HTML do jednoho dokumentu
+        cislo_faktury = faktura.cislo_faktury if faktura and faktura.cislo_faktury else "Faktura"
+
+        combined_html = f"""
+        <!DOCTYPE html>
+        <html lang="cs">
+        <head>
+            <meta charset="UTF-8">
+            <title>Kompletní faktura - {cislo_faktury}</title>
+            <style>
+                @media print {{
+                    .page-break {{ page-break-before: always; }}
+                }}
+                .page-break {{
+                    margin-top: 50px;
+                    padding-top: 20px;
+                    border-top: 3px solid #333;
+                }}
+            </style>
+        </head>
+        <body>
+            <!-- FAKTURA -->
+            {faktura_html}
+
+            <!-- PŘÍLOHA 1 -->
+            <div class="page-break">
+                {priloha1_html}
+            </div>
+
+            <!-- PŘÍLOHA 2 -->
+            <div class="page-break">
+                {priloha2_html}
+            </div>
+        </body>
+        </html>
+        """
+
+        print("[SUCCESS] Kompletní HTML vygenerováno")
+        return combined_html
+
+    except Exception as e:
+        print(f"[ERROR] Chyba při generování kompletního HTML: {str(e)}")
+        return f"Chyba při generování kompletního HTML: {str(e)}", 500
+
+
 # ==== KONEC SOUBORU ====

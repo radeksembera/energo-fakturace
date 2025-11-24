@@ -199,19 +199,20 @@ def export():
         for col_num, metrika in enumerate(vybrane_metriky, 2):
             hodnota = getattr(vypocet, metrika, None)
 
-            # Formátuj čísla
-            if hodnota is not None:
-                if isinstance(hodnota, (int, float)):
-                    # Pro spotřebu zobraz jako celé číslo
-                    if metrika == 'spotreba_om':
-                        ws.cell(row=row_num, column=col_num, value=int(hodnota))
-                    else:
-                        # Pro ostatní hodnoty použij 2 desetinná místa
-                        ws.cell(row=row_num, column=col_num, value=float(hodnota))
-                else:
-                    ws.cell(row=row_num, column=col_num, value=hodnota)
+            # Defaultní hodnota pokud není vyplněno
+            if hodnota is None:
+                hodnota = 0
+
+            # Zapiš hodnotu jako číslo
+            cell = ws.cell(row=row_num, column=col_num, value=float(hodnota))
+
+            # Nastav formátování podle typu metriky
+            if metrika == 'spotreba_om':
+                # Spotřeba v kWh - custom formát s mezerami jako oddělovač tisíců
+                cell.number_format = '### ###0" kWh"'
             else:
-                ws.cell(row=row_num, column=col_num, value=0)
+                # Všechny ostatní hodnoty v Kč - currency formát
+                cell.number_format = '#,##0.00" Kč"'
 
         row_num += 1
 

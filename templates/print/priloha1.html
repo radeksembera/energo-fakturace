@@ -30,9 +30,14 @@
         .document-title { font-size: 14px; font-weight: bold; margin-bottom: 10px; }
         
         /* ✅ NOVÝ STYL PRO ODBĚRNÁ MÍSTA */
-        .odberne-misto { 
-            margin-bottom: 20px; 
-            page-break-inside: avoid; 
+        .odberne-misto {
+            margin-bottom: 20px;
+            page-break-inside: avoid;
+        }
+
+        /* ✅ PAGE BREAK - každé OM na nové stránce */
+        .om-page-break {
+            page-break-after: always;
         }
         .om-header { 
             font-weight: bold; 
@@ -94,7 +99,7 @@
     <!-- ✅ ODBĚRNÁ MÍSTA - nový design podle vzoru -->
     {% for odecet in odecty %}
     {% set om = odecet.odberne_misto %}
-    <div class="odberne-misto">
+    <div class="odberne-misto {% if faktura and faktura.om_na_stranku %}om-page-break{% endif %}">
         <!-- ✅ Název na jednom řádku -->
         <div class="om-header">
             Odběrné místo: {{ om.cislo_om if om else odecet.oznaceni }} {{ om.nazev_om if om else '' }}

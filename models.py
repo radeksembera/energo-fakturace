@@ -248,6 +248,7 @@ class Faktura(db.Model):
     fakturace_od = db.Column(db.Date)
     fakturace_do = db.Column(db.Date)
     fakturovat_jen_distribuci = db.Column(db.Boolean, default=False, nullable=False)
+    om_na_stranku = db.Column(db.Boolean, default=False, nullable=False)
 
 # --- CISLA FAKTUR ---
 class CislaFaktur(db.Model):

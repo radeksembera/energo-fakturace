@@ -876,6 +876,9 @@ def ulozit_fakturu(stredisko_id, obdobi_id):
     # Zpracuj checkbox pro fakturování jen distribuce
     faktura.fakturovat_jen_distribuci = bool(request.form.get("fakturovat_jen_distribuci"))
 
+    # Zpracuj checkbox pro OM na 1 stránku
+    faktura.om_na_stranku = bool(request.form.get("om_na_stranku"))
+
     dph = request.form.get("dph")
     if dph:
         faktura.sazba_dph = float(dph)

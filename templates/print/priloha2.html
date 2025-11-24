@@ -26,6 +26,11 @@
             margin-bottom: 40px;
             page-break-inside: avoid;
         }
+
+        /* ✅ PAGE BREAK - každé OM na nové stránce */
+        .om-page-break {
+            page-break-after: always;
+        }
         
         .om-info {
             margin-bottom: 20px;
@@ -121,7 +126,7 @@
 <body>
 
     {% for data in vypocty_data %}
-    <div class="om-container">
+    <div class="om-container {% if faktura and faktura.om_na_stranku %}om-page-break{% endif %}">
         
         <!-- Informace o odběrném místě -->
         <div class="om-info">
