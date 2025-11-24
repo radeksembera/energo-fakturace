@@ -218,6 +218,32 @@
                 </tr>
                 {% endif %}
                 {% endif %}
+
+                <!-- Ostatní (Dofakturace, Slevový bonus) -->
+                {% set has_ostatni = (data.vypocet.dofakturace and data.vypocet.dofakturace != 0) or (data.vypocet.slevovy_bonus and data.vypocet.slevovy_bonus != 0) %}
+                {% if has_ostatni %}
+                <tr class="category-row">
+                    <td colspan="5"><strong>Ostatní</strong></td>
+                </tr>
+                {% if data.vypocet.dofakturace and data.vypocet.dofakturace != 0 %}
+                <tr class="item-row">
+                    <td>Dofakturace</td>
+                    <td class="right">1</td>
+                    <td class="right">měs.</td>
+                    <td class="right">{{ (data.vypocet.dofakturace or 0)|number_format }}</td>
+                    <td class="right">{{ (data.vypocet.dofakturace or 0)|number_format }}</td>
+                </tr>
+                {% endif %}
+                {% if data.vypocet.slevovy_bonus and data.vypocet.slevovy_bonus != 0 %}
+                <tr class="item-row">
+                    <td>Slevový bonus</td>
+                    <td class="right">1</td>
+                    <td class="right">měs.</td>
+                    <td class="right">-{{ (data.vypocet.slevovy_bonus or 0)|number_format }}</td>
+                    <td class="right">-{{ (data.vypocet.slevovy_bonus or 0)|number_format }}</td>
+                </tr>
+                {% endif %}
+                {% endif %}
             </tbody>
         </table>
 

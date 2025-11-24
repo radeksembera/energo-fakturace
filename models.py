@@ -157,6 +157,8 @@ class VypocetOM(db.Model):
     platba_za_elektrinu_vt = db.Column(db.Numeric)
     platba_za_elektrinu_nt = db.Column(db.Numeric)
     mesicni_plat = db.Column(db.Numeric)
+    dofakturace = db.Column(db.Numeric)
+    slevovy_bonus = db.Column(db.Numeric)
     zaklad_bez_dph = db.Column(db.Numeric)
     castka_dph = db.Column(db.Numeric)
     celkem_vc_dph = db.Column(db.Numeric)
@@ -184,7 +186,6 @@ class Odečet(db.Model):
     spotreba_nt = db.Column(db.Numeric)
     dofakturace = db.Column(db.Numeric)
     slevovy_bonus = db.Column(db.Numeric)
-    priznak = db.Column(db.Text)
 
 # --- IMPORT ODECTU ---
 class ImportOdečtu(db.Model):

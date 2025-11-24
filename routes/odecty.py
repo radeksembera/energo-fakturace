@@ -1,4 +1,4 @@
-from flask import Blueprint, render_template, request, redirect, url_for, session, flash
+from flask import Blueprint, render_template, request, redirect, url_for, session, flash, jsonify
 from models import db, Stredisko, ImportOdečtu, Odečet, ZalohovaFaktura, ObdobiFakturace
 # Alias pro zpětnou kompatibilitu s kódem bez diakritiky
 ImportOdectu = ImportOdečtu
@@ -305,7 +305,6 @@ def import_potvrdit(stredisko_id):
                 
                 # Ostatní data ze společného záznamu
                 slevovy_bonus=spolecne_data.slevovy_bonus,
-                priznak=spolecne_data.priznak,
                 dofakturace=spolecne_data.dofakturace,
                 obdobi_id=obdobi_id
             )
@@ -358,3 +357,83 @@ def kontrola_odectu(stredisko_id):
         vybrane_obdobi=vybrane_obdobi,
         odecty=odecty
     )
+
+
+@odecty_bp.route("/<int:stredisko_id>/upravit_odecet", methods=["POST"])
+def upravit_odecet(stredisko_id):
+    """API endpoint pro inline úpravu odečtu (dofakturace, slevovy_bonus)"""
+    if not session.get("user_id"):
+        return jsonify({"status": "error", "message": "Nejste přihlášeni"}), 401
+
+    stredisko = Stredisko.query.get_or_404(stredisko_id)
+    if stredisko.user_id != session["user_id"]:
+        return jsonify({"status": "error", "message": "Nepovolený přístup"}), 403
+
+    try:
+        odecet_id = request.form.get('pk')
+        field_name = request.form.get('name')
+        new_value = request.form.get('value')
+
+        # Povolené sloupce pro úpravu
+        allowed_fields = ['dofakturace', 'slevovy_bonus']
+        if field_name not in allowed_fields:
+            return jsonify({"status": "error", "message": f"Nepovolené pole: {field_name}"}), 400
+
+        odecet = Odecet.query.get(odecet_id)
+        if not odecet or odecet.stredisko_id != stredisko_id:
+            return jsonify({"status": "error", "message": "Odečet nenalezen"}), 404
+
+        # Převeď hodnotu na číslo
+        if new_value == '' or new_value is None:
+            numeric_value = None
+        else:
+            try:
+                # Odstraň případné "Kč" a mezery
+                clean_value = str(new_value).replace('Kč', '').replace(' ', '').replace(',', '.')
+                numeric_value = float(clean_value)
+            except ValueError:
+                return jsonify({"status": "error", "message": "Neplatná číselná hodnota"}), 400
+
+        setattr(odecet, field_name, numeric_value)
+        db.session.commit()
+
+        field_label = "Dofakturace" if field_name == "dofakturace" else "Bonus"
+        return jsonify({
+            "status": "success",
+            "message": f"{field_label} byla úspěšně aktualizována"
+        })
+
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({"status": "error", "message": f"Chyba při ukládání: {str(e)}"}), 500
+
+
+@odecty_bp.route("/<int:stredisko_id>/smazat_odecet", methods=["POST"])
+def smazat_odecet(stredisko_id):
+    """API endpoint pro smazání odečtu"""
+    if not session.get("user_id"):
+        return jsonify({"status": "error", "message": "Nejste přihlášeni"}), 401
+
+    stredisko = Stredisko.query.get_or_404(stredisko_id)
+    if stredisko.user_id != session["user_id"]:
+        return jsonify({"status": "error", "message": "Nepovolený přístup"}), 403
+
+    try:
+        odecet_id = request.form.get('odecet_id')
+
+        odecet = Odecet.query.get(odecet_id)
+        if not odecet or odecet.stredisko_id != stredisko_id:
+            return jsonify({"status": "error", "message": "Odečet nenalezen"}), 404
+
+        oznaceni = odecet.oznaceni
+        db.session.delete(odecet)
+        db.session.commit()
+
+        return jsonify({
+            "status": "success",
+            "message": f"Odečet pro OM {oznaceni} byl smazán"
+        })
+
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({"status": "error", "message": f"Chyba při mazání: {str(e)}"}), 500

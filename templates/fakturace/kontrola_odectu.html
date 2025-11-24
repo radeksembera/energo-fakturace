@@ -161,7 +161,7 @@
                                 <th class="text-end">Spotřeba NT<br><small class="text-muted">(kWh)</small></th>
                                 <th class="text-end">Dofakturace</th>
                                 <th class="text-end">Bonus</th>
-                                <th class="pe-4">Příznak</th>
+                                <th class="pe-4">Akce</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -227,31 +227,44 @@
                                         <span class="text-muted">-</span>
                                     {% endif %}
                                 </td>
-                                <!-- Dofakturace a bonus -->
+                                <!-- Dofakturace a bonus - editovatelné -->
                                 <td class="text-end">
-                                    {% if odecet.dofakturace is not none %}
-                                        {% if odecet.dofakturace|float > 0 %}
-                                            <span class="fw-medium text-danger">{{ (odecet.dofakturace|float)|round(2) }} Kč</span>
+                                    <a href="#" class="editable"
+                                       data-name="dofakturace"
+                                       data-value="{{ odecet.dofakturace or '' }}"
+                                       data-pk="{{ odecet.id }}"
+                                       data-url="{{ url_for('odecty.upravit_odecet', stredisko_id=stredisko.id) }}">
+                                        {% if odecet.dofakturace is not none %}
+                                            {% if odecet.dofakturace|float > 0 %}
+                                                <span class="text-danger">{{ (odecet.dofakturace|float)|round(2) }} Kč</span>
+                                            {% else %}
+                                                <span>{{ (odecet.dofakturace|float)|round(2) }} Kč</span>
+                                            {% endif %}
                                         {% else %}
-                                            <span class="fw-medium">{{ (odecet.dofakturace|float)|round(2) }} Kč</span>
+                                            <span class="text-muted">0.00 Kč</span>
                                         {% endif %}
-                                    {% else %}
-                                        <span class="text-muted">-</span>
-                                    {% endif %}
+                                    </a>
                                 </td>
                                 <td class="text-end">
-                                    {% if odecet.slevovy_bonus is not none %}
-                                        <span class="fw-medium text-success">{{ (odecet.slevovy_bonus|float)|round(2) }} Kč</span>
-                                    {% else %}
-                                        <span class="text-muted">-</span>
-                                    {% endif %}
+                                    <a href="#" class="editable"
+                                       data-name="slevovy_bonus"
+                                       data-value="{{ odecet.slevovy_bonus or '' }}"
+                                       data-pk="{{ odecet.id }}"
+                                       data-url="{{ url_for('odecty.upravit_odecet', stredisko_id=stredisko.id) }}">
+                                        {% if odecet.slevovy_bonus is not none %}
+                                            <span class="text-success">{{ (odecet.slevovy_bonus|float)|round(2) }} Kč</span>
+                                        {% else %}
+                                            <span class="text-muted">0.00 Kč</span>
+                                        {% endif %}
+                                    </a>
                                 </td>
                                 <td class="pe-4">
-                                    {% if odecet.priznak %}
-                                        <span class="badge bg-info">{{ odecet.priznak }}</span>
-                                    {% else %}
-                                        <span class="text-muted">-</span>
-                                    {% endif %}
+                                    <button class="btn btn-sm btn-outline-danger"
+                                            data-odecet-id="{{ odecet.id }}"
+                                            data-odecet-oznaceni="{{ odecet.oznaceni }}"
+                                            onclick="deleteOdecet(this)">
+                                        <i class="bi bi-trash"></i>
+                                    </button>
                                 </td>
                             </tr>
                             {% endfor %}
@@ -298,54 +311,156 @@
 {% endblock %}
 
 {% block extra_css %}
+<!-- X-editable CSS -->
+<link href="https://cdnjs.cloudflare.com/ajax/libs/x-editable/1.5.1/bootstrap3-editable/css/bootstrap-editable.css" rel="stylesheet">
+
 <style>
     .icon-info {
         color: #0ea5e9;
     }
-    
+
     .table th {
         font-size: 0.8125rem;
         white-space: nowrap;
     }
-    
+
     .table td {
         font-size: 0.875rem;
         vertical-align: middle;
     }
-    
+
     .badge {
         font-size: 0.75rem;
         padding: 0.375rem 0.75rem;
     }
-    
+
     .fw-medium {
         font-weight: 500;
     }
-    
+
     /* Colored values */
     .text-success {
         color: var(--success-color) !important;
     }
-    
+
     .text-info {
         color: #0ea5e9 !important;
     }
-    
+
     .text-danger {
         color: var(--danger-color) !important;
     }
-    
+
     /* Stats cards responsive */
     @media (max-width: 768px) {
         .stats-card {
             margin-bottom: 1rem;
         }
     }
+
+    /* Editable styling */
+    .editable {
+        color: var(--primary-color);
+        cursor: pointer;
+        border-bottom: 1px dashed var(--primary-color);
+        text-decoration: none;
+    }
+
+    .editable:hover {
+        background-color: var(--background-secondary);
+        text-decoration: none;
+    }
 </style>
 {% endblock %}
 
 {% block extra_js %}
+<!-- X-editable JS -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.6.0/jquery.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/x-editable/1.5.1/bootstrap3-editable/js/bootstrap-editable.min.js"></script>
+
 <script>
+    // Initialize X-editable
+    $(document).ready(function() {
+        $.fn.editable.defaults.mode = 'inline';
+        $.fn.editable.defaults.emptytext = '0.00 Kč';
+
+        $('.editable').editable({
+            type: 'text',
+            title: 'Upravit hodnotu',
+            placeholder: 'Zadejte hodnotu...',
+            emptyclass: 'text-muted',
+            showbuttons: 'bottom',
+            onblur: 'ignore',
+
+            success: function(response, newValue) {
+                try {
+                    const result = typeof response === 'string' ? JSON.parse(response) : response;
+                    if (result.status === 'success') {
+                        showAlert('success', '✅ ' + result.message);
+                        // Aktualizuj zobrazení s formátovanou hodnotou
+                        const val = parseFloat(newValue) || 0;
+                        return {newValue: val.toFixed(2) + ' Kč'};
+                    } else {
+                        showAlert('danger', '❌ ' + result.message);
+                        return result.message;
+                    }
+                } catch (e) {
+                    showAlert('danger', '❌ Chyba při zpracování odpovědi');
+                    return 'Chyba při zpracování';
+                }
+            },
+
+            error: function(xhr, status, error) {
+                const message = xhr.responseJSON?.message || 'Chyba při ukládání';
+                showAlert('danger', '❌ ' + message);
+                return message;
+            }
+        });
+    });
+
+    function deleteOdecet(button) {
+        const odecetId = button.getAttribute('data-odecet-id');
+        const oznaceni = button.getAttribute('data-odecet-oznaceni');
+
+        if (confirm(`Opravdu chcete smazat odečet pro OM ${oznaceni}?`)) {
+            fetch('{{ url_for("odecty.smazat_odecet", stredisko_id=stredisko.id) }}', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/x-www-form-urlencoded',
+                },
+                body: `odecet_id=${odecetId}`
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.status === 'success') {
+                    showAlert('success', '✅ ' + data.message);
+                    setTimeout(() => location.reload(), 1500);
+                } else {
+                    showAlert('danger', '❌ ' + data.message);
+                }
+            })
+            .catch(error => {
+                showAlert('danger', '❌ Chyba při mazání');
+            });
+        }
+    }
+
+    function showAlert(type, message) {
+        $('.alert').remove();
+
+        const alertHtml = `
+            <div class="alert alert-${type} alert-dismissible fade show position-fixed" style="top: 20px; right: 20px; z-index: 9999;">
+                ${message}
+                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+            </div>
+        `;
+        $('body').prepend(alertHtml);
+
+        setTimeout(function() {
+            $('.alert').fadeOut();
+        }, 5000);
+    }
+
     document.addEventListener('DOMContentLoaded', function() {
         // Auto-submit form when period changes
         const obdobiSelect = document.getElementById('obdobi_select');
@@ -354,7 +469,7 @@
                 this.form.submit();
             });
         }
-        
+
         // Format numbers with spaces as thousand separators
         const numberCells = document.querySelectorAll('[data-format="number"]');
         numberCells.forEach(cell => {

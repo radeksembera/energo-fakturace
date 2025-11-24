@@ -422,19 +422,25 @@ def prepocitat_koncove_ceny(stredisko_id):
                 # 11. mesicni_plat = cena * poměr období
                 mesicni_plat = float(cena_dodavatel.mesicni_plat or 0) * delka_obdobi_fakturace
 
-                # 12. zaklad_bez_dph = suma všech složek + MIN(poze_dle_jistice, poze_dle_spotreby)
+                # 12. Načti dofakturace a slevovy_bonus z odečtu
+                dofakturace_hodnota = float(odecet.dofakturace or 0)
+                slevovy_bonus_hodnota = float(odecet.slevovy_bonus or 0)
+
+                # 13. zaklad_bez_dph = suma všech složek + MIN(poze_dle_jistice, poze_dle_spotreby) + dofakturace - bonus
                 poze_minimum = min(poze_dle_jistice, poze_dle_spotreby)
                 zaklad_bez_dph = (
-                    platba_za_jistic + 
-                    platba_za_distribuci_vt + 
-                    platba_za_distribuci_nt + 
-                    systemove_sluzby + 
-                    poze_minimum + 
-                    nesitova_infrastruktura + 
-                    dan_z_elektriny + 
-                    platba_za_elektrinu_vt + 
-                    platba_za_elektrinu_nt + 
-                    mesicni_plat
+                    platba_za_jistic +
+                    platba_za_distribuci_vt +
+                    platba_za_distribuci_nt +
+                    systemove_sluzby +
+                    poze_minimum +
+                    nesitova_infrastruktura +
+                    dan_z_elektriny +
+                    platba_za_elektrinu_vt +
+                    platba_za_elektrinu_nt +
+                    mesicni_plat +
+                    dofakturace_hodnota -
+                    slevovy_bonus_hodnota
                 )
 
                 # 13. castka_dph = zaklad_bez_dph * sazba_dph
@@ -488,7 +494,11 @@ def prepocitat_koncove_ceny(stredisko_id):
                     platba_za_elektrinu_vt=round(platba_za_elektrinu_vt, 2),
                     platba_za_elektrinu_nt=round(platba_za_elektrinu_nt, 2),
                     mesicni_plat=round(mesicni_plat, 2),
-                    
+
+                    # Dofakturace a bonus z odečtů
+                    dofakturace=round(dofakturace_hodnota, 2),
+                    slevovy_bonus=round(slevovy_bonus_hodnota, 2),
+
                     # Celkové výpočty
                     zaklad_bez_dph=round(zaklad_bez_dph, 2),
                     castka_dph=round(castka_dph, 2),
@@ -647,11 +657,11 @@ def parametry_fakturace(stredisko_id):
     fak = Faktura.query.filter_by(stredisko_id=stredisko_id, obdobi_id=vybrane_obdobi.id).first()
     zal = ZalohovaFaktura.query.filter_by(stredisko_id=stredisko_id, obdobi_id=vybrane_obdobi.id).first()
 
-    return render_template("fakturace/parametry_fakturace.html", 
-                          stredisko=stredisko, 
+    return render_template("fakturace/parametry_fakturace.html",
+                          stredisko=stredisko,
                           vybrane_obdobi=vybrane_obdobi,
-                          vsechna_obdobi=dostupna_obdobi,
-                          fak=fak, 
+                          dostupna_obdobi=dostupna_obdobi,
+                          fak=fak,
                           zal=zal)
 
 

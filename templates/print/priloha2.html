@@ -254,11 +254,13 @@
                 {% endif %}
                 {% endif %}
                 
-                <!-- Daň -->
-                {% if data.vypocet.dan_z_elektriny and data.vypocet.dan_z_elektriny != 0 %}
+                <!-- Ostatní (Daň, Dofakturace, Slevový bonus) -->
+                {% set has_ostatni = (data.vypocet.dan_z_elektriny and data.vypocet.dan_z_elektriny != 0) or (data.vypocet.dofakturace and data.vypocet.dofakturace != 0) or (data.vypocet.slevovy_bonus and data.vypocet.slevovy_bonus != 0) %}
+                {% if has_ostatni %}
                 <tr class="category-row">
-                    <td colspan="5"><strong>Daň</strong></td>
+                    <td colspan="5"><strong>Ostatní</strong></td>
                 </tr>
+                {% if data.vypocet.dan_z_elektriny and data.vypocet.dan_z_elektriny != 0 %}
                 <tr class="item-row">
                     <td>Daň</td>
                     <td class="right">{{ data.celkova_spotreba_mwh|czech_number(4) }}</td>
@@ -266,6 +268,25 @@
                     <td class="right">{{ data.jednotkova_cena_dan|number_format }}</td>
                     <td class="right">{{ (data.vypocet.dan_z_elektriny or 0)|number_format }}</td>
                 </tr>
+                {% endif %}
+                {% if data.vypocet.dofakturace and data.vypocet.dofakturace != 0 %}
+                <tr class="item-row">
+                    <td>Dofakturace</td>
+                    <td class="right">1</td>
+                    <td class="right">měs.</td>
+                    <td class="right">{{ (data.vypocet.dofakturace or 0)|number_format }}</td>
+                    <td class="right">{{ (data.vypocet.dofakturace or 0)|number_format }}</td>
+                </tr>
+                {% endif %}
+                {% if data.vypocet.slevovy_bonus and data.vypocet.slevovy_bonus != 0 %}
+                <tr class="item-row">
+                    <td>Slevový bonus</td>
+                    <td class="right">1</td>
+                    <td class="right">měs.</td>
+                    <td class="right">-{{ (data.vypocet.slevovy_bonus or 0)|number_format }}</td>
+                    <td class="right">-{{ (data.vypocet.slevovy_bonus or 0)|number_format }}</td>
+                </tr>
+                {% endif %}
                 {% endif %}
             </tbody>
         </table>
