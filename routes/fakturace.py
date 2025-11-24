@@ -248,7 +248,10 @@ def prepocitat_koncove_ceny(stredisko_id):
         vybrane_obdobi = get_session_obdobi(stredisko_id)
         aktualni_rok = vybrane_obdobi.rok         # 2025
         aktualni_mesic = vybrane_obdobi.mesic     # 6 (červen!)
-        
+
+        # Přečti volbu checkboxu pro zahrnutí OM s nulovou spotřebou
+        zahrnout_nulove = request.args.get('zahrnout_nulove', '0') == '1'
+
         # Načti všechna odběrná místa
         odberna_mista = OdberneMisto.query.filter_by(stredisko_id=stredisko_id).all()
         
@@ -458,6 +461,11 @@ def prepocitat_koncove_ceny(stredisko_id):
 
                 # Celkem s DPH jen distribuce
                 celkem_vc_dph_bez_di = zaklad_bez_dph_bez_di + castka_dph_bez_di
+
+                # Pokud je checkbox odškrtnutý a spotřeba je nulová, přeskoč vytvoření záznamu
+                if not zahrnout_nulove and celkova_spotreba == 0:
+                    print(f"⏭️ OM {om.cislo_om}: Přeskakuji - nulová spotřeba a checkbox odškrtnutý")
+                    continue
 
                 # Vytvoř výpočet
                 vypocet = VypocetOM(

@@ -421,6 +421,10 @@
                                     <i class="bi bi-check-circle me-2"></i>
                                     Validace
                                 </a></li>
+                                <li><a class="dropdown-item" href="{{ url_for('virtualni_om.index') }}">
+                                    <i class="bi bi-calculator me-2"></i>
+                                    Virtuální OM
+                                </a></li>
 
                                 <!-- ✅ ADMIN MENU - zobraz pouze pro administrátory -->
                                 {% if session.is_admin %}

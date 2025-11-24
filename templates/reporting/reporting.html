@@ -132,18 +132,20 @@
                         </div>
                     </div>
                     <div class="row ms-2">
-                        {% for metrika in metriky %}
-                        <div class="col-md-6 col-lg-4 mb-2">
-                            <div class="form-check">
-                                <input class="form-check-input metrika-checkbox" type="checkbox"
-                                       name="metriky[]" value="{{ metrika.name }}"
-                                       id="metrika_{{ metrika.name }}">
-                                <label class="form-check-label" for="metrika_{{ metrika.name }}">
-                                    {{ metrika.label }}
-                                </label>
+                        <div style="column-count: 3; column-gap: 20px;">
+                            {% for metrika in metriky %}
+                            <div class="mb-2" style="break-inside: avoid;">
+                                <div class="form-check">
+                                    <input class="form-check-input metrika-checkbox" type="checkbox"
+                                           name="metriky[]" value="{{ metrika.name }}"
+                                           id="metrika_{{ metrika.name }}">
+                                    <label class="form-check-label" for="metrika_{{ metrika.name }}">
+                                        {{ metrika.label }}
+                                    </label>
+                                </div>
                             </div>
+                            {% endfor %}
                         </div>
-                        {% endfor %}
                     </div>
                     {% else %}
                     <div class="alert alert-warning-custom mb-0">

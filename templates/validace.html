@@ -100,7 +100,7 @@
                                 <td class="text-end">{{ '%.3f'|format(row.spotreba_podruzne_mwh) }}</td>
                                 <td class="text-end rozdil-cell"
                                     data-kod="{{ row.kombinovany_kod }}"
-                                    style="{% if row.rozdil < 0 %}color: red; font-weight: bold;{% endif %}">
+                                    style="{% if row.rozdil > 0 %}color: red; font-weight: bold;{% elif row.rozdil < 0 %}color: green;{% endif %}">
                                     {{ '%.3f'|format(row.rozdil) }}
                                 </td>
                             </tr>
@@ -112,7 +112,7 @@
                                 <td class="text-end suma-hlavni">{{ '%.3f'|format(suma_hlavni) }}</td>
                                 <td class="text-end suma-podruzne">{{ '%.3f'|format(suma_podruzne) }}</td>
                                 <td class="text-end suma-rozdil"
-                                    style="{% if suma_rozdil < 0 %}color: red;{% endif %}">
+                                    style="{% if suma_rozdil > 0 %}color: red; font-weight: bold;{% elif suma_rozdil < 0 %}color: green;{% endif %}">
                                     {{ '%.3f'|format(suma_rozdil) }}
                                 </td>
                             </tr>
@@ -213,6 +213,18 @@ document.addEventListener('DOMContentLoaded', function() {
         // Uložení původní hodnoty pro porovnání
         let originalValue = input.value;
 
+        // Automatická konverze čárky na tečku při zadávání
+        input.addEventListener('input', function() {
+            if (this.value.includes(',')) {
+                // Ulož pozici kurzoru
+                const cursorPosition = this.selectionStart;
+                // Nahraď čárku za tečku
+                this.value = this.value.replace(',', '.');
+                // Obnov pozici kurzoru
+                this.setSelectionRange(cursorPosition, cursorPosition);
+            }
+        });
+
         input.addEventListener('blur', function() {
             const newValue = parseFloat(this.value) || 0;
 
@@ -264,10 +276,13 @@ document.addEventListener('DOMContentLoaded', function() {
                 const rozdil = spotrebaPodruzne - spotreba;
                 rozdilCell.textContent = rozdil.toFixed(3);
 
-                // Změň barvu pokud je záporný
-                if (rozdil < 0) {
+                // Změň barvu podle hodnoty rozdílu
+                if (rozdil > 0) {
                     rozdilCell.style.color = 'red';
                     rozdilCell.style.fontWeight = 'bold';
+                } else if (rozdil < 0) {
+                    rozdilCell.style.color = 'green';
+                    rozdilCell.style.fontWeight = '';
                 } else {
                     rozdilCell.style.color = '';
                     rozdilCell.style.fontWeight = '';
@@ -316,10 +331,15 @@ document.addEventListener('DOMContentLoaded', function() {
         const sumaRozdilCell = document.querySelector('.suma-rozdil');
         sumaRozdilCell.textContent = sumaRozdil.toFixed(3);
 
-        if (sumaRozdil < 0) {
+        if (sumaRozdil > 0) {
             sumaRozdilCell.style.color = 'red';
+            sumaRozdilCell.style.fontWeight = 'bold';
+        } else if (sumaRozdil < 0) {
+            sumaRozdilCell.style.color = 'green';
+            sumaRozdilCell.style.fontWeight = '';
         } else {
             sumaRozdilCell.style.color = '';
+            sumaRozdilCell.style.fontWeight = '';
         }
     }
 
@@ -352,6 +372,11 @@ document.addEventListener('DOMContentLoaded', function() {
             }
             window.location.href = url;
         });
+    }
+
+    // Přepočítej sumy při načtení stránky
+    if (document.querySelector('.spotreba-input')) {
+        prepocitejSumy();
     }
 });
 </script>

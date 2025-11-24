@@ -91,31 +91,35 @@
                 </h5>
             </div>
             <div class="card-body p-4">
-                <div class="row align-items-center">
-                    <div class="col-md-8">
-                        <h6 class="mb-2">Správa výpočtů</h6>
-                        <p class="text-muted mb-3">
-                            Přepočítání automaticky vyhledá odpovídající ceny pro každé odběrné místo podle jeho sazby a jističe.
-                        </p>
-                    </div>
-                    <div class="col-md-4 text-md-end">
-                        <div class="d-flex flex-column gap-2">
-                            <a href="{{ url_for('fakturace.prepocitat_koncove_ceny', stredisko_id=stredisko.id) }}" 
-                               class="btn btn-success">
-                                <i class="bi bi-arrow-repeat me-2"></i>
-                                Přepočítat koncové ceny
-                            </a>
-                            {% if vypocty %}
-                            <a href="{{ url_for('fakturace.smazat_vypocty', stredisko_id=stredisko.id) }}" 
-                               onclick="return confirm('Opravdu chcete smazat všechny výpočty?')"
-                               class="btn btn-outline-danger">
-                                <i class="bi bi-trash me-2"></i>
-                                Smazat všechny výpočty
-                            </a>
-                            {% endif %}
+                <form method="get" action="{{ url_for('fakturace.prepocitat_koncove_ceny', stredisko_id=stredisko.id) }}">
+                    <div class="row align-items-center">
+                        <div class="col-md-8">
+                            <h6 class="mb-2">Správa výpočtů</h6>
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" id="zahrnout_nulove" name="zahrnout_nulove" value="1" checked>
+                                <label class="form-check-label text-muted" for="zahrnout_nulove">
+                                    Zahrnout v koncových cenách odběrná místa s nulovou spotřebou
+                                </label>
+                            </div>
+                        </div>
+                        <div class="col-md-4 text-md-end">
+                            <div class="d-flex flex-column gap-2">
+                                <button type="submit" class="btn btn-success">
+                                    <i class="bi bi-arrow-repeat me-2"></i>
+                                    Přepočítat koncové ceny
+                                </button>
+                                {% if vypocty %}
+                                <a href="{{ url_for('fakturace.smazat_vypocty', stredisko_id=stredisko.id) }}"
+                                   onclick="return confirm('Opravdu chcete smazat všechny výpočty?')"
+                                   class="btn btn-outline-danger">
+                                    <i class="bi bi-trash me-2"></i>
+                                    Smazat všechny výpočty
+                                </a>
+                                {% endif %}
+                            </div>
                         </div>
                     </div>
-                </div>
+                </form>
             </div>
         </div>
 

@@ -46,6 +46,25 @@ class CenaDodavatel(db.Model):
     platba_za_elektrinu_nt = db.Column(db.Numeric)
     mesicni_plat = db.Column(db.Numeric)
 
+# --- VIRTUÁLNÍ OM ---
+class VirtualCenaDistribuce(db.Model):
+    """Ceny distribuce pro virtuální výpočet OM - nezávislé na střediscích"""
+    __tablename__ = 'virtual_ceny_distribuce'
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('users.id'))
+    distribuce = db.Column(db.Text)
+    sazba = db.Column(db.Text)
+    jistic = db.Column(db.Text)
+    rok = db.Column(db.Integer)
+    platba_za_jistic = db.Column(db.Numeric)
+    platba_za_distribuci_vt = db.Column(db.Numeric)
+    platba_za_distribuci_nt = db.Column(db.Numeric)
+    systemove_sluzby = db.Column(db.Numeric)
+    poze_dle_jistice = db.Column(db.Numeric)
+    poze_dle_spotreby = db.Column(db.Numeric)
+    nesitova_infrastruktura = db.Column(db.Numeric)
+    dan_z_elektriny = db.Column(db.Numeric)
+
 # --- INFO ---
 class InfoDodavatele(db.Model):
     __tablename__ = 'info_dodavatele'

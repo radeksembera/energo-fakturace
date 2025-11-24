@@ -1,0 +1,434 @@
+{% extends "base.html" %}
+
+{% block title %}Virtuální odběrné místo{% endblock %}
+
+{% block breadcrumb %}
+<nav aria-label="breadcrumb">
+    <ol class="breadcrumb breadcrumb-custom">
+        <li class="breadcrumb-item">
+            <a href="{{ url_for('strediska.strediska') }}">
+                <i class="bi bi-house-door me-1"></i>
+                Střediska
+            </a>
+        </li>
+        <li class="breadcrumb-item active">
+            <i class="bi bi-calculator me-1"></i>
+            Virtuální odběrné místo
+        </li>
+    </ol>
+</nav>
+{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-12">
+        <!-- Page Header -->
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <div>
+                <h1 class="h2 mb-1">
+                    <i class="bi bi-calculator icon-primary me-2"></i>
+                    Virtuální odběrné místo
+                </h1>
+                <p class="text-muted mb-0">Virtuální výpočet pro jedno odběrné místo</p>
+            </div>
+            <div class="d-flex gap-2">
+                <a href="{{ url_for('strediska.strediska') }}"
+                   class="btn btn-outline-primary-custom">
+                    <i class="bi bi-arrow-left me-2"></i>
+                    Zpět na střediska
+                </a>
+            </div>
+        </div>
+
+        <!-- Blok 1: Vstupní formulář -->
+        <div class="card-custom mb-4">
+            <div class="card-header-custom">
+                <h5 class="card-title">
+                    <i class="bi bi-sliders icon-primary me-2"></i>
+                    Parametry výpočtu
+                </h5>
+            </div>
+            <div class="card-body p-4">
+                <form method="post" id="vypocetForm">
+                    <div class="row">
+                        <!-- Rok -->
+                        <div class="col-md-4 mb-3">
+                            <label for="rok" class="form-label-custom">
+                                <i class="bi bi-calendar me-2"></i>
+                                Rok
+                            </label>
+                            <select class="form-select form-control-custom" id="rok" name="rok" required>
+                                <option value="2024" {% if formular_data.rok == 2024 %}selected{% endif %}>2024</option>
+                                <option value="2025" {% if formular_data.rok == 2025 or not formular_data.rok %}selected{% endif %}>2025</option>
+                                <option value="2026" {% if formular_data.rok == 2026 %}selected{% endif %}>2026</option>
+                                <option value="2027" {% if formular_data.rok == 2027 %}selected{% endif %}>2027</option>
+                            </select>
+                        </div>
+
+                        <!-- Distribuce -->
+                        <div class="col-md-4 mb-3">
+                            <label for="distribuce" class="form-label-custom">
+                                <i class="bi bi-building me-2"></i>
+                                Distribuce
+                            </label>
+                            <select class="form-select form-control-custom" id="distribuce" name="distribuce" required>
+                                <option value="">Vyberte distribuci</option>
+                                <option value="ČEZ" {% if formular_data.distribuce == 'ČEZ' %}selected{% endif %}>ČEZ Distribuce</option>
+                                <option value="EGD" {% if formular_data.distribuce == 'EGD' %}selected{% endif %}>EGD Distribuce</option>
+                                <option value="PRE" {% if formular_data.distribuce == 'PRE' %}selected{% endif %}>PRE Distribuce</option>
+                            </select>
+                        </div>
+
+                        <!-- Distribuční sazba -->
+                        <div class="col-md-4 mb-3">
+                            <label for="distribucni_sazba" class="form-label-custom">
+                                <i class="bi bi-bar-chart me-2"></i>
+                                Distribuční sazba
+                            </label>
+                            <select class="form-select form-control-custom" id="distribucni_sazba" name="distribucni_sazba" required>
+                                <option value="">Vyberte sazbu</option>
+                                {% for sazba in ['C01d', 'C02d', 'C03d', 'C25d', 'C26d', 'C27d', 'C35d', 'C45d', 'C46d', 'C56d', 'C62d', 'D01d', 'D02d', 'D25d', 'D26d', 'D27d', 'D35d', 'D45d', 'D56d', 'D57d', 'D61d'] %}
+                                <option value="{{ sazba }}" {% if formular_data.distribucni_sazba == sazba %}selected{% endif %}>{{ sazba }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+
+                        <!-- Kategorie jističe -->
+                        <div class="col-md-6 mb-3">
+                            <label for="kategorie_jistice" class="form-label-custom">
+                                <i class="bi bi-lightning me-2"></i>
+                                Kategorie jističe
+                            </label>
+                            <select class="form-select form-control-custom" id="kategorie_jistice" name="kategorie_jistice" required>
+                                <option value="">Vyberte kategorii</option>
+                                {% for kat in ['do 3x10A do 1x25A včetně', 'nad 3x10A do 3x16A včetně', 'nad 3x16A do 3x20A včetně', 'nad 3x20A do 3x25A včetně', 'nad 3x25A do 3x32A včetně', 'nad 3x32A do 3x40A včetně', 'nad 3x40A do 3x50A včetně', 'nad 3x50A do 3x63A včetně', 'nad 3x63A do 3x80A včetně', 'nad 3x80A do 3x100A včetně', 'nad 3x100A do 3x125A včetně', 'nad 3x125A do 3x160A včetně', 'nad 3x160A za každou 1A', 'nad 1x25A za každou 1A', 'nad 3x63A za každou 1A'] %}
+                                <option value="{{ kat }}" {% if formular_data.kategorie_jistice == kat %}selected{% endif %}>{{ kat }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+
+                        <!-- Hodnota jističe -->
+                        <div class="col-md-3 mb-3">
+                            <label for="hodnota_jistice" class="form-label-custom">
+                                <i class="bi bi-speedometer me-2"></i>
+                                Hodnota jističe (A)
+                            </label>
+                            <input type="number"
+                                   class="form-control form-control-custom"
+                                   id="hodnota_jistice"
+                                   name="hodnota_jistice"
+                                   step="1"
+                                   min="0"
+                                   value="{{ formular_data.hodnota_jistice or '' }}"
+                                   placeholder="např. 25"
+                                   required>
+                        </div>
+
+                        <!-- Délka fakturačního období -->
+                        <div class="col-md-3 mb-3">
+                            <label for="delka_obdobi" class="form-label-custom">
+                                <i class="bi bi-calendar-range me-2"></i>
+                                Délka fakt. období (měsíce)
+                            </label>
+                            <input type="number"
+                                   class="form-control form-control-custom"
+                                   id="delka_obdobi"
+                                   name="delka_obdobi"
+                                   step="0.001"
+                                   min="0"
+                                   max="12"
+                                   value="{{ formular_data.delka_obdobi or '1' }}"
+                                   placeholder="1"
+                                   required>
+                        </div>
+                    </div>
+
+                    <hr class="my-4">
+                    <h6 class="mb-3 text-muted">
+                        <i class="bi bi-currency-dollar me-2"></i>
+                        Ceny dodavatele
+                    </h6>
+
+                    <div class="row">
+                        <!-- Platba za silovou el. VT -->
+                        <div class="col-md-3 mb-3">
+                            <label for="platba_silova_vt" class="form-label-custom">
+                                <i class="bi bi-sun me-2"></i>
+                                Silová el. VT (Kč/MWh)
+                            </label>
+                            <input type="number"
+                                   class="form-control form-control-custom"
+                                   id="platba_silova_vt"
+                                   name="platba_silova_vt"
+                                   step="0.01"
+                                   min="0"
+                                   value="{{ formular_data.platba_silova_vt or '' }}"
+                                   placeholder="např. 2500"
+                                   required>
+                        </div>
+
+                        <!-- Platba za silovou el. NT -->
+                        <div class="col-md-3 mb-3">
+                            <label for="platba_silova_nt" class="form-label-custom">
+                                <i class="bi bi-moon me-2"></i>
+                                Silová el. NT (Kč/MWh)
+                            </label>
+                            <input type="number"
+                                   class="form-control form-control-custom"
+                                   id="platba_silova_nt"
+                                   name="platba_silova_nt"
+                                   step="0.01"
+                                   min="0"
+                                   value="{{ formular_data.platba_silova_nt or '' }}"
+                                   placeholder="např. 2200"
+                                   required>
+                        </div>
+
+                        <!-- Měsíční plat -->
+                        <div class="col-md-3 mb-3">
+                            <label for="mesicni_plat" class="form-label-custom">
+                                <i class="bi bi-cash me-2"></i>
+                                Měsíční plat (Kč/měsíc)
+                            </label>
+                            <input type="number"
+                                   class="form-control form-control-custom"
+                                   id="mesicni_plat"
+                                   name="mesicni_plat"
+                                   step="0.01"
+                                   min="0"
+                                   value="{{ formular_data.mesicni_plat or '' }}"
+                                   placeholder="např. 50"
+                                   required>
+                        </div>
+
+                        <!-- Sazba DPH -->
+                        <div class="col-md-3 mb-3">
+                            <label for="sazba_dph" class="form-label-custom">
+                                <i class="bi bi-percent me-2"></i>
+                                Sazba DPH (%)
+                            </label>
+                            <input type="number"
+                                   class="form-control form-control-custom"
+                                   id="sazba_dph"
+                                   name="sazba_dph"
+                                   step="0.1"
+                                   min="0"
+                                   max="100"
+                                   value="{{ formular_data.sazba_dph or '21' }}"
+                                   placeholder="21"
+                                   required>
+                        </div>
+                    </div>
+
+                    <hr class="my-4">
+                    <h6 class="mb-3 text-muted">
+                        <i class="bi bi-lightning-charge me-2"></i>
+                        Spotřeba
+                    </h6>
+
+                    <div class="row">
+                        <!-- Spotřeba VT -->
+                        <div class="col-md-6 mb-3">
+                            <label for="spotreba_vt" class="form-label-custom">
+                                <i class="bi bi-sun-fill me-2"></i>
+                                Spotřeba VT (kWh)
+                            </label>
+                            <input type="number"
+                                   class="form-control form-control-custom"
+                                   id="spotreba_vt"
+                                   name="spotreba_vt"
+                                   step="0.01"
+                                   min="0"
+                                   value="{{ formular_data.spotreba_vt or '' }}"
+                                   placeholder="např. 1500"
+                                   required>
+                        </div>
+
+                        <!-- Spotřeba NT -->
+                        <div class="col-md-6 mb-3">
+                            <label for="spotreba_nt" class="form-label-custom">
+                                <i class="bi bi-moon-fill me-2"></i>
+                                Spotřeba NT (kWh)
+                            </label>
+                            <input type="number"
+                                   class="form-control form-control-custom"
+                                   id="spotreba_nt"
+                                   name="spotreba_nt"
+                                   step="0.01"
+                                   min="0"
+                                   value="{{ formular_data.spotreba_nt or '0' }}"
+                                   placeholder="např. 500">
+                        </div>
+                    </div>
+
+                    <!-- Tlačítko přepočítat -->
+                    <div class="d-flex justify-content-end mt-4">
+                        <button type="submit" class="btn btn-primary-custom btn-lg">
+                            <i class="bi bi-calculator me-2"></i>
+                            Přepočítat
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <!-- Blok 2: Výsledky -->
+        <div class="card-custom mb-4">
+            <div class="card-header-custom">
+                <h5 class="card-title">
+                    <i class="bi bi-clipboard-data icon-success me-2"></i>
+                    Výsledky výpočtu
+                </h5>
+            </div>
+            <div class="card-body p-4">
+                {% if vysledky %}
+                <div class="row">
+                    <!-- Sekce Distribuce -->
+                    <div class="col-md-4 mb-4">
+                        <div class="card h-100" style="border-left: 4px solid var(--primary-color);">
+                            <div class="card-header bg-light">
+                                <h6 class="mb-0">
+                                    <i class="bi bi-lightning-charge me-2"></i>
+                                    Distribuce
+                                </h6>
+                            </div>
+                            <div class="card-body">
+                                <table class="table table-sm table-borderless mb-0">
+                                    <tbody>
+                                        <tr>
+                                            <td class="text-muted">Jistič</td>
+                                            <td class="text-end fw-bold">{{ "%.2f"|format(vysledky.platba_za_jistic) }} Kč</td>
+                                        </tr>
+                                        <tr>
+                                            <td class="text-muted">Distr. VT</td>
+                                            <td class="text-end fw-bold">{{ "%.2f"|format(vysledky.platba_za_distribuci_vt) }} Kč</td>
+                                        </tr>
+                                        <tr>
+                                            <td class="text-muted">Distr. NT</td>
+                                            <td class="text-end fw-bold">{{ "%.2f"|format(vysledky.platba_za_distribuci_nt) }} Kč</td>
+                                        </tr>
+                                        <tr>
+                                            <td class="text-muted">Syst. služby</td>
+                                            <td class="text-end fw-bold">{{ "%.2f"|format(vysledky.systemove_sluzby) }} Kč</td>
+                                        </tr>
+                                        <tr>
+                                            <td class="text-muted">POZE jistič</td>
+                                            <td class="text-end fw-bold">{{ "%.2f"|format(vysledky.poze_dle_jistice) }} Kč</td>
+                                        </tr>
+                                        <tr>
+                                            <td class="text-muted">POZE spotř.</td>
+                                            <td class="text-end fw-bold">{{ "%.2f"|format(vysledky.poze_dle_spotreby) }} Kč</td>
+                                        </tr>
+                                        <tr>
+                                            <td class="text-muted">Nesíť. infr.</td>
+                                            <td class="text-end fw-bold">{{ "%.2f"|format(vysledky.nesitova_infrastruktura) }} Kč</td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Sekce Dodavatel -->
+                    <div class="col-md-4 mb-4">
+                        <div class="card h-100" style="border-left: 4px solid var(--warning-color);">
+                            <div class="card-header bg-light">
+                                <h6 class="mb-0">
+                                    <i class="bi bi-shop me-2"></i>
+                                    Dodavatel
+                                </h6>
+                            </div>
+                            <div class="card-body">
+                                <table class="table table-sm table-borderless mb-0">
+                                    <tbody>
+                                        <tr>
+                                            <td class="text-muted">Elektř. VT</td>
+                                            <td class="text-end fw-bold">{{ "%.2f"|format(vysledky.platba_za_elektrinu_vt) }} Kč</td>
+                                        </tr>
+                                        <tr>
+                                            <td class="text-muted">Elektř. NT</td>
+                                            <td class="text-end fw-bold">{{ "%.2f"|format(vysledky.platba_za_elektrinu_nt) }} Kč</td>
+                                        </tr>
+                                        <tr>
+                                            <td class="text-muted">Měs. plat</td>
+                                            <td class="text-end fw-bold">{{ "%.2f"|format(vysledky.mesicni_plat) }} Kč</td>
+                                        </tr>
+                                        <tr>
+                                            <td class="text-muted">Daň elektř.</td>
+                                            <td class="text-end fw-bold">{{ "%.2f"|format(vysledky.dan_z_elektriny) }} Kč</td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Sekce Celkem -->
+                    <div class="col-md-4 mb-4">
+                        <div class="card h-100" style="border-left: 4px solid var(--success-color);">
+                            <div class="card-header bg-light">
+                                <h6 class="mb-0">
+                                    <i class="bi bi-calculator me-2"></i>
+                                    Celkem
+                                </h6>
+                            </div>
+                            <div class="card-body">
+                                <table class="table table-sm table-borderless mb-0">
+                                    <tbody>
+                                        <tr>
+                                            <td class="text-muted">Bez DPH</td>
+                                            <td class="text-end fw-bold">{{ "%.2f"|format(vysledky.zaklad_bez_dph) }} Kč</td>
+                                        </tr>
+                                        <tr>
+                                            <td class="text-muted">DPH</td>
+                                            <td class="text-end fw-bold">{{ "%.2f"|format(vysledky.castka_dph) }} Kč</td>
+                                        </tr>
+                                        <tr class="table-success">
+                                            <td class="fw-bold">S DPH</td>
+                                            <td class="text-end fw-bold fs-5">{{ "%.2f"|format(vysledky.celkem_vc_dph) }} Kč</td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                                <hr>
+                                <small class="text-muted">
+                                    <i class="bi bi-info-circle me-1"></i>
+                                    POZE použito: {{ "%.2f"|format(vysledky.poze_minimum) }} Kč (minimum z jističe a spotřeby)
+                                </small>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                {% else %}
+                <div class="alert alert-info-custom alert-custom mb-0">
+                    <i class="bi bi-info-circle me-2"></i>
+                    Vyplňte parametry výše a klikněte na "Přepočítat" pro zobrazení výsledků.
+                </div>
+                {% endif %}
+            </div>
+        </div>
+
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_css %}
+<style>
+    /* Placeholder styling */
+    .form-control-custom::placeholder {
+        color: #cbd5e1;
+        opacity: 1;
+    }
+
+    hr {
+        border-color: var(--border-color);
+    }
+
+    .card {
+        border-radius: 8px;
+    }
+
+    .table-sm td {
+        padding: 0.5rem 0.25rem;
+    }
+</style>
+{% endblock %}
