@@ -44,14 +44,14 @@ def strediska():
     user_id = session["user_id"]
     user = User.query.get(user_id)
     
-    # Admin vidí všechna střediska
+    # Admin vidí všechna AKTIVNÍ střediska
     if user and user.is_admin:
-        strediska = Stredisko.query.order_by(Stredisko.nazev_strediska).all()
+        strediska = Stredisko.query.filter_by(aktivni=True).order_by(Stredisko.nazev_strediska).all()
         print(f"Admin vidi {len(strediska)} stredisek")
     else:
         # Kombinuj oba přístupy - původní + nový systém
-        # 1. Střediska podle původního systému (user_id)
-        strediska_puvodni = Stredisko.query.filter_by(user_id=user_id).all()
+        # 1. Střediska podle původního systému (user_id) - jen aktivní
+        strediska_puvodni = Stredisko.query.filter_by(user_id=user_id, aktivni=True).all()
         
         # 2. Střediska podle nového systému (UserStredisko tabulka) - zatím neimplementováno
         strediska_nova = []
@@ -370,78 +370,72 @@ def smazat_odberne_misto(stredisko_id):
     
     return {"status": "success", "message": f"Odběrné místo {cislo_om} bylo smazáno"}
 
-@strediska_bp.route("/<int:stredisko_id>/smazat", methods=["POST"])
+@strediska_bp.route("/<int:stredisko_id>/deaktivovat", methods=["POST"])
 @login_required
-def smazat_stredisko(stredisko_id):
-    """Smaže středisko a všechna přináležející odběrná místa"""
+def deaktivovat_stredisko(stredisko_id):
+    """Deaktivuje středisko (soft delete)"""
     has_access, error_response = check_stredisko_access(stredisko_id, 'write')
     if not has_access:
-        flash("❌ Nemáte oprávnění smazat toto středisko.")
+        flash("❌ Nemáte oprávnění deaktivovat toto středisko.")
         return redirect(url_for("strediska.spravovat_stredisko", stredisko_id=stredisko_id))
 
     stredisko = Stredisko.query.get_or_404(stredisko_id)
-    
-    try:
-        # Zjisti počet odběrných míst před smazáním
-        odberna_mista = OdberneMisto.query.filter_by(stredisko_id=stredisko_id).all()
-        pocet_om = len(odberna_mista)
-        
-        # Smaž všechna odběrná místa tohoto střediska
-        for om in odberna_mista:
-            # Smaž všechny výpočty pro toto odběrné místo
-            vypocty = VypocetOM.query.filter_by(odberne_misto_id=om.id).all()
-            for vypocet in vypocty:
-                db.session.delete(vypocet)
 
-            # Smaž odběrné místo
-            db.session.delete(om)
-        
-        # Smaž všechna období fakturace pro toto středisko (nejdříve závislé záznamy)
-        obdobi = ObdobiFakturace.query.filter_by(stredisko_id=stredisko_id).all()
-        for okres in obdobi:
-            # Smaž všechny záznamy odkazující na toto období fakturace
-            
-            # Faktury pro toto období
-            faktury = Faktura.query.filter_by(obdobi_id=okres.id).all()
-            for faktura in faktury:
-                db.session.delete(faktura)
-                
-            # Zálohové faktury pro toto období
-            zalohove_faktury = ZalohovaFaktura.query.filter_by(obdobi_id=okres.id).all()
-            for zalohova_faktura in zalohove_faktury:
-                db.session.delete(zalohova_faktura)
-                
-            # Import odečtů pro toto období
-            importy_odectu = ImportOdečtu.query.filter_by(obdobi_id=okres.id).all()
-            for import_odectu in importy_odectu:
-                db.session.delete(import_odectu)
-            
-            # Ceny dodavatele pro toto období
-            ceny_dodavatel = CenaDodavatel.query.filter_by(obdobi_id=okres.id).all()
-            for cena in ceny_dodavatel:
-                db.session.delete(cena)
-                
-            # Poznámka: CenaDistribuce nemá obdobi_id, ale stredisko_id - smaže se později
-            
-            # Teď už můžeme smazat období fakturace
-            db.session.delete(okres)
-        
-        # Smaž ceny distribuce pro toto středisko
-        ceny_distribuce = CenaDistribuce.query.filter_by(stredisko_id=stredisko_id).all()
-        for cena in ceny_distribuce:
-            db.session.delete(cena)
-        
-        # Smaž středisko
+    try:
         nazev_strediska = stredisko.nazev_strediska
-        db.session.delete(stredisko)
-        
-        # Commit všech změn
+        stredisko.aktivni = False
+
         db.session.commit()
-        
-        flash(f"✅ Středisko '{nazev_strediska}' a {pocet_om} odběrných míst bylo úspěšně smazáno.")
+
+        flash(f"✅ Středisko '{nazev_strediska}' bylo deaktivováno.")
         return redirect(url_for("strediska.strediska"))
-        
+
     except Exception as e:
         db.session.rollback()
-        flash(f"❌ Chyba při mazání střediska: {str(e)}")
+        flash(f"❌ Chyba při deaktivaci střediska: {str(e)}")
         return redirect(url_for("strediska.spravovat_stredisko", stredisko_id=stredisko_id))
+
+@strediska_bp.route("/deaktivovana")
+@login_required
+def deaktivovana_strediska():
+    """Zobrazí seznam deaktivovaných středisek"""
+    user_id = session["user_id"]
+    user = User.query.get(user_id)
+
+    # Admin vidí všechna DEAKTIVOVANÁ střediska
+    if user and user.is_admin:
+        strediska = Stredisko.query.filter_by(aktivni=False).order_by(Stredisko.nazev_strediska).all()
+    else:
+        # Běžný uživatel vidí jen své deaktivované střediska
+        strediska = Stredisko.query.filter_by(user_id=user_id, aktivni=False).order_by(Stredisko.nazev_strediska).all()
+
+    # Přidej počet odběrných míst pro každé středisko
+    for stredisko in strediska:
+        stredisko.pocet_om = OdberneMisto.query.filter_by(stredisko_id=stredisko.id).count()
+
+    return render_template("deaktivovana_strediska.html", strediska=strediska)
+
+@strediska_bp.route("/<int:stredisko_id>/aktivovat", methods=["POST"])
+@login_required
+def aktivovat_stredisko(stredisko_id):
+    """Aktivuje deaktivované středisko"""
+    has_access, error_response = check_stredisko_access(stredisko_id, 'write')
+    if not has_access:
+        flash("❌ Nemáte oprávnění aktivovat toto středisko.")
+        return redirect(url_for("strediska.deaktivovana_strediska"))
+
+    stredisko = Stredisko.query.get_or_404(stredisko_id)
+
+    try:
+        nazev_strediska = stredisko.nazev_strediska
+        stredisko.aktivni = True
+
+        db.session.commit()
+
+        flash(f"✅ Středisko '{nazev_strediska}' bylo aktivováno.")
+        return redirect(url_for("strediska.deaktivovana_strediska"))
+
+    except Exception as e:
+        db.session.rollback()
+        flash(f"❌ Chyba při aktivaci střediska: {str(e)}")
+        return redirect(url_for("strediska.deaktivovana_strediska"))

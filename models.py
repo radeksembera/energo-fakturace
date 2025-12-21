@@ -113,6 +113,7 @@ class Stredisko(db.Model):
     poznamka = db.Column(db.Text)
     nazev_faktury = db.Column(db.Text)
     role = db.Column(db.Text, nullable=False)
+    aktivni = db.Column(db.Boolean, default=True, nullable=False)
 
     odberna_mista = db.relationship('OdberneMisto', backref='stredisko', cascade="all, delete")
     odecty = db.relationship('Odečet', backref='stredisko', cascade="all, delete")

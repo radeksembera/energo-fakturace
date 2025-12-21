@@ -1,0 +1,178 @@
+{% extends "base.html" %}
+
+{% block title %}Deaktivovaná střediska - Flow fakturace{% endblock %}
+
+{% block breadcrumb %}
+<nav aria-label="breadcrumb">
+    <ol class="breadcrumb breadcrumb-custom">
+        <li class="breadcrumb-item">
+            <a href="{{ url_for('strediska.strediska') }}">
+                <i class="bi bi-house-door me-1"></i>
+                Střediska
+            </a>
+        </li>
+        <li class="breadcrumb-item active">Deaktivovaná střediska</li>
+    </ol>
+</nav>
+{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-12">
+        <!-- Page Header -->
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <div>
+                <h1 class="h2 mb-1">Deaktivovaná střediska</h1>
+                <p class="text-muted mb-0">Přehled skrytých středisek - můžete je kdykoliv znovu aktivovat</p>
+            </div>
+            <div class="d-flex gap-2">
+                <a href="{{ url_for('strediska.strediska') }}" class="btn btn-outline-primary-custom">
+                    <i class="bi bi-arrow-left me-2"></i>
+                    Zpět na aktivní střediska
+                </a>
+            </div>
+        </div>
+
+        <!-- Střediska Cards -->
+        {% if strediska %}
+        <div class="row">
+            {% for s in strediska %}
+            <div class="col-lg-6 col-xl-4 mb-4">
+                <div class="card-custom h-100 deactivated-card">
+                    <div class="card-header-custom bg-light">
+                        <div class="d-flex justify-content-between align-items-start">
+                            <h5 class="card-title mb-0 text-muted">
+                                <i class="bi bi-archive icon-secondary me-2"></i>
+                                {{ s.nazev_strediska }}
+                            </h5>
+                            <span class="badge bg-secondary">ID: {{ s.id }}</span>
+                        </div>
+                    </div>
+                    <div class="card-body p-4">
+                        <div class="mb-3">
+                            <div class="row">
+                                <div class="col-sm-4 mb-2">
+                                    <small class="text-muted d-block">Kód střediska</small>
+                                    <strong>{{ s.stredisko }}</strong>
+                                </div>
+                                <div class="col-sm-4 mb-2">
+                                    <small class="text-muted d-block">Distribuce</small>
+                                    {% if s.distribuce == 'ČEZ' %}
+                                        <span class="badge bg-success">{{ s.distribuce }}</span>
+                                    {% elif s.distribuce == 'EGD' %}
+                                        <span class="badge bg-warning">{{ s.distribuce }}</span>
+                                    {% elif s.distribuce == 'PRE' %}
+                                        <span class="badge bg-info">{{ s.distribuce }}</span>
+                                    {% else %}
+                                        <span class="badge bg-secondary">{{ s.distribuce }}</span>
+                                    {% endif %}
+                                </div>
+                                <div class="col-sm-4 mb-2">
+                                    <small class="text-muted d-block">Odběrná místa</small>
+                                    <strong>{{ s.pocet_om }}</strong>
+                                </div>
+                            </div>
+                        </div>
+
+                        {% if s.poznamka %}
+                        <div class="mb-3">
+                            <small class="text-muted d-block">Poznámka</small>
+                            <div class="text-sm text-muted">{{ s.poznamka }}</div>
+                        </div>
+                        {% endif %}
+                    </div>
+                    <div class="card-footer bg-transparent border-0 p-4 pt-0">
+                        <button onclick="aktivovatStredisko({{ s.id }}, '{{ s.nazev_strediska }}')"
+                                class="btn btn-success w-100">
+                            <i class="bi bi-check-circle me-2"></i>
+                            Aktivovat středisko
+                        </button>
+                    </div>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+        {% else %}
+        <!-- Empty State -->
+        <div class="text-center py-5">
+            <div class="mb-4">
+                <i class="bi bi-archive" style="font-size: 4rem; color: var(--text-muted);"></i>
+            </div>
+            <h3 class="h4 mb-3">Žádná deaktivovaná střediska</h3>
+            <p class="text-muted mb-4">Zatím jste nedeaktivovali žádné středisko.</p>
+            <a href="{{ url_for('strediska.strediska') }}" class="btn btn-outline-primary-custom">
+                <i class="bi bi-arrow-left me-2"></i>
+                Zpět na aktivní střediska
+            </a>
+        </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_css %}
+<style>
+    .text-sm {
+        font-size: 0.875rem;
+    }
+
+    .card-footer {
+        background-color: transparent !important;
+    }
+
+    .badge {
+        font-size: 0.75rem;
+        padding: 0.375rem 0.75rem;
+    }
+
+    .deactivated-card {
+        opacity: 0.85;
+        transition: all 0.2s ease;
+    }
+
+    .deactivated-card:hover {
+        opacity: 1;
+        transform: translateY(-2px);
+        box-shadow: var(--shadow-lg);
+    }
+
+    .icon-secondary {
+        color: #6c757d;
+    }
+</style>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+function aktivovatStredisko(strediskoId, nazevStrediska) {
+    // Potvrzení
+    const potvrzeni = confirm(
+        `Opravdu chcete aktivovat středisko "${nazevStrediska}"?\n\n` +
+        'Středisko se znovu zobrazí v hlavním přehledu a bude možné s ním normálně pracovat.\n\n' +
+        'Klikněte na "OK" pro aktivaci.'
+    );
+
+    if (!potvrzeni) {
+        return; // Uživatel zrušil
+    }
+
+    // Vytvořit formulář a odeslat POST request
+    const form = document.createElement('form');
+    form.method = 'POST';
+    form.action = `/strediska/${strediskoId}/aktivovat`;
+
+    // Přidat CSRF token pokud existuje
+    const csrfToken = document.querySelector('meta[name="csrf-token"]');
+    if (csrfToken) {
+        const csrfInput = document.createElement('input');
+        csrfInput.type = 'hidden';
+        csrfInput.name = 'csrf_token';
+        csrfInput.value = csrfToken.getAttribute('content');
+        form.appendChild(csrfInput);
+    }
+
+    document.body.appendChild(form);
+    form.submit();
+}
+</script>
+{% endblock %}
