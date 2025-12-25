@@ -20,8 +20,8 @@ def index():
 
     user_id = session["user_id"]
 
-    # Načti všechna střediska uživatele
-    strediska = Stredisko.query.filter_by(user_id=user_id).order_by(Stredisko.nazev_strediska).all()
+    # Načti všechna AKTIVNÍ střediska uživatele
+    strediska = Stredisko.query.filter_by(user_id=user_id, aktivni=True).order_by(Stredisko.nazev_strediska).all()
 
     if not strediska:
         flash("❌ Nemáte vytvořena žádná střediska.", "warning")
@@ -112,10 +112,11 @@ def export():
         flash("❌ Neplatná ID středisek.", "danger")
         return redirect(url_for('reporting.index'))
 
-    # Ověř že střediska patří uživateli
+    # Ověř že střediska patří uživateli a jsou aktivní
     strediska = Stredisko.query.filter(
         Stredisko.id.in_(strediska_ids),
-        Stredisko.user_id == user_id
+        Stredisko.user_id == user_id,
+        Stredisko.aktivni == True
     ).all()
 
     if len(strediska) != len(strediska_ids):
