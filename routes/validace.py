@@ -29,8 +29,8 @@ def index():
 
     user_id = session["user_id"]
 
-    # Načti všechna střediska uživatele (seřazená podle názvu)
-    strediska = Stredisko.query.filter_by(user_id=user_id).order_by(Stredisko.nazev_strediska).all()
+    # Načti všechna aktivní střediska uživatele (seřazená podle názvu)
+    strediska = Stredisko.query.filter_by(user_id=user_id, aktivni=True).order_by(Stredisko.nazev_strediska).all()
 
     if not strediska:
         flash("❌ Nemáte vytvořena žádná střediska.", "warning")
@@ -88,10 +88,10 @@ def index():
             # Sečti spotřebu podružných elektroměrů ze všech středisek s danými kódy
             spotreba_podruzne_kwh = 0.0
             for kod in kody:
-                # Najdi středisko s daným kódem
-                stredisko = Stredisko.query.filter_by(stredisko=kod, user_id=user_id).first()
+                # Najdi všechna aktivní střediska s daným kódem
+                strediska_s_kodem = Stredisko.query.filter_by(stredisko=kod, user_id=user_id, aktivni=True).all()
 
-                if stredisko:
+                for stredisko in strediska_s_kodem:
                     # Najdi období pro toto středisko
                     obdobi = ObdobiFakturace.query.filter_by(
                         stredisko_id=stredisko.id,

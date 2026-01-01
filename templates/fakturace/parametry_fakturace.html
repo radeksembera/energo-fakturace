@@ -470,6 +470,18 @@
             });
         });
         
+        // Auto-sync variabilního symbolu s číslem faktury
+        const cisloFaktury = document.getElementById('cislo_faktury');
+        const variabilniSymbol = document.getElementById('vs_f');
+
+        if (cisloFaktury && variabilniSymbol) {
+            cisloFaktury.addEventListener('input', function() {
+                if (this.value) {
+                    variabilniSymbol.value = this.value;
+                }
+            });
+        }
+
         // Auto-calculate datum splatnosti (30 dní od vystavení)
         const datumVystaveni = document.getElementById('vystaveni_f');
         const datumSplatnosti = document.getElementById('splatnost_f');

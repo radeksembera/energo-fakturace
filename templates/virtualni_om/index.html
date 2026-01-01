@@ -101,7 +101,7 @@
                             </label>
                             <select class="form-select form-control-custom" id="kategorie_jistice" name="kategorie_jistice" required>
                                 <option value="">Vyberte kategorii</option>
-                                {% for kat in ['do 3x10A do 1x25A včetně', 'nad 3x10A do 3x16A včetně', 'nad 3x16A do 3x20A včetně', 'nad 3x20A do 3x25A včetně', 'nad 3x25A do 3x32A včetně', 'nad 3x32A do 3x40A včetně', 'nad 3x40A do 3x50A včetně', 'nad 3x50A do 3x63A včetně', 'nad 3x63A do 3x80A včetně', 'nad 3x80A do 3x100A včetně', 'nad 3x100A do 3x125A včetně', 'nad 3x125A do 3x160A včetně', 'nad 3x160A za každou 1A', 'nad 1x25A za každou 1A', 'nad 3x63A za každou 1A'] %}
+                                {% for kat in ['do 3x10A a do 1x25A včetně', 'nad 3x10A do 3x16A včetně', 'nad 3x16A do 3x20A včetně', 'nad 3x20A do 3x25A včetně', 'nad 3x25A do 3x32A včetně', 'nad 3x32A do 3x40A včetně', 'nad 3x40A do 3x50A včetně', 'nad 3x50A do 3x63A včetně', 'nad 3x63A do 3x80A včetně', 'nad 3x80A do 3x100A včetně', 'nad 3x100A do 3x125A včetně', 'nad 3x125A do 3x160A včetně', 'nad 3x160A za každou 1A', 'nad 1x25A za každou 1A', 'nad 3x63A za každou 1A'] %}
                                 <option value="{{ kat }}" {% if formular_data.kategorie_jistice == kat %}selected{% endif %}>{{ kat }}</option>
                                 {% endfor %}
                             </select>
