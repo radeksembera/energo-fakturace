@@ -38,7 +38,7 @@
             <div class="card-header-custom">
                 <h5 class="card-title">
                     <i class="bi bi-lightning-charge icon-primary me-2"></i>
-                    Hlavní jističe
+                    Hlavní elektroměry
                 </h5>
             </div>
             <div class="card-body p-4">
@@ -70,7 +70,7 @@
                             <tr>
                                 <th>Projekt</th>
                                 <th>Kód střediska</th>
-                                <th class="text-end">Spotřeba hlavní jistič (MWh)</th>
+                                <th class="text-end">Spotřeba hlavní elektroměr (MWh)</th>
                                 <th class="text-end">Spotřeba podružné elektroměry (MWh)</th>
                                 <th class="text-end">Rozdíl</th>
                             </tr>
@@ -129,7 +129,7 @@
         </div>
 
         <!-- Střediska -->
-        <div class="card-custom mb-4">
+        <div class="card-custom mb-4" id="sekce-strediska">
             <div class="card-header-custom">
                 <h5 class="card-title">
                     <i class="bi bi-building icon-primary me-2"></i>
@@ -370,8 +370,19 @@ document.addEventListener('DOMContentLoaded', function() {
             if (rok && mesic) {
                 url += `&rok=${rok}&mesic=${mesic}`;
             }
+            url += '#sekce-strediska';
             window.location.href = url;
         });
+    }
+
+    // Po načtení stránky scrolluj k sekci Střediska, pokud je v URL hash
+    if (window.location.hash === '#sekce-strediska') {
+        setTimeout(() => {
+            const sekce = document.getElementById('sekce-strediska');
+            if (sekce) {
+                sekce.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            }
+        }, 100);
     }
 
     // Přepočítej sumy při načtení stránky
