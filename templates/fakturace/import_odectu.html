@@ -65,18 +65,28 @@
             </div>
             <div class="card-body p-4">
                 <form method="get" class="d-flex align-items-center gap-3 flex-wrap">
-                    <label for="obdobi_select" class="form-label-custom mb-0">
+                    <label class="form-label-custom mb-0">
                         <i class="bi bi-calendar me-2"></i>
                         Import odečtů pro období:
                     </label>
-                    <select name="obdobi_id" id="obdobi_select" class="form-select form-control-custom" 
-                            style="width: auto;" onchange="this.form.submit()">
-                        {% for obdobi in vsechna_obdobi %}
-                            <option value="{{ obdobi.id }}" {% if vybrane_obdobi and vybrane_obdobi.id == obdobi.id %}selected{% endif %}>
-                                {{ obdobi.rok }}/{{ "%02d"|format(obdobi.mesic) }}
+                    <div class="d-flex gap-2 align-items-center">
+                        <select name="rok" class="form-select form-control-custom" style="width: auto;">
+                            {% set roky = vsechna_obdobi|map(attribute='rok')|unique|list|sort %}
+                            {% for rok in roky %}
+                            <option value="{{ rok }}" {% if vybrane_obdobi and rok == vybrane_obdobi.rok %}selected{% endif %}>
+                                {{ rok }}
                             </option>
-                        {% endfor %}
-                    </select>
+                            {% endfor %}
+                        </select>
+                        <span class="text-muted">/</span>
+                        <select name="mesic" class="form-select form-control-custom" style="width: auto;" onchange="this.form.submit()">
+                            {% for mesic in range(1, 13) %}
+                            <option value="{{ mesic }}" {% if vybrane_obdobi and mesic == vybrane_obdobi.mesic %}selected{% endif %}>
+                                {{ "%02d"|format(mesic) }}
+                            </option>
+                            {% endfor %}
+                        </select>
+                    </div>
                     <div class="text-muted">
                         <small>Středisko: <strong>{{ stredisko.nazev_strediska }}</strong></small>
                     </div>
@@ -128,6 +138,53 @@
                     <input type="file" id="xlsxUpload" name="xlsx_file" accept=".xlsx,.xls" 
                            onchange="document.getElementById('uploadForm').submit();">
                 </form>
+            </div>
+        </div>
+
+        <!-- Confirmation Section - moved above table -->
+        <div class="card-custom mb-4">
+            <div class="card-header-custom">
+                <h5 class="card-title">
+                    <i class="bi bi-check-circle icon-success me-2"></i>
+                    Potvrzení importu
+                </h5>
+            </div>
+            <div class="card-body p-4">
+                <div class="d-flex align-items-center justify-content-between">
+                    <div>
+                        <h6 class="mb-2">Jsou importované odečty v pořádku?</h6>
+                        <p class="text-muted mb-0">
+                            {% if importy %}
+                            Po potvrzení budou data přenesena do systému a můžete pokračovat výpočtem cen.
+                            {% else %}
+                            Nejprve načtěte odečty ze souboru, poté můžete potvrdit import.
+                            {% endif %}
+                        </p>
+                    </div>
+                    <div class="d-flex flex-column gap-2">
+                        {% if importy %}
+                        <a href="{{ url_for('odecty.import_potvrdit', stredisko_id=stredisko.id, obdobi_id=vybrane_obdobi.id) }}"
+                           class="btn btn-success btn-lg">
+                            <i class="bi bi-check-circle me-2"></i>
+                            Nahrát do systému
+                        </a>
+                        <a href="{{ url_for('odecty.kontrola_odectu', stredisko_id=stredisko.id) }}"
+                           class="btn btn-outline-info btn-lg">
+                            <i class="bi bi-search me-2"></i>
+                            Kontrola odečtů
+                        </a>
+                        {% else %}
+                        <button class="btn btn-success btn-lg" disabled>
+                            <i class="bi bi-check-circle me-2"></i>
+                            Nahrát do systému
+                        </button>
+                        <button class="btn btn-outline-info btn-lg" disabled>
+                            <i class="bi bi-search me-2"></i>
+                            Kontrola odečtů
+                        </button>
+                        {% endif %}
+                    </div>
+                </div>
             </div>
         </div>
 
@@ -206,35 +263,9 @@
                 </div>
             </div>
         </div>
+        {% endif %}
 
-        <!-- Confirmation Section -->
-        <div class="card-custom">
-            <div class="card-header-custom">
-                <h5 class="card-title">
-                    <i class="bi bi-check-circle icon-success me-2"></i>
-                    Potvrzení importu
-                </h5>
-            </div>
-            <div class="card-body p-4">
-                <div class="d-flex align-items-center justify-content-between">
-                    <div>
-                        <h6 class="mb-2">Jsou importované odečty v pořádku?</h6>
-                        <p class="text-muted mb-0">
-                            Po potvrzení budou data přenesena do systému a můžete pokračovat výpočtem cen.
-                        </p>
-                    </div>
-                    <div>
-                        <a href="{{ url_for('odecty.import_potvrdit', stredisko_id=stredisko.id, obdobi_id=vybrane_obdobi.id) }}"
-                           class="btn btn-success btn-lg">
-                            <i class="bi bi-check-circle me-2"></i>
-                            Nahrát do systému
-                        </a>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        {% else %}
+        {% if not importy %}
         <!-- Empty State -->
         <div class="text-center py-5">
             <div class="mb-4">

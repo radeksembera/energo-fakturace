@@ -45,19 +45,29 @@
                 <!-- Výběr období -->
                 <form method="get" class="mb-4">
                     <div class="row align-items-end">
-                        <div class="col-md-4">
-                            <label for="obdobi_select" class="form-label-custom">
+                        <div class="col-md-6">
+                            <label class="form-label-custom">
                                 <i class="bi bi-calendar me-2"></i>
                                 Vyberte období:
                             </label>
-                            <select name="obdobi" id="obdobi_select" class="form-select form-control-custom">
-                                {% for obdobi in obdobi_list %}
-                                <option value="{{ obdobi.rok }}-{{ obdobi.mesic }}"
-                                        {% if vybrane_obdobi and obdobi.rok == vybrane_obdobi.rok and obdobi.mesic == vybrane_obdobi.mesic %}selected{% endif %}>
-                                    {{ '%02d'|format(obdobi.mesic) }}/{{ obdobi.rok }}
-                                </option>
-                                {% endfor %}
-                            </select>
+                            <div class="d-flex gap-2 align-items-center">
+                                <select name="rok" class="form-select form-control-custom" style="width: auto;">
+                                    {% set roky = obdobi_list|map(attribute='rok')|unique|list|sort %}
+                                    {% for rok in roky %}
+                                    <option value="{{ rok }}" {% if vybrane_obdobi and rok == vybrane_obdobi.rok %}selected{% endif %}>
+                                        {{ rok }}
+                                    </option>
+                                    {% endfor %}
+                                </select>
+                                <span class="text-muted">/</span>
+                                <select name="mesic" class="form-select form-control-custom" style="width: auto;" onchange="this.form.submit()">
+                                    {% for mesic in range(1, 13) %}
+                                    <option value="{{ mesic }}" {% if vybrane_obdobi and mesic == vybrane_obdobi.mesic %}selected{% endif %}>
+                                        {{ '%02d'|format(mesic) }}
+                                    </option>
+                                    {% endfor %}
+                                </select>
+                            </div>
                         </div>
                     </div>
                 </form>

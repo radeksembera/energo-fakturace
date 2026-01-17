@@ -10,10 +10,11 @@ from models import ObdobiFakturace
 def get_current_obdobi():
     """
     Vrátí aktuální období (aktuální měsíc - 1)
+    Např. dnes 17.1.2026 -> vrátí (2025, 12)
     """
     now = datetime.now()
     if now.month == 1:
-        return 2025, 12  # Prosinec předchozího roku
+        return now.year - 1, 12  # Prosinec předchozího roku
     else:
         return now.year, now.month - 1
 

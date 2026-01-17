@@ -100,20 +100,6 @@
             </div>
         </div>
 
-        <!-- Info Box -->
-        <div class="alert alert-custom mb-4" style="background-color: #fffbeb; border-left-color: #f59e0b; color: #92400e;">
-            <div class="d-flex align-items-start">
-                <i class="bi bi-info-circle-fill me-3 mt-1 flex-shrink-0" style="color: #f59e0b;"></i>
-                <div>
-                    <h6 class="mb-2">Rozdíl oproti cenám distribuce</h6>
-                    <p class="mb-0 small">
-                        Ceny dodavatele se nastavují měsíčně a mohou se měnit podle tržních podmínek. 
-                        Ceny distribuce se obvykle mění pouze jednou ročně a jsou regulované.
-                    </p>
-                </div>
-            </div>
-        </div>
-
         <!-- Actions Section -->
         <div class="card-custom mb-4">
             <div class="card-header-custom">
@@ -532,10 +518,8 @@
 <script>
     function confirmDelete() {
         var obdobi = "{{ zvoleny_rok }}/{{ '%02d'|format(zvoleny_mesic) }}";
-        if (confirm("Opravdu chcete smazat všechny ceny dodavatele pro období " + obdobi + "?")) {
-            if (confirm("Všechny záznamy pro období " + obdobi + " budou smazány. Chcete pokračovat?")) {
-                document.getElementById("deleteForm").submit();
-            }
+        if (confirm("Opravdu chcete smazat všechny ceny dodavatele pro období " + obdobi + "? Všechny záznamy pro toto období budou smazány.")) {
+            document.getElementById("deleteForm").submit();
         }
     }
 
@@ -566,14 +550,12 @@
         var predchozi_obdobi = predchozi_rok + "/" + String(predchozi_mesic).padStart(2, '0');
         var aktualni_obdobi = aktualni_rok + "/" + String(aktualni_mesic).padStart(2, '0');
         
-        if (confirm("Chcete zkopírovat všechny ceny dodavatele z období " + predchozi_obdobi + " do období " + aktualni_obdobi + "?")) {
-            if (confirm("Zkopírují se všechny cenové položky. Pokračovat?")) {
-                var button = event.target;
-                button.innerHTML = '<div class="spinner-border spinner-border-sm me-2"></div>Kopíruji ceny...';
-                button.disabled = true;
-                
-                document.getElementById("copyForm").submit();
-            }
+        if (confirm("Chcete zkopírovat všechny ceny dodavatele z období " + predchozi_obdobi + " do období " + aktualni_obdobi + "? Zkopírují se všechny cenové položky.")) {
+            var button = event.target;
+            button.innerHTML = '<div class="spinner-border spinner-border-sm me-2"></div>Kopíruji ceny...';
+            button.disabled = true;
+
+            document.getElementById("copyForm").submit();
         }
     }
 

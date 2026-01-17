@@ -57,18 +57,28 @@
             </div>
             <div class="card-body p-4">
                 <form method="get" class="d-flex align-items-center gap-3 flex-wrap">
-                    <label for="obdobi_select" class="form-label-custom mb-0">
+                    <label class="form-label-custom mb-0">
                         <i class="bi bi-calendar me-2"></i>
                         Koncové ceny pro období:
                     </label>
-                    <select name="obdobi_id" id="obdobi_select" class="form-select form-control-custom" 
-                            style="width: auto;" onchange="this.form.submit()">
-                        {% for obdobi in vsechna_obdobi %}
-                        <option value="{{ obdobi.id }}" {% if vybrane_obdobi and obdobi.id == vybrane_obdobi.id %}selected{% endif %}>
-                            {{ obdobi.rok }}/{{ '%02d'|format(obdobi.mesic) }}
-                        </option>
-                        {% endfor %}
-                    </select>
+                    <div class="d-flex gap-2 align-items-center">
+                        <select name="rok" class="form-select form-control-custom" style="width: auto;">
+                            {% set roky = vsechna_obdobi|map(attribute='rok')|unique|list|sort %}
+                            {% for rok in roky %}
+                            <option value="{{ rok }}" {% if vybrane_obdobi and rok == vybrane_obdobi.rok %}selected{% endif %}>
+                                {{ rok }}
+                            </option>
+                            {% endfor %}
+                        </select>
+                        <span class="text-muted">/</span>
+                        <select name="mesic" class="form-select form-control-custom" style="width: auto;" onchange="this.form.submit()">
+                            {% for mesic in range(1, 13) %}
+                            <option value="{{ mesic }}" {% if vybrane_obdobi and mesic == vybrane_obdobi.mesic %}selected{% endif %}>
+                                {{ '%02d'|format(mesic) }}
+                            </option>
+                            {% endfor %}
+                        </select>
+                    </div>
                     {% if vybrane_obdobi %}
                     <div class="text-muted">
                         <small>Zobrazené období: <strong>{{ vybrane_obdobi.rok }}/{{ '%02d'|format(vybrane_obdobi.mesic) }}</strong></small>

@@ -167,31 +167,13 @@ def koncove_ceny(stredisko_id):
     # Načti odběrná místa
     odberna_mista = OdberneMisto.query.filter_by(stredisko_id=stredisko_id).all()
 
-    print(f"🔍 DEBUG: Středisko ID: {stredisko_id}")
-    
-    # ✅ NOVÉ - jednotná správa období
+    # Jednotná správa období
     vsechna_obdobi = ObdobiFakturace.query.filter_by(
         stredisko_id=stredisko_id
     ).order_by(ObdobiFakturace.rok, ObdobiFakturace.mesic).all()
-    
-    # Zpracuj výběr období - speciální handling pro obdobi_id
-    obdobi_id = request.args.get('obdobi_id', type=int)
-    vybrane_obdobi = None
-    
-    if obdobi_id:
-        # Najdi období podle ID
-        obdobi = ObdobiFakturace.query.filter_by(
-            id=obdobi_id,
-            stredisko_id=stredisko_id
-        ).first()
-        
-        if obdobi:
-            set_session_obdobi(stredisko_id, obdobi.rok, obdobi.mesic)
-            vybrane_obdobi = obdobi
-    
-    if not vybrane_obdobi:
-        # Pokud není vybrané období, použij session nebo default
-        vybrane_obdobi = get_session_obdobi(stredisko_id)
+
+    # Použij jednotný session helper pro výběr období
+    vybrane_obdobi = handle_obdobi_selection(stredisko_id, request.args)
 
     # Načti výpočty pro vybrané období
     vypocty = []

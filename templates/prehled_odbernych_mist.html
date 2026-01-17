@@ -44,52 +44,36 @@
 
         <!-- Statistics Cards -->
         {% if odberna_mista %}
+        <!-- Dynamický přehled sazeb -->
+        {% set unikatni_sazby = [] %}
+        {% for om in odberna_mista %}
+            {% if om.distribucni_sazba_om and om.distribucni_sazba_om not in unikatni_sazby %}
+                {% set _ = unikatni_sazby.append(om.distribucni_sazba_om) %}
+            {% endif %}
+        {% endfor %}
+
         <div class="row mb-4">
             <div class="col-md-3">
                 <div class="stats-card">
                     <div class="stats-value">{{ odberna_mista|length }}</div>
-                    <div class="stats-label">Celkem odběrných míst</div>
+                    <div class="stats-label">OM</div>
                 </div>
             </div>
-            <div class="col-md-3">
-                <div class="stats-card" style="border-left-color: var(--success-color);">
-                    <!-- Bezpečný výpočet pomocí loop -->
-                    {% set c01d_count = namespace(value=0) %}
-                    {% for om in odberna_mista %}
-                        {% if om.distribucni_sazba_om and om.distribucni_sazba_om == 'C01d' %}
-                            {% set c01d_count.value = c01d_count.value + 1 %}
-                        {% endif %}
-                    {% endfor %}
-                    <div class="stats-value" style="color: var(--success-color);">{{ c01d_count.value }}</div>
-                    <div class="stats-label">Sazba C01d</div>
+            {% set barvy = ['var(--success-color)', '#0ea5e9', 'var(--warning-color)', '#8b5cf6', '#ec4899', '#f97316', '#14b8a6'] %}
+            {% for sazba in unikatni_sazby|sort %}
+                {% set sazba_count = namespace(value=0) %}
+                {% for om in odberna_mista %}
+                    {% if om.distribucni_sazba_om == sazba %}
+                        {% set sazba_count.value = sazba_count.value + 1 %}
+                    {% endif %}
+                {% endfor %}
+                <div class="col-md-3">
+                    <div class="stats-card" style="border-left-color: {{ barvy[loop.index0 % barvy|length] }};">
+                        <div class="stats-value" style="color: {{ barvy[loop.index0 % barvy|length] }};">{{ sazba_count.value }}</div>
+                        <div class="stats-label">{{ sazba }}</div>
+                    </div>
                 </div>
-            </div>
-            <div class="col-md-3">
-                <div class="stats-card" style="border-left-color: #0ea5e9;">
-                    <!-- Bezpečný výpočet pomocí loop -->
-                    {% set c02d_count = namespace(value=0) %}
-                    {% for om in odberna_mista %}
-                        {% if om.distribucni_sazba_om and om.distribucni_sazba_om == 'C02d' %}
-                            {% set c02d_count.value = c02d_count.value + 1 %}
-                        {% endif %}
-                    {% endfor %}
-                    <div class="stats-value" style="color: #0ea5e9;">{{ c02d_count.value }}</div>
-                    <div class="stats-label">Sazba C02d</div>
-                </div>
-            </div>
-            <div class="col-md-3">
-                <div class="stats-card" style="border-left-color: var(--warning-color);">
-                    <!-- Bezpečný výpočet pomocí loop -->
-                    {% set trojfazova_count = namespace(value=0) %}
-                    {% for om in odberna_mista %}
-                        {% if om.kategorie_jistice_om and '3x' in om.kategorie_jistice_om %}
-                            {% set trojfazova_count.value = trojfazova_count.value + 1 %}
-                        {% endif %}
-                    {% endfor %}
-                    <div class="stats-value" style="color: var(--warning-color);">{{ trojfazova_count.value }}</div>
-                    <div class="stats-label">Třífázová</div>
-                </div>
-            </div>
+            {% endfor %}
         </div>
         {% endif %}
 
@@ -510,9 +494,8 @@
         const omId = button.getAttribute('data-om-id');
         const cisloOM = button.getAttribute('data-om-cislo');
         
-        if (confirm(`Opravdu chcete smazat odběrné místo ${cisloOM}?`)) {
-            if (confirm('Všechny související výpočty budou také smazány. Pokračovat?')) {
-                fetch('{{ url_for("strediska.smazat_odberne_misto", stredisko_id=stredisko.id) }}', {
+        if (confirm(`Opravdu chcete smazat odběrné místo ${cisloOM}? Všechny související výpočty budou také smazány.`)) {
+            fetch('{{ url_for("strediska.smazat_odberne_misto", stredisko_id=stredisko.id) }}', {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/x-www-form-urlencoded',

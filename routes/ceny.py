@@ -3,6 +3,7 @@ from models import db, Stredisko, CenaDistribuce, CenaDodavatel, ObdobiFakturace
 from routes.auth import login_required
 from routes.strediska import check_stredisko_access
 from utils.helpers import safe_excel_string
+from session_helpers import handle_obdobi_selection, get_session_obdobi, set_session_obdobi
 import pandas as pd
 from datetime import datetime
 
@@ -34,7 +35,7 @@ def ceny_distribuce(stredisko_id):
                          vybrany_rok=vybrany_rok)
 
 @ceny_bp.route("/<int:stredisko_id>/ceny_dodavatele")
-@login_required 
+@login_required
 def ceny_dodavatele(stredisko_id):
     has_access, error_response = check_stredisko_access(stredisko_id, 'read')
     if not has_access:
@@ -42,51 +43,54 @@ def ceny_dodavatele(stredisko_id):
         return redirect("/strediska")
 
     stredisko = Stredisko.query.get_or_404(stredisko_id)
-    
-    # Získej rok/měsíc z URL parametrů (defaultně 2025/1)
-    url_rok = request.args.get("rok", type=int, default=2025)
-    url_mesic = request.args.get("mesic", type=int, default=1)
-    
-    # Najdi nebo vytvoř období
-    vybrane_obdobi = ObdobiFakturace.query.filter_by(
-        stredisko_id=stredisko_id,
-        rok=url_rok,
-        mesic=url_mesic
-    ).first()
-    
-    if not vybrane_obdobi:
-        # Vytvoř období pokud neexistuje
-        vybrane_obdobi = ObdobiFakturace(
-            stredisko_id=stredisko_id,
-            rok=url_rok,
-            mesic=url_mesic
-        )
-        db.session.add(vybrane_obdobi)
-        db.session.commit()
-    
-    zvoleny_rok = vybrane_obdobi.rok
-    zvoleny_mesic = vybrane_obdobi.mesic
 
-    # Načti dostupná období
+    # Použij jednotný session helper pro výběr období
+    vybrane_obdobi = handle_obdobi_selection(stredisko_id, request.args)
+
+    # Pokud období neexistuje, vytvoř ho
+    if not vybrane_obdobi:
+        # Získej rok/měsíc z URL nebo session default
+        url_rok = request.args.get("rok", type=int)
+        url_mesic = request.args.get("mesic", type=int)
+
+        if url_rok and url_mesic:
+            vybrane_obdobi = ObdobiFakturace(
+                stredisko_id=stredisko_id,
+                rok=url_rok,
+                mesic=url_mesic
+            )
+            db.session.add(vybrane_obdobi)
+            db.session.commit()
+            set_session_obdobi(stredisko_id, url_rok, url_mesic)
+
+    zvoleny_rok = vybrane_obdobi.rok if vybrane_obdobi else 2025
+    zvoleny_mesic = vybrane_obdobi.mesic if vybrane_obdobi else 1
+
+    # Načti všechna období pro středisko (pro selectbox)
+    vsechna_obdobi = ObdobiFakturace.query.filter_by(stredisko_id=stredisko_id)\
+        .order_by(ObdobiFakturace.rok, ObdobiFakturace.mesic).all()
+
+    # Načti dostupná období s cenami (pro rychlou navigaci)
     dostupna_obdobi_query = db.session.query(ObdobiFakturace.rok, ObdobiFakturace.mesic)\
         .join(CenaDodavatel, CenaDodavatel.obdobi_id == ObdobiFakturace.id)\
         .filter(ObdobiFakturace.stredisko_id == stredisko_id)\
         .distinct()\
         .order_by(ObdobiFakturace.rok.desc(), ObdobiFakturace.mesic.desc())\
         .all()
-    
+
     dostupna_obdobi = [f"{r}/{m:02d}" for r, m in dostupna_obdobi_query]
 
     # Načti ceny pro vybrané období
     ceny = []
     if vybrane_obdobi:
         ceny = CenaDodavatel.query.filter_by(obdobi_id=vybrane_obdobi.id).all()
-    
-    return render_template("ceny_dodavatele.html", 
-                         stredisko=stredisko, 
+
+    return render_template("ceny_dodavatele.html",
+                         stredisko=stredisko,
                          ceny=ceny,
                          zvoleny_rok=zvoleny_rok,
                          zvoleny_mesic=zvoleny_mesic,
+                         vsechna_obdobi=vsechna_obdobi,
                          dostupna_obdobi=dostupna_obdobi,
                          vybrane_obdobi=vybrane_obdobi)
 

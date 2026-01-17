@@ -79,12 +79,13 @@ def export():
     user_id = session["user_id"]
 
     # Získej data z formuláře
-    obdobi_str = request.form.get('obdobi')  # formát: "2025-09"
+    rok_str = request.form.get('rok')
+    mesic_str = request.form.get('mesic')
     vybrana_strediska_ids = request.form.getlist('strediska[]')  # seznam ID středisek
     vybrane_metriky = request.form.getlist('metriky[]')  # seznam názvů metrik
 
     # Validace
-    if not obdobi_str:
+    if not rok_str or not mesic_str:
         flash("❌ Vyberte období pro export.", "danger")
         return redirect(url_for('reporting.index'))
 
@@ -98,9 +99,8 @@ def export():
 
     # Parsuj období
     try:
-        rok, mesic = obdobi_str.split('-')
-        rok = int(rok)
-        mesic = int(mesic)
+        rok = int(rok_str)
+        mesic = int(mesic_str)
     except:
         flash("❌ Neplatný formát období.", "danger")
         return redirect(url_for('reporting.index'))

@@ -336,10 +336,8 @@
 <script>
     function confirmDelete() {
         var rok = document.getElementById("rokSelect").value;
-        if (confirm("Opravdu chcete smazat všechny ceny distribuce pro rok " + rok + "?")) {
-            if (confirm("Všechny záznamy pro rok " + rok + " budou smazány. Chcete pokračovat?")) {
-                document.getElementById("deleteForm").submit();
-            }
+        if (confirm("Opravdu chcete smazat všechny ceny distribuce pro rok " + rok + "? Všechny záznamy pro tento rok budou smazány.")) {
+            document.getElementById("deleteForm").submit();
         }
     }
 

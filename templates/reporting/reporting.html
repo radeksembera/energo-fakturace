@@ -51,16 +51,26 @@
                 <div class="card-body p-4">
                     {% if obdobi_list %}
                     <div class="d-flex align-items-center gap-3 flex-wrap">
-                        <label for="obdobi" class="form-label-custom mb-0">
+                        <label class="form-label-custom mb-0">
                             <i class="bi bi-calendar me-2"></i>
                             Exportovat data za období:
                         </label>
-                        <select name="obdobi" id="obdobi" class="form-select form-control-custom" style="width: auto;" required>
-                            <option value="">-- Vyberte období --</option>
-                            {% for obdobi in obdobi_list %}
-                            <option value="{{ obdobi.key }}">{{ obdobi.label }}</option>
-                            {% endfor %}
-                        </select>
+                        <div class="d-flex gap-2 align-items-center">
+                            <select name="rok" id="obdobi_rok" class="form-select form-control-custom" style="width: auto;" required>
+                                <option value="">Rok</option>
+                                {% set roky = obdobi_list|map(attribute='rok')|unique|list|sort %}
+                                {% for rok in roky %}
+                                <option value="{{ rok }}">{{ rok }}</option>
+                                {% endfor %}
+                            </select>
+                            <span class="text-muted">/</span>
+                            <select name="mesic" id="obdobi_mesic" class="form-select form-control-custom" style="width: auto;" required>
+                                <option value="">Měsíc</option>
+                                {% for mesic in range(1, 13) %}
+                                <option value="{{ mesic }}">{{ '%02d'|format(mesic) }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
                     </div>
                     {% else %}
                     <div class="alert alert-warning-custom mb-0">
@@ -190,11 +200,12 @@
     const exportForm = document.getElementById('exportForm');
     if (exportForm) {
         exportForm.addEventListener('submit', function(e) {
-            const obdobi = document.getElementById('obdobi').value;
+            const rok = document.getElementById('obdobi_rok').value;
+            const mesic = document.getElementById('obdobi_mesic').value;
             const strediska = document.querySelectorAll('.stredisko-checkbox:checked');
             const metriky = document.querySelectorAll('.metrika-checkbox:checked');
 
-            if (!obdobi) {
+            if (!rok || !mesic) {
                 e.preventDefault();
                 alert('Vyberte období pro export.');
                 return false;
