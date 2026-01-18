@@ -2,6 +2,7 @@ from flask import Blueprint, render_template, request, redirect, url_for, sessio
 from werkzeug.security import check_password_hash, generate_password_hash
 from models import db, User
 from functools import wraps
+from datetime import datetime
 
 auth_bp = Blueprint("auth", __name__)
 
@@ -21,11 +22,15 @@ def login():
         if user and check_password_hash(user.password_hash, password):
             if not user.is_active:
                 return render_template("login.html", error="Váš účet byl deaktivován. Kontaktujte administrátora.")
-            
+
+            # Aktualizace času posledního přihlášení
+            user.last_login = datetime.utcnow()
+            db.session.commit()
+
             session["user_id"] = user.id
             session["email"] = user.email
             session["is_admin"] = user.is_admin
-            
+
             print(f"DEBUG: Session after login: {dict(session)}")
             return redirect("/strediska")
         return render_template("login.html", error="Neplatné přihlášení.")
