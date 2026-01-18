@@ -33,85 +33,58 @@
             </div>
         </div>
 
+        <!-- Výběr období fakturace - centrální pro celé středisko -->
+        {% if vsechna_obdobi %}
+        <div class="card-custom mb-4">
+            <div class="card-header-custom">
+                <h5 class="card-title">
+                    <i class="bi bi-calendar-range icon-primary me-2"></i>
+                    Období fakturace
+                </h5>
+            </div>
+            <div class="card-body p-4">
+                <form method="get" class="d-flex align-items-center gap-3 flex-wrap">
+                    <label class="form-label-custom mb-0">
+                        <i class="bi bi-calendar me-2"></i>
+                        Vybrané období:
+                    </label>
+                    <div class="d-flex gap-2 align-items-center">
+                        <select name="rok" class="form-select form-control-custom" style="width: auto;">
+                            {% set roky = vsechna_obdobi|map(attribute='rok')|unique|list|sort %}
+                            {% for rok in roky %}
+                            <option value="{{ rok }}" {% if vybrane_obdobi and rok == vybrane_obdobi.rok %}selected{% endif %}>
+                                {{ rok }}
+                            </option>
+                            {% endfor %}
+                        </select>
+                        <span class="text-muted">/</span>
+                        <select name="mesic" class="form-select form-control-custom" style="width: auto;" onchange="this.form.submit()">
+                            {% for mesic in range(1, 13) %}
+                            <option value="{{ mesic }}" {% if vybrane_obdobi and mesic == vybrane_obdobi.mesic %}selected{% endif %}>
+                                {{ '%02d'|format(mesic) }}
+                            </option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    {% if vybrane_obdobi %}
+                    <div class="text-muted">
+                        <i class="bi bi-check-circle text-success me-1"></i>
+                        Aktivní období: <strong>{{ vybrane_obdobi.rok }}/{{ '%02d'|format(vybrane_obdobi.mesic) }}</strong>
+                        <br><small>Toto období se použije na všech stránkách fakturace</small>
+                    </div>
+                    {% endif %}
+                </form>
+            </div>
+        </div>
+        {% else %}
+        <div class="alert alert-warning-custom mb-4">
+            <i class="bi bi-exclamation-triangle me-2"></i>
+            Pro toto středisko nejsou vytvořena žádná období fakturace. Období se vytvoří automaticky při importu odečtů.
+        </div>
+        {% endif %}
+
         <!-- Hlavní menu -->
         <div class="row">
-        <!-- Správa odběrných míst -->
-                    <div class="col-lg-6 mb-4">
-                        <div class="card-custom h-100">
-                            <div class="card-header-custom">
-                                <h5 class="card-title">
-                                    <i class="bi bi-gear icon-primary me-2"></i>
-                                    Správa odběrných míst
-                                </h5>
-                            </div>
-                            <div class="card-body p-4">
-                                <div class="list-group list-group-flush">
-                                    <a href="{{ url_for('strediska.prehled_odbernych_mist', stredisko_id=stredisko.id) }}" 
-                                    class="list-group-item list-group-item-action border-0 px-0 py-3">
-                                        <div class="d-flex align-items-center">
-                                            <div class="flex-shrink-0">
-                                                <i class="bi bi-lightning-charge icon-warning" style="font-size: 1.5rem;"></i>
-                                            </div>
-                                            <div class="flex-grow-1 ms-3">
-                                                <h6 class="mb-1">Odběrná místa</h6>
-                                                <p class="mb-0 text-muted small">Správa a přehled všech odběrných míst</p>
-                                            </div>
-                                            <div class="flex-shrink-0">
-                                                <i class="bi bi-chevron-right text-muted"></i>
-                                            </div>
-                                        </div>
-                                    </a>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-
-            <!-- Ceníky -->
-            <div class="col-lg-6 mb-4">
-                <div class="card-custom h-100">
-                    <div class="card-header-custom">
-                        <h5 class="card-title">
-                            <i class="bi bi-currency-euro icon-success me-2"></i>
-                            Ceníky
-                        </h5>
-                    </div>
-                    <div class="card-body p-4">
-                        <div class="list-group list-group-flush">
-                            <a href="{{ url_for('ceny.ceny_distribuce', stredisko_id=stredisko.id) }}" 
-                               class="list-group-item list-group-item-action border-0 px-0 py-3">
-                                <div class="d-flex align-items-center">
-                                    <div class="flex-shrink-0">
-                                        <i class="bi bi-bar-chart icon-primary" style="font-size: 1.5rem;"></i>
-                                    </div>
-                                    <div class="flex-grow-1 ms-3">
-                                        <h6 class="mb-1">Ceny distribuce</h6>
-                                        <p class="mb-0 text-muted small">Správa cen za distribuci elektřiny</p>
-                                    </div>
-                                    <div class="flex-shrink-0">
-                                        <i class="bi bi-chevron-right text-muted"></i>
-                                    </div>
-                                </div>
-                            </a>
-                            <a href="{{ url_for('ceny.ceny_dodavatele', stredisko_id=stredisko.id) }}" 
-                               class="list-group-item list-group-item-action border-0 px-0 py-3">
-                                <div class="d-flex align-items-center">
-                                    <div class="flex-shrink-0">
-                                        <i class="bi bi-cash-coin icon-success" style="font-size: 1.5rem;"></i>
-                                    </div>
-                                    <div class="flex-grow-1 ms-3">
-                                        <h6 class="mb-1">Ceny dodavatele</h6>
-                                        <p class="mb-0 text-muted small">Správa cen za dodávku elektřiny</p>
-                                    </div>
-                                    <div class="flex-shrink-0">
-                                        <i class="bi bi-chevron-right text-muted"></i>
-                                    </div>
-                                </div>
-                            </a>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
             <!-- Fakturace -->
             <div class="col-12 mb-4">
                 <div class="card-custom">
@@ -123,75 +96,193 @@
                     </div>
                     <div class="card-body p-4">
                         <div class="row">
-                            <div class="col-lg-4 mb-3">
-                                <a href="{{ url_for('fakturace.fakturace', stredisko_id=stredisko.id) }}" 
-                                   class="text-decoration-none">
-                                    <div class="d-flex align-items-center p-3 border rounded-3 h-100 hover-shadow">
-                                        <div class="flex-shrink-0">
-                                            <i class="bi bi-file-earmark-text icon-primary" style="font-size: 2rem;"></i>
+                            <!-- První sloupec: Ceny dodavatele, Import odečtů -->
+                            <div class="col-lg-4">
+                                <div class="mb-3">
+                                    <a href="{{ url_for('ceny.ceny_dodavatele', stredisko_id=stredisko.id) }}"
+                                       class="text-decoration-none">
+                                        <div class="d-flex align-items-center p-3 border rounded-3 h-100 hover-shadow">
+                                            <div class="flex-shrink-0">
+                                                <i class="bi bi-cash-coin icon-success" style="font-size: 2rem;"></i>
+                                            </div>
+                                            <div class="flex-grow-1 ms-3">
+                                                <h6 class="mb-1">Ceny dodavatele</h6>
+                                                <p class="mb-0 text-muted small">Správa cen za dodávku</p>
+                                            </div>
                                         </div>
-                                        <div class="flex-grow-1 ms-3">
-                                            <h6 class="mb-1">Hlavní přehled</h6>
-                                            <p class="mb-0 text-muted small">Celkový přehled fakturace</p>
+                                    </a>
+                                </div>
+                                <div class="mb-3">
+                                    <a href="{{ url_for('odecty.odecty', stredisko_id=stredisko.id) }}"
+                                       class="text-decoration-none">
+                                        <div class="d-flex align-items-center p-3 border rounded-3 h-100 hover-shadow">
+                                            <div class="flex-shrink-0">
+                                                <i class="bi bi-upload icon-primary" style="font-size: 2rem;"></i>
+                                            </div>
+                                            <div class="flex-grow-1 ms-3">
+                                                <h6 class="mb-1">Import odečtů</h6>
+                                                <p class="mb-0 text-muted small">Import a správa odečtů</p>
+                                            </div>
                                         </div>
-                                    </div>
-                                </a>
+                                    </a>
+                                </div>
                             </div>
-                            <div class="col-lg-4 mb-3">
-                                <a href="{{ url_for('fakturace.subjekty_fakturace', stredisko_id=stredisko.id) }}" 
-                                   class="text-decoration-none">
-                                    <div class="d-flex align-items-center p-3 border rounded-3 h-100 hover-shadow">
-                                        <div class="flex-shrink-0">
-                                            <i class="bi bi-people icon-warning" style="font-size: 2rem;"></i>
+
+                            <!-- Druhý sloupec: Koncové ceny, Parametry fakturace -->
+                            <div class="col-lg-4">
+                                <div class="mb-3">
+                                    <a href="{{ url_for('fakturace.koncove_ceny', stredisko_id=stredisko.id) }}"
+                                       class="text-decoration-none">
+                                        <div class="d-flex align-items-center p-3 border rounded-3 h-100 hover-shadow">
+                                            <div class="flex-shrink-0">
+                                                <i class="bi bi-calculator icon-danger" style="font-size: 2rem;"></i>
+                                            </div>
+                                            <div class="flex-grow-1 ms-3">
+                                                <h6 class="mb-1">Koncové ceny</h6>
+                                                <p class="mb-0 text-muted small">Výpočet koncových cen</p>
+                                            </div>
                                         </div>
-                                        <div class="flex-grow-1 ms-3">
-                                            <h6 class="mb-1">Subjekty fakturace</h6>
-                                            <p class="mb-0 text-muted small">Dodavatel, odběratel, vystavovatel</p>
+                                    </a>
+                                </div>
+                                <div class="mb-3">
+                                    <a href="{{ url_for('fakturace.parametry_fakturace', stredisko_id=stredisko.id) }}"
+                                       class="text-decoration-none">
+                                        <div class="d-flex align-items-center p-3 border rounded-3 h-100 hover-shadow">
+                                            <div class="flex-shrink-0">
+                                                <i class="bi bi-gear-fill icon-secondary" style="font-size: 2rem;"></i>
+                                            </div>
+                                            <div class="flex-grow-1 ms-3">
+                                                <h6 class="mb-1">Parametry fakturace</h6>
+                                                <p class="mb-0 text-muted small">Nastavení faktur a záloh</p>
+                                            </div>
                                         </div>
-                                    </div>
-                                </a>
+                                    </a>
+                                </div>
                             </div>
-                            <div class="col-lg-4 mb-3">
-                                <a href="{{ url_for('odecty.odecty', stredisko_id=stredisko.id) }}" 
-                                   class="text-decoration-none">
-                                    <div class="d-flex align-items-center p-3 border rounded-3 h-100 hover-shadow">
+
+                            <!-- Třetí sloupec: PDF faktura, HTML faktura -->
+                            <div class="col-lg-4">
+                                <div class="mb-3">
+                                    {% if vybrane_obdobi %}
+                                    <a href="{{ url_for('print.vygenerovat_kompletni_pdf', stredisko_id=stredisko.id, rok=vybrane_obdobi.rok, mesic=vybrane_obdobi.mesic) }}"
+                                       class="text-decoration-none" target="_blank">
+                                        <div class="d-flex align-items-center p-3 border rounded-3 h-100 hover-shadow">
+                                            <div class="flex-shrink-0">
+                                                <i class="bi bi-file-earmark-pdf-fill icon-danger" style="font-size: 2rem;"></i>
+                                            </div>
+                                            <div class="flex-grow-1 ms-3">
+                                                <h6 class="mb-1">PDF faktura</h6>
+                                                <p class="mb-0 text-muted small">Kompletní PDF dokument</p>
+                                            </div>
+                                        </div>
+                                    </a>
+                                    {% else %}
+                                    <div class="d-flex align-items-center p-3 border rounded-3 h-100 opacity-50">
                                         <div class="flex-shrink-0">
-                                            <i class="bi bi-upload icon-success" style="font-size: 2rem;"></i>
+                                            <i class="bi bi-file-earmark-pdf-fill text-muted" style="font-size: 2rem;"></i>
                                         </div>
                                         <div class="flex-grow-1 ms-3">
-                                            <h6 class="mb-1">Import odečtů</h6>
-                                            <p class="mb-0 text-muted small">Import a správa odečtů</p>
+                                            <h6 class="mb-1 text-muted">PDF faktura</h6>
+                                            <p class="mb-0 text-muted small">Nejprve vyberte období</p>
                                         </div>
                                     </div>
-                                </a>
+                                    {% endif %}
+                                </div>
+                                <div class="mb-3">
+                                    {% if vybrane_obdobi %}
+                                    <a href="{{ url_for('print.vygenerovat_kompletni_html', stredisko_id=stredisko.id, rok=vybrane_obdobi.rok, mesic=vybrane_obdobi.mesic) }}"
+                                       class="text-decoration-none" target="_blank">
+                                        <div class="d-flex align-items-center p-3 border rounded-3 h-100 hover-shadow">
+                                            <div class="flex-shrink-0">
+                                                <i class="bi bi-filetype-html icon-info" style="font-size: 2rem;"></i>
+                                            </div>
+                                            <div class="flex-grow-1 ms-3">
+                                                <h6 class="mb-1">HTML faktura</h6>
+                                                <p class="mb-0 text-muted small">Kompletní HTML dokument</p>
+                                            </div>
+                                        </div>
+                                    </a>
+                                    {% else %}
+                                    <div class="d-flex align-items-center p-3 border rounded-3 h-100 opacity-50">
+                                        <div class="flex-shrink-0">
+                                            <i class="bi bi-filetype-html text-muted" style="font-size: 2rem;"></i>
+                                        </div>
+                                        <div class="flex-grow-1 ms-3">
+                                            <h6 class="mb-1 text-muted">HTML faktura</h6>
+                                            <p class="mb-0 text-muted small">Nejprve vyberte období</p>
+                                        </div>
+                                    </div>
+                                    {% endif %}
+                                </div>
                             </div>
-                            <div class="col-lg-4 mb-3">
-                                <a href="{{ url_for('fakturace.koncove_ceny', stredisko_id=stredisko.id) }}" 
-                                   class="text-decoration-none">
-                                    <div class="d-flex align-items-center p-3 border rounded-3 h-100 hover-shadow">
-                                        <div class="flex-shrink-0">
-                                            <i class="bi bi-calculator icon-danger" style="font-size: 2rem;"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Nastavení -->
+            <div class="col-12 mb-4">
+                <div class="card-custom">
+                    <div class="card-header-custom">
+                        <h5 class="card-title">
+                            <i class="bi bi-gear icon-secondary me-2"></i>
+                            Nastavení
+                        </h5>
+                    </div>
+                    <div class="card-body p-4">
+                        <div class="row">
+                            <!-- Odběrná místa -->
+                            <div class="col-lg-4">
+                                <div class="mb-3 mb-lg-0">
+                                    <a href="{{ url_for('strediska.prehled_odbernych_mist', stredisko_id=stredisko.id) }}"
+                                       class="text-decoration-none">
+                                        <div class="d-flex align-items-center p-3 border rounded-3 h-100 hover-shadow">
+                                            <div class="flex-shrink-0">
+                                                <i class="bi bi-lightning-charge icon-warning" style="font-size: 2rem;"></i>
+                                            </div>
+                                            <div class="flex-grow-1 ms-3">
+                                                <h6 class="mb-1">Odběrná místa</h6>
+                                                <p class="mb-0 text-muted small">Správa a přehled odběrných míst</p>
+                                            </div>
                                         </div>
-                                        <div class="flex-grow-1 ms-3">
-                                            <h6 class="mb-1">Koncové ceny</h6>
-                                            <p class="mb-0 text-muted small">Výpočet koncových cen</p>
-                                        </div>
-                                    </div>
-                                </a>
+                                    </a>
+                                </div>
                             </div>
-                            <div class="col-lg-4 mb-3">
-                                <a href="{{ url_for('fakturace.parametry_fakturace', stredisko_id=stredisko.id) }}" 
-                                   class="text-decoration-none">
-                                    <div class="d-flex align-items-center p-3 border rounded-3 h-100 hover-shadow">
-                                        <div class="flex-shrink-0">
-                                            <i class="bi bi-gear-fill icon-secondary" style="font-size: 2rem;"></i>
+
+                            <!-- Subjekty fakturace -->
+                            <div class="col-lg-4">
+                                <div class="mb-3 mb-lg-0">
+                                    <a href="{{ url_for('fakturace.subjekty_fakturace', stredisko_id=stredisko.id) }}"
+                                       class="text-decoration-none">
+                                        <div class="d-flex align-items-center p-3 border rounded-3 h-100 hover-shadow">
+                                            <div class="flex-shrink-0">
+                                                <i class="bi bi-people icon-primary" style="font-size: 2rem;"></i>
+                                            </div>
+                                            <div class="flex-grow-1 ms-3">
+                                                <h6 class="mb-1">Subjekty fakturace</h6>
+                                                <p class="mb-0 text-muted small">Správa odběratelů a subjektů</p>
+                                            </div>
                                         </div>
-                                        <div class="flex-grow-1 ms-3">
-                                            <h6 class="mb-1">Parametry fakturace</h6>
-                                            <p class="mb-0 text-muted small">Nastavení faktur a záloh</p>
+                                    </a>
+                                </div>
+                            </div>
+
+                            <!-- Ceny distribuce -->
+                            <div class="col-lg-4">
+                                <div class="mb-3 mb-lg-0">
+                                    <a href="{{ url_for('ceny.ceny_distribuce', stredisko_id=stredisko.id) }}"
+                                       class="text-decoration-none">
+                                        <div class="d-flex align-items-center p-3 border rounded-3 h-100 hover-shadow">
+                                            <div class="flex-shrink-0">
+                                                <i class="bi bi-bar-chart icon-success" style="font-size: 2rem;"></i>
+                                            </div>
+                                            <div class="flex-grow-1 ms-3">
+                                                <h6 class="mb-1">Ceny distribuce</h6>
+                                                <p class="mb-0 text-muted small">Správa cen za distribuci</p>
+                                            </div>
                                         </div>
-                                    </div>
-                                </a>
+                                    </a>
+                                </div>
                             </div>
                         </div>
                     </div>

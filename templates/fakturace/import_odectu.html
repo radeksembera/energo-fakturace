@@ -35,6 +35,9 @@
                 <h1 class="h2 mb-1">
                     <i class="bi bi-upload icon-success me-2"></i>
                     Import odečtů
+                    {% if vybrane_obdobi %}
+                    <span class="badge bg-primary ms-2">{{ vybrane_obdobi.rok }}/{{ '%02d'|format(vybrane_obdobi.mesic) }}</span>
+                    {% endif %}
                 </h1>
                 <p class="text-muted mb-0">Nahrání a zpracování odečtů pro {{ stredisko.nazev_strediska }}</p>
             </div>
@@ -51,48 +54,9 @@
         <!-- No Period Available -->
         <div class="alert alert-danger-custom alert-custom">
             <i class="bi bi-exclamation-triangle-fill me-2"></i>
-            Žádné dostupné období fakturace pro toto středisko.
+            Žádné dostupné období fakturace pro toto středisko. Vyberte období na stránce správy střediska.
         </div>
         {% else %}
-
-        <!-- Period Selection -->
-        <div class="card-custom mb-4">
-            <div class="card-header-custom">
-                <h5 class="card-title">
-                    <i class="bi bi-calendar-range icon-primary me-2"></i>
-                    Výběr období pro import
-                </h5>
-            </div>
-            <div class="card-body p-4">
-                <form method="get" class="d-flex align-items-center gap-3 flex-wrap">
-                    <label class="form-label-custom mb-0">
-                        <i class="bi bi-calendar me-2"></i>
-                        Import odečtů pro období:
-                    </label>
-                    <div class="d-flex gap-2 align-items-center">
-                        <select name="rok" class="form-select form-control-custom" style="width: auto;">
-                            {% set roky = vsechna_obdobi|map(attribute='rok')|unique|list|sort %}
-                            {% for rok in roky %}
-                            <option value="{{ rok }}" {% if vybrane_obdobi and rok == vybrane_obdobi.rok %}selected{% endif %}>
-                                {{ rok }}
-                            </option>
-                            {% endfor %}
-                        </select>
-                        <span class="text-muted">/</span>
-                        <select name="mesic" class="form-select form-control-custom" style="width: auto;" onchange="this.form.submit()">
-                            {% for mesic in range(1, 13) %}
-                            <option value="{{ mesic }}" {% if vybrane_obdobi and mesic == vybrane_obdobi.mesic %}selected{% endif %}>
-                                {{ "%02d"|format(mesic) }}
-                            </option>
-                            {% endfor %}
-                        </select>
-                    </div>
-                    <div class="text-muted">
-                        <small>Středisko: <strong>{{ stredisko.nazev_strediska }}</strong></small>
-                    </div>
-                </form>
-            </div>
-        </div>
 
         <!-- Actions Section -->
         <div class="card-custom mb-4">

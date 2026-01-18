@@ -2,6 +2,7 @@ from flask import Blueprint, render_template, request, redirect, url_for, sessio
 from models import db, User, Stredisko, OdberneMisto, VypocetOM, Odečet, ObdobiFakturace, CenaDistribuce, CenaDodavatel, ImportOdečtu, ZalohovaFaktura, Faktura
 from routes.auth import login_required
 from utils.helpers import safe_excel_string
+from session_helpers import handle_obdobi_selection, get_dostupna_obdobi_pro_stredisko
 import pandas as pd
 import os
 from pathlib import Path
@@ -94,7 +95,15 @@ def spravovat_stredisko(stredisko_id):
         return redirect("/strediska")
 
     stredisko = Stredisko.query.get_or_404(stredisko_id)
-    return render_template("sprava_strediska.html", stredisko=stredisko)
+
+    # Centrální správa období pro celé středisko
+    vsechna_obdobi = get_dostupna_obdobi_pro_stredisko(stredisko_id)
+    vybrane_obdobi = handle_obdobi_selection(stredisko_id, request.args)
+
+    return render_template("sprava_strediska.html",
+                          stredisko=stredisko,
+                          vsechna_obdobi=vsechna_obdobi,
+                          vybrane_obdobi=vybrane_obdobi)
 
 @strediska_bp.route("/<int:stredisko_id>/upravit", methods=["POST"])
 @login_required
