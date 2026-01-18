@@ -42,10 +42,15 @@
                 <p class="text-muted mb-0">Nahrání a zpracování odečtů pro {{ stredisko.nazev_strediska }}</p>
             </div>
             <div class="d-flex gap-2">
-                <a href="{{ url_for('strediska.spravovat_stredisko', stredisko_id=stredisko.id) }}"
+                <a href="{{ url_for('ceny.ceny_dodavatele', stredisko_id=stredisko.id) }}"
                    class="btn btn-outline-primary-custom">
                     <i class="bi bi-arrow-left me-2"></i>
-                    Zpět na středisko
+                    Zpět na ceny dodavatele
+                </a>
+                <a href="{{ url_for('fakturace.koncove_ceny', stredisko_id=stredisko.id) }}"
+                   class="btn btn-primary-custom">
+                    Pokračovat na koncové ceny
+                    <i class="bi bi-arrow-right ms-2"></i>
                 </a>
             </div>
         </div>
