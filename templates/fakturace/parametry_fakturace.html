@@ -218,6 +218,24 @@
                                    placeholder="Dodávka elektrické energie">
                         </div>
 
+                        <!-- Výše zálohy -->
+                        <div class="col-md-6 mb-3">
+                            <label for="castka_zalohy" class="form-label-custom">
+                                <i class="bi bi-currency-exchange me-2"></i>
+                                Výše zálohy (Kč)
+                            </label>
+                            <div class="input-group">
+                                <input type="number"
+                                       step="0.01"
+                                       class="form-control form-control-custom"
+                                       id="castka_zalohy"
+                                       name="castka_zalohy"
+                                       value="{{ zal.zaloha if zal else '' }}"
+                                       placeholder="0.00">
+                                <span class="input-group-text">Kč</span>
+                            </div>
+                        </div>
+
                         <!-- Fakturovat jen distribuci -->
                         <div class="col-12 mb-3">
                             <div class="form-check">
@@ -268,6 +286,8 @@
             </div>
         </div>
 
+        {# SKRYTÝ BLOK: Zálohová faktura - pro zobrazení změňte "if false" na "if true" #}
+        {% if false %}
         <!-- Zálohová faktura -->
         <div class="card-custom mb-4">
             <div class="card-header-custom">
@@ -284,10 +304,10 @@
                                 <i class="bi bi-receipt me-2"></i>
                                 Číslo zálohové faktury
                             </label>
-                            <input type="text" 
-                                   class="form-control form-control-custom" 
-                                   id="cislo_zalohy" 
-                                   name="cislo_zalohy" 
+                            <input type="text"
+                                   class="form-control form-control-custom"
+                                   id="cislo_zalohy"
+                                   name="cislo_zalohy"
                                    value="{{ zal.cislo_zalohove_faktury if zal else '' }}"
                                    placeholder="Např. 2025001Z">
                         </div>
@@ -326,10 +346,10 @@
                                 <i class="bi bi-calendar-check me-2"></i>
                                 Datum splatnosti
                             </label>
-                            <input type="date" 
-                                   class="form-control form-control-custom" 
-                                   id="splatnost" 
-                                   name="splatnost" 
+                            <input type="date"
+                                   class="form-control form-control-custom"
+                                   id="splatnost"
+                                   name="splatnost"
                                    value="{{ zal.datum_splatnosti if zal else '' }}">
                         </div>
                         <div class="col-md-4 mb-3">
@@ -337,10 +357,10 @@
                                 <i class="bi bi-calendar-plus me-2"></i>
                                 Datum vystavení
                             </label>
-                            <input type="date" 
-                                   class="form-control form-control-custom" 
-                                   id="vystaveni" 
-                                   name="vystaveni" 
+                            <input type="date"
+                                   class="form-control form-control-custom"
+                                   id="vystaveni"
+                                   name="vystaveni"
                                    value="{{ zal.datum_vystaveni if zal else '' }}">
                         </div>
                         <div class="col-md-4 mb-3">
@@ -348,24 +368,24 @@
                                 <i class="bi bi-credit-card me-2"></i>
                                 Forma úhrady
                             </label>
-                            <input type="text" 
-                                   class="form-control form-control-custom" 
-                                   id="forma_uhrady" 
-                                   name="forma_uhrady" 
+                            <input type="text"
+                                   class="form-control form-control-custom"
+                                   id="forma_uhrady"
+                                   name="forma_uhrady"
                                    value="{{ zal.forma_uhrady if zal else 'bankovní převod' }}"
                                    placeholder="bankovní převod">
                         </div>
                         <div class="col-md-6 mb-3">
-                            <label for="castka_zalohy" class="form-label-custom">
+                            <label for="castka_zalohy_old" class="form-label-custom">
                                 <i class="bi bi-currency-exchange me-2"></i>
                                 Výše zálohy (Kč)
                             </label>
                             <div class="input-group">
-                                <input type="number" 
-                                       step="0.01" 
-                                       class="form-control form-control-custom" 
-                                       id="castka_zalohy" 
-                                       name="castka_zalohy" 
+                                <input type="number"
+                                       step="0.01"
+                                       class="form-control form-control-custom"
+                                       id="castka_zalohy_old"
+                                       name="castka_zalohy_old"
                                        value="{{ zal.zaloha if zal else '' }}"
                                        placeholder="0.00">
                                 <span class="input-group-text">Kč</span>
@@ -381,6 +401,7 @@
                 </form>
             </div>
         </div>
+        {% endif %}
 
         {% else %}
         <!-- Empty State -->

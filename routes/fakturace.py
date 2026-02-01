@@ -866,8 +866,21 @@ def ulozit_fakturu(stredisko_id, obdobi_id):
         faktura.sazba_dph = float(dph)
 
     db.session.add(faktura)
+
+    # Uložení výše zálohy do tabulky zalohova_faktura (bez změny DB schématu)
+    castka_zalohy = request.form.get("castka_zalohy")
+    if castka_zalohy is not None:
+        zaloha = ZalohovaFaktura.query.filter_by(
+            stredisko_id=stredisko_id,
+            obdobi_id=obdobi_id
+        ).first()
+        if not zaloha:
+            zaloha = ZalohovaFaktura(stredisko_id=stredisko_id, obdobi_id=obdobi_id)
+        zaloha.zaloha = float(castka_zalohy) if castka_zalohy.strip() else None
+        db.session.add(zaloha)
+
     db.session.commit()
-    
+
     flash("✅ Faktura byla úspěšně uložena.")
     return redirect(url_for("fakturace.parametry_fakturace", stredisko_id=stredisko_id, obdobi_id=obdobi_id))
 
