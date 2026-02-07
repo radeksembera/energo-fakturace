@@ -22,8 +22,8 @@ def ceny_distribuce(stredisko_id):
     # Pevný seznam dostupných roků
     dostupne_roky = [2024, 2025, 2026, 2027, 2028]
     
-    # Získej vybraný rok z parametru, defaultně aktuální rok (2025)
-    vybrany_rok = request.args.get('rok', default=2025, type=int)
+    # Získej vybraný rok z parametru, defaultně aktuální rok
+    vybrany_rok = request.args.get('rok', default=datetime.now().year, type=int)
     
     # Filtruj ceny podle střediska a roku
     ceny = CenaDistribuce.query.filter_by(stredisko_id=stredisko_id, rok=vybrany_rok).all()

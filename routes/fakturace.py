@@ -234,6 +234,9 @@ def prepocitat_koncove_ceny(stredisko_id):
         # Přečti volbu checkboxu pro zahrnutí OM s nulovou spotřebou
         zahrnout_nulove = request.args.get('zahrnout_nulove', '0') == '1'
 
+        # Přečti volbu checkboxu pro POZE 0 Kč (od 2026)
+        poze_nulove = request.args.get('poze_nulove', '0') == '1'
+
         # Načti všechna odběrná místa
         odberna_mista = OdberneMisto.query.filter_by(stredisko_id=stredisko_id).all()
         
@@ -380,11 +383,15 @@ def prepocitat_koncove_ceny(stredisko_id):
 
                 # 5. poze_dle_jistice = cena * hodnota_jistice * poměr období
                 # U třífázových jističů (obsahují "3x") násobíme ještě 3 (3 fáze)
-                poze_dle_jistice = float(cena_distribuce.poze_dle_jistice or 0) * hodnota_jistice
-                if om.kategorie_jistice_om and "3x" in om.kategorie_jistice_om:
-                    poze_dle_jistice = poze_dle_jistice * 3
-                # Vynásobit poměrem období
-                poze_dle_jistice = poze_dle_jistice * delka_obdobi_fakturace
+                # Pokud je zaškrtnuto "Účtovat POZE 0 Kč (od 2026)", nastavíme na 0
+                if poze_nulove:
+                    poze_dle_jistice = 0
+                else:
+                    poze_dle_jistice = float(cena_distribuce.poze_dle_jistice or 0) * hodnota_jistice
+                    if om.kategorie_jistice_om and "3x" in om.kategorie_jistice_om:
+                        poze_dle_jistice = poze_dle_jistice * 3
+                    # Vynásobit poměrem období
+                    poze_dle_jistice = poze_dle_jistice * delka_obdobi_fakturace
 
                 # 6. poze_dle_spotreby = celkova_spotreba/1000 * cena
                 poze_dle_spotreby = (celkova_spotreba / 1000) * float(cena_distribuce.poze_dle_spotreby or 0)
