@@ -5,7 +5,7 @@
     <title>Faktura {{ faktura.cislo_faktury if faktura else '' }}</title>
     <style>
         @page {
-            margin: 15mm;
+            margin: 15mm 10mm;
             size: A4;
         }
         
@@ -57,7 +57,12 @@
             color: #6c757d;
             margin: 0 0 10px 0;
         }
-        
+
+        .logo {
+            width: 150px;
+            height: auto;
+        }
+
         .company-info {
             margin-bottom: 8px;
         }
@@ -220,6 +225,16 @@
 <body>
     <!-- HLAVIČKA -->
     <table class="header-table">
+        <!-- LOGO -->
+        <tr>
+            <td colspan="2" style="text-align: right; padding: 0 0 3px 0;">
+                <img class="logo"
+                     src="https://flowenergy.cz/wp-content/uploads/2026/02/663d2c78b56eae4197ba8abb_your-energy_logo.png"
+                     alt="Your Energy logo"
+                     style="width: 160px; height: auto;">
+            </td>
+        </tr>
+
         <tr>
             <td class="header-left">
                 <h1 class="invoice-title">FAKTURA</h1>
@@ -306,11 +321,11 @@
         <table class="custom-table">
             <thead>
                 <tr>
-                    <th><strong>Rekapitulace</strong></th>
-                    <th>Základ daně</th>
-                    <th>Sazba DPH</th>
-                    <th>Částka DPH</th>
-                    <th>Celkem vč. DPH</th>
+                    <th></th>
+                    <th class="text-end">Základ daně (Kč)</th>
+                    <th class="text-end">Sazba DPH (%)</th>
+                    <th class="text-end">Částka DPH (Kč)</th>
+                    <th class="text-end">Celkem vč. DPH (Kč)</th>
                 </tr>
             </thead>
             <tbody>
