@@ -165,7 +165,7 @@ def get_faktura_data(stredisko_id, rok, mesic):
         return None, redirect("/login")
 
     stredisko = Stredisko.query.get_or_404(stredisko_id)
-    if stredisko.user_id != session["user_id"]:
+    if stredisko.user_id != session["user_id"] and not session.get("is_admin"):
         return None, ("Nepovolený přístup", 403)
 
     # Najdi období
@@ -290,7 +290,7 @@ def vygenerovat_fakturu_pdf(stredisko_id, rok, mesic):
         return redirect("/login")
 
     stredisko = Stredisko.query.get_or_404(stredisko_id)
-    if stredisko.user_id != session["user_id"]:
+    if stredisko.user_id != session["user_id"] and not session.get("is_admin"):
         return "Nepovolený přístup", 403
 
     try:
@@ -334,7 +334,7 @@ def vygenerovat_zalohu_html(stredisko_id, rok, mesic):
         return redirect("/login")
 
     stredisko = Stredisko.query.get_or_404(stredisko_id)
-    if stredisko.user_id != session["user_id"]:
+    if stredisko.user_id != session["user_id"] and not session.get("is_admin"):
         return "Nepovolený přístup", 403
 
     # Najdi období
@@ -364,7 +364,7 @@ def vygenerovat_zalohu_pdf(stredisko_id, rok, mesic):
         return redirect("/login")
 
     stredisko = Stredisko.query.get_or_404(stredisko_id)
-    if stredisko.user_id != session["user_id"]:
+    if stredisko.user_id != session["user_id"] and not session.get("is_admin"):
         return "Nepovolený přístup", 403
 
     try:
@@ -415,7 +415,7 @@ def vygenerovat_prilohu1_html(stredisko_id, rok, mesic):
         return redirect("/login")
 
     stredisko = Stredisko.query.get_or_404(stredisko_id)
-    if stredisko.user_id != session["user_id"]:
+    if stredisko.user_id != session["user_id"] and not session.get("is_admin"):
         return "Nepovolený přístup", 403
 
     # Najdi období
@@ -481,7 +481,7 @@ def vygenerovat_prilohu1_pdf(stredisko_id, rok, mesic):
         return redirect("/login")
 
     stredisko = Stredisko.query.get_or_404(stredisko_id)
-    if stredisko.user_id != session["user_id"]:
+    if stredisko.user_id != session["user_id"] and not session.get("is_admin"):
         return "Nepovolený přístup", 403
 
     try:
@@ -566,7 +566,7 @@ def vygenerovat_prilohu2_html(stredisko_id, rok, mesic):
         return redirect("/login")
 
     stredisko = Stredisko.query.get_or_404(stredisko_id)
-    if stredisko.user_id != session["user_id"]:
+    if stredisko.user_id != session["user_id"] and not session.get("is_admin"):
         return "Nepovolený přístup", 403
 
     # Najdi období
@@ -734,7 +734,7 @@ def priloha2_pdf_nova(stredisko_id, rok, mesic):
 
     try:
         stredisko = Stredisko.query.get_or_404(stredisko_id)
-        if stredisko.user_id != session["user_id"]:
+        if stredisko.user_id != session["user_id"] and not session.get("is_admin"):
             return "Nepovolený přístup", 403
 
         # Najdi období
@@ -899,7 +899,7 @@ def vygenerovat_kompletni_pdf(stredisko_id, rok, mesic):
         return redirect("/login")
 
     stredisko = Stredisko.query.get_or_404(stredisko_id)
-    if stredisko.user_id != session["user_id"]:
+    if stredisko.user_id != session["user_id"] and not session.get("is_admin"):
         return "Nepovolený přístup", 403
 
     try:
@@ -1140,7 +1140,7 @@ def vygenerovat_kompletni_html(stredisko_id, rok, mesic):
         return redirect("/login")
 
     stredisko = Stredisko.query.get_or_404(stredisko_id)
-    if stredisko.user_id != session["user_id"]:
+    if stredisko.user_id != session["user_id"] and not session.get("is_admin"):
         return "Nepovolený přístup", 403
 
     try:

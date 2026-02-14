@@ -28,21 +28,31 @@ def index():
         return redirect(url_for("auth.login"))
 
     user_id = session["user_id"]
+    is_admin = session.get("is_admin", False)
 
-    # Načti všechna aktivní střediska uživatele (seřazená podle názvu)
-    strediska = Stredisko.query.filter_by(user_id=user_id, aktivni=True).order_by(Stredisko.nazev_strediska).all()
+    # Admin vidí všechna střediska, běžný uživatel jen svá
+    if is_admin:
+        strediska = Stredisko.query.filter_by(aktivni=True).order_by(Stredisko.nazev_strediska).all()
+    else:
+        strediska = Stredisko.query.filter_by(user_id=user_id, aktivni=True).order_by(Stredisko.nazev_strediska).all()
 
     if not strediska:
         flash("❌ Nemáte vytvořena žádná střediska.", "warning")
         return redirect(url_for("strediska.strediska"))
 
     # Načti všechna dostupná období
-    obdobi_list = ObdobiFakturace.query\
-        .join(Stredisko)\
-        .filter(Stredisko.user_id == user_id)\
-        .order_by(ObdobiFakturace.rok.asc(), ObdobiFakturace.mesic.asc())\
-        .distinct(ObdobiFakturace.rok, ObdobiFakturace.mesic)\
-        .all()
+    if is_admin:
+        obdobi_list = ObdobiFakturace.query\
+            .order_by(ObdobiFakturace.rok.asc(), ObdobiFakturace.mesic.asc())\
+            .distinct(ObdobiFakturace.rok, ObdobiFakturace.mesic)\
+            .all()
+    else:
+        obdobi_list = ObdobiFakturace.query\
+            .join(Stredisko)\
+            .filter(Stredisko.user_id == user_id)\
+            .order_by(ObdobiFakturace.rok.asc(), ObdobiFakturace.mesic.asc())\
+            .distinct(ObdobiFakturace.rok, ObdobiFakturace.mesic)\
+            .all()
 
     # Vyber období z parametru nebo první dostupné
     vybrane_obdobi = None
@@ -89,7 +99,10 @@ def index():
             spotreba_podruzne_kwh = 0.0
             for kod in kody:
                 # Najdi všechna aktivní střediska s daným kódem
-                strediska_s_kodem = Stredisko.query.filter_by(stredisko=kod, user_id=user_id, aktivni=True).all()
+                if is_admin:
+                    strediska_s_kodem = Stredisko.query.filter_by(stredisko=kod, aktivni=True).all()
+                else:
+                    strediska_s_kodem = Stredisko.query.filter_by(stredisko=kod, user_id=user_id, aktivni=True).all()
 
                 for stredisko in strediska_s_kodem:
                     # Najdi období pro toto středisko

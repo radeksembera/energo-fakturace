@@ -28,7 +28,7 @@ def odecty(stredisko_id):
 
     # Načti středisko a ověř vlastnictví
     stredisko = Stredisko.query.get_or_404(stredisko_id)
-    if stredisko.user_id != session["user_id"]:
+    if stredisko.user_id != session["user_id"] and not session.get("is_admin"):
         return "Nepovolený přístup", 403
 
     # ✅ NOVÉ - jednotná správa období
@@ -331,7 +331,7 @@ def kontrola_odectu(stredisko_id):
 
     # Načti středisko a ověř vlastnictví
     stredisko = Stredisko.query.get_or_404(stredisko_id)
-    if stredisko.user_id != session["user_id"]:
+    if stredisko.user_id != session["user_id"] and not session.get("is_admin"):
         return "Nepovolený přístup", 403
 
     # ✅ NOVÉ - jednotná správa období
@@ -366,7 +366,7 @@ def upravit_odecet(stredisko_id):
         return jsonify({"status": "error", "message": "Nejste přihlášeni"}), 401
 
     stredisko = Stredisko.query.get_or_404(stredisko_id)
-    if stredisko.user_id != session["user_id"]:
+    if stredisko.user_id != session["user_id"] and not session.get("is_admin"):
         return jsonify({"status": "error", "message": "Nepovolený přístup"}), 403
 
     try:
@@ -415,7 +415,7 @@ def smazat_odecet(stredisko_id):
         return jsonify({"status": "error", "message": "Nejste přihlášeni"}), 401
 
     stredisko = Stredisko.query.get_or_404(stredisko_id)
-    if stredisko.user_id != session["user_id"]:
+    if stredisko.user_id != session["user_id"] and not session.get("is_admin"):
         return jsonify({"status": "error", "message": "Nepovolený přístup"}), 403
 
     try:

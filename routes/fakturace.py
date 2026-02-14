@@ -18,7 +18,7 @@ def fakturace(stredisko_id):
 
     # Ověření vlastnictví střediska
     stredisko = Stredisko.query.get_or_404(stredisko_id)
-    if stredisko.user_id != session["user_id"]:
+    if stredisko.user_id != session["user_id"] and not session.get("is_admin"):
         return "Nepovolený přístup", 403
 
     # Získej všechna dostupná období pro středisko
@@ -54,7 +54,7 @@ def subjekty_fakturace(stredisko_id):
         return redirect("/login")
 
     stredisko = Stredisko.query.get_or_404(stredisko_id)
-    if stredisko.user_id != session["user_id"]:
+    if stredisko.user_id != session["user_id"] and not session.get("is_admin"):
         return "Nepovolený přístup", 403
 
     dodavatel = InfoDodavatele.query.filter_by(stredisko_id=stredisko_id).first()
@@ -74,7 +74,7 @@ def ulozit_dodavatele(stredisko_id):
         return redirect("/login")
 
     stredisko = Stredisko.query.get_or_404(stredisko_id)
-    if stredisko.user_id != session["user_id"]:
+    if stredisko.user_id != session["user_id"] and not session.get("is_admin"):
         return "Nepovolený přístup", 403
 
     # Najdi nebo vytvoř záznam dodavatele
@@ -107,7 +107,7 @@ def ulozit_vystavovatele(stredisko_id):
         return redirect("/login")
 
     stredisko = Stredisko.query.get_or_404(stredisko_id)
-    if stredisko.user_id != session["user_id"]:
+    if stredisko.user_id != session["user_id"] and not session.get("is_admin"):
         return "Nepovolený přístup", 403
 
     # Najdi nebo vytvoř záznam vystavovatele
@@ -133,7 +133,7 @@ def ulozit_odberatele(stredisko_id):
         return redirect("/login")
 
     stredisko = Stredisko.query.get_or_404(stredisko_id)
-    if stredisko.user_id != session["user_id"]:
+    if stredisko.user_id != session["user_id"] and not session.get("is_admin"):
         return "Nepovolený přístup", 403
 
     # Najdi nebo vytvoř záznam odběratele
@@ -161,7 +161,7 @@ def koncove_ceny(stredisko_id):
         return redirect("/login")
 
     stredisko = Stredisko.query.get_or_404(stredisko_id)
-    if stredisko.user_id != session["user_id"]:
+    if stredisko.user_id != session["user_id"] and not session.get("is_admin"):
         return "Nepovolený přístup", 403
 
     # Načti odběrná místa
@@ -221,7 +221,7 @@ def prepocitat_koncove_ceny(stredisko_id):
         return redirect("/login")
 
     stredisko = Stredisko.query.get_or_404(stredisko_id)
-    if stredisko.user_id != session["user_id"]:
+    if stredisko.user_id != session["user_id"] and not session.get("is_admin"):
         return "Nepovolený přístup", 403
 
     try:
@@ -563,7 +563,7 @@ def smazat_vypocty(stredisko_id):
         return redirect("/login")
 
     stredisko = Stredisko.query.get_or_404(stredisko_id)
-    if stredisko.user_id != session["user_id"]:
+    if stredisko.user_id != session["user_id"] and not session.get("is_admin"):
         return "Nepovolený přístup", 403
 
     try:
@@ -603,7 +603,7 @@ def vygenerovat_html(stredisko_id):
         return redirect("/login")
 
     stredisko = Stredisko.query.get_or_404(stredisko_id)
-    if stredisko.user_id != session["user_id"]:
+    if stredisko.user_id != session["user_id"] and not session.get("is_admin"):
         return "Nepovolený přístup", 403
 
     flash("HTML faktury byly (ne)úspěšně vygenerovány, funkce zatím není implementována.")
@@ -616,7 +616,7 @@ def vygenerovat_pdf(stredisko_id):
         return redirect("/login")
 
     stredisko = Stredisko.query.get_or_404(stredisko_id)
-    if stredisko.user_id != session["user_id"]:
+    if stredisko.user_id != session["user_id"] and not session.get("is_admin"):
         return "Nepovolený přístup", 403
 
     flash("PDF faktury byly (ne)úspěšně vygenerovány, funkce zatím není implementována.")
@@ -629,7 +629,7 @@ def parametry_fakturace(stredisko_id):
         return redirect("/login")
 
     stredisko = Stredisko.query.get_or_404(stredisko_id)
-    if stredisko.user_id != session["user_id"]:
+    if stredisko.user_id != session["user_id"] and not session.get("is_admin"):
         return "Nepovolený přístup", 403
 
     # Získej všechna dostupná období pro středisko
@@ -660,7 +660,7 @@ def ulozit_zalohu(stredisko_id, obdobi_id):
         return redirect("/login")
 
     stredisko = Stredisko.query.get_or_404(stredisko_id)
-    if stredisko.user_id != session["user_id"]:
+    if stredisko.user_id != session["user_id"] and not session.get("is_admin"):
         return "Nepovolený přístup", 403
 
     # Ověř, že období patří střediska - ODSTRANĚN typ_obdobi
@@ -716,7 +716,7 @@ def upravit_dodavatele(stredisko_id):
         return jsonify({"status": "error", "message": "Nepovolený přístup"}), 403
 
     stredisko = Stredisko.query.get_or_404(stredisko_id)
-    if stredisko.user_id != session["user_id"]:
+    if stredisko.user_id != session["user_id"] and not session.get("is_admin"):
         return jsonify({"status": "error", "message": "Nepovolený přístup"}), 403
 
     try:
@@ -744,7 +744,7 @@ def upravit_vystavovatele(stredisko_id):
         return jsonify({"status": "error", "message": "Nepovolený přístup"}), 403
 
     stredisko = Stredisko.query.get_or_404(stredisko_id)
-    if stredisko.user_id != session["user_id"]:
+    if stredisko.user_id != session["user_id"] and not session.get("is_admin"):
         return jsonify({"status": "error", "message": "Nepovolený přístup"}), 403
 
     try:
@@ -772,7 +772,7 @@ def upravit_odberatele(stredisko_id):
         return jsonify({"status": "error", "message": "Nepovolený přístup"}), 403
 
     stredisko = Stredisko.query.get_or_404(stredisko_id)
-    if stredisko.user_id != session["user_id"]:
+    if stredisko.user_id != session["user_id"] and not session.get("is_admin"):
         return jsonify({"status": "error", "message": "Nepovolený přístup"}), 403
 
     try:
@@ -800,7 +800,7 @@ def ulozit_fakturu(stredisko_id, obdobi_id):
         return redirect("/login")
 
     stredisko = Stredisko.query.get_or_404(stredisko_id)
-    if stredisko.user_id != session["user_id"]:
+    if stredisko.user_id != session["user_id"] and not session.get("is_admin"):
         return "Nepovolený přístup", 403
 
     # Ověř, že období patří střediska - ODSTRANĚN typ_obdobi
@@ -903,7 +903,7 @@ def predvyplnit_cislo_faktury(stredisko_id):
 
     # Ověření vlastnictví střediska
     stredisko = Stredisko.query.get_or_404(stredisko_id)
-    if stredisko.user_id != session["user_id"]:
+    if stredisko.user_id != session["user_id"] and not session.get("is_admin"):
         return jsonify({"success": False, "error": "Nepovolený přístup"}), 403
 
     try:

@@ -4,7 +4,7 @@ Reporting routes - export dat z výpočtů koncových cen
 """
 
 from flask import Blueprint, render_template, request, session, redirect, url_for, flash, make_response
-from models import db, Stredisko, ObdobiFakturace, VypocetOM, OdberneMisto
+from models import db, Stredisko, ObdobiFakturace, VypocetOM, OdberneMisto, User
 from io import BytesIO
 import openpyxl
 from openpyxl.styles import Font, Alignment, PatternFill
@@ -19,9 +19,13 @@ def index():
         return redirect("/login")
 
     user_id = session["user_id"]
+    is_admin = session.get("is_admin", False)
 
-    # Načti všechna AKTIVNÍ střediska uživatele
-    strediska = Stredisko.query.filter_by(user_id=user_id, aktivni=True).order_by(Stredisko.nazev_strediska).all()
+    # Admin vidí všechna střediska, běžný uživatel jen svá
+    if is_admin:
+        strediska = Stredisko.query.filter_by(aktivni=True).order_by(Stredisko.nazev_strediska).all()
+    else:
+        strediska = Stredisko.query.filter_by(user_id=user_id, aktivni=True).order_by(Stredisko.nazev_strediska).all()
 
     if not strediska:
         flash("❌ Nemáte vytvořena žádná střediska.", "warning")
@@ -112,12 +116,19 @@ def export():
         flash("❌ Neplatná ID středisek.", "danger")
         return redirect(url_for('reporting.index'))
 
-    # Ověř že střediska patří uživateli a jsou aktivní
-    strediska = Stredisko.query.filter(
-        Stredisko.id.in_(strediska_ids),
-        Stredisko.user_id == user_id,
-        Stredisko.aktivni == True
-    ).all()
+    # Ověř že střediska patří uživateli (nebo je admin) a jsou aktivní
+    is_admin = session.get("is_admin", False)
+    if is_admin:
+        strediska = Stredisko.query.filter(
+            Stredisko.id.in_(strediska_ids),
+            Stredisko.aktivni == True
+        ).all()
+    else:
+        strediska = Stredisko.query.filter(
+            Stredisko.id.in_(strediska_ids),
+            Stredisko.user_id == user_id,
+            Stredisko.aktivni == True
+        ).all()
 
     if len(strediska) != len(strediska_ids):
         flash("❌ Některá střediska neexistují nebo k nim nemáte přístup.", "danger")
