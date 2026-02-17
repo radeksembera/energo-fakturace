@@ -381,9 +381,6 @@
 {% endblock %}
 
 {% block extra_css %}
-<!-- X-editable CSS -->
-<link href="https://cdnjs.cloudflare.com/ajax/libs/x-editable/1.5.1/bootstrap3-editable/css/bootstrap-editable.css" rel="stylesheet">
-
 <style>
     .editable {
         color: var(--primary-color);
@@ -391,31 +388,64 @@
         border-bottom: 1px dashed var(--primary-color);
         text-decoration: none;
     }
-    
+
     .editable:hover {
         background-color: var(--background-secondary);
         text-decoration: none;
     }
-    
+
+    .editable-inline {
+        display: inline-flex;
+        align-items: center;
+        gap: 4px;
+    }
+
+    .editable-inline input,
+    .editable-inline select {
+        font-size: 0.875rem;
+        padding: 2px 6px;
+        border: 1px solid var(--primary-color);
+        border-radius: 4px;
+        outline: none;
+        min-width: 100px;
+    }
+
+    .editable-inline .editable-btn {
+        border: none;
+        background: none;
+        cursor: pointer;
+        padding: 2px 4px;
+        font-size: 0.875rem;
+        line-height: 1;
+    }
+
+    .editable-inline .editable-btn-save {
+        color: var(--success-color, #22c55e);
+    }
+
+    .editable-inline .editable-btn-cancel {
+        color: var(--danger-color, #ef4444);
+    }
+
     .table th {
         font-size: 0.8125rem;
         white-space: nowrap;
     }
-    
+
     .table td {
         font-size: 0.875rem;
         vertical-align: middle;
     }
-    
+
     .badge {
         font-size: 0.75rem;
         padding: 0.375rem 0.75rem;
     }
-    
+
     code {
         font-size: 0.8125rem;
     }
-    
+
     .fw-medium {
         font-weight: 500;
     }
@@ -444,93 +474,157 @@
 {% endblock %}
 
 {% block extra_js %}
-<!-- X-editable JS -->
-<script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.6.0/jquery.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/x-editable/1.5.1/bootstrap3-editable/js/bootstrap-editable.min.js"></script>
-
 <script>
     function triggerUpload() {
         document.getElementById("xlsxUpload").click();
     }
-    
-    // Initialize X-editable
-    $(document).ready(function() {
-        $.fn.editable.defaults.mode = 'inline';
-        $.fn.editable.defaults.emptytext = 'Klikněte pro úpravu';
-        
-        $('.editable').editable({
-            type: 'text',
-            title: 'Upravit hodnotu',
-            placeholder: 'Zadejte hodnotu...',
-            emptyclass: 'text-muted',
-            showbuttons: 'bottom',
-            onblur: 'ignore',
-            
-            success: function(response, newValue) {
-                try {
-                    const result = typeof response === 'string' ? JSON.parse(response) : response;
-                    if (result.status === 'success') {
-                        showAlert('success', '✅ ' + result.message);
-                        return {newValue: newValue};
-                    } else {
-                        showAlert('danger', '❌ ' + result.message);
-                        return result.message;
-                    }
-                } catch (e) {
-                    showAlert('danger', '❌ Chyba při zpracování odpovědi');
-                    return 'Chyba při zpracování';
+
+    // Inline editable initialization
+    document.addEventListener('DOMContentLoaded', function() {
+        document.querySelectorAll('.editable').forEach(function(el) {
+            el.addEventListener('click', function(e) {
+                e.preventDefault();
+                if (el.querySelector('.editable-inline')) return;
+
+                const name = el.dataset.name;
+                const value = el.dataset.value || '';
+                const pk = el.dataset.pk;
+                const url = el.dataset.url;
+                const type = el.dataset.type || 'text';
+                const originalHTML = el.innerHTML;
+
+                let sourceData = null;
+                if (type === 'select' && el.dataset.source) {
+                    try { sourceData = JSON.parse(el.dataset.source); } catch(e) {}
                 }
-            },
-            
-            error: function(xhr, status, error) {
-                const message = xhr.responseJSON?.message || 'Chyba při ukládání';
-                showAlert('danger', '❌ ' + message);
-                return message;
-            }
+
+                const wrapper = document.createElement('span');
+                wrapper.className = 'editable-inline';
+
+                let input;
+                if (type === 'select' && sourceData) {
+                    input = document.createElement('select');
+                    sourceData.forEach(function(opt) {
+                        const option = document.createElement('option');
+                        option.value = opt.value;
+                        option.textContent = opt.text;
+                        if (opt.value === value) option.selected = true;
+                        input.appendChild(option);
+                    });
+                } else {
+                    input = document.createElement('input');
+                    input.type = 'text';
+                    input.value = value;
+                }
+
+                const btnSave = document.createElement('button');
+                btnSave.type = 'button';
+                btnSave.className = 'editable-btn editable-btn-save';
+                btnSave.innerHTML = '<i class="bi bi-check-lg"></i>';
+
+                const btnCancel = document.createElement('button');
+                btnCancel.type = 'button';
+                btnCancel.className = 'editable-btn editable-btn-cancel';
+                btnCancel.innerHTML = '<i class="bi bi-x-lg"></i>';
+
+                wrapper.appendChild(input);
+                wrapper.appendChild(btnSave);
+                wrapper.appendChild(btnCancel);
+
+                el.innerHTML = '';
+                el.appendChild(wrapper);
+                input.focus();
+
+                function cancel() {
+                    el.innerHTML = originalHTML;
+                }
+
+                function save() {
+                    const newValue = input.value;
+                    const formData = new URLSearchParams();
+                    formData.append('pk', pk);
+                    formData.append('name', name);
+                    formData.append('value', newValue);
+
+                    fetch(url, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                        body: formData.toString()
+                    })
+                    .then(function(resp) { return resp.json(); })
+                    .then(function(result) {
+                        if (result.status === 'success') {
+                            el.dataset.value = newValue;
+                            const displayText = newValue || 'Klikněte pro úpravu';
+                            if (name === 'ean_om') {
+                                el.innerHTML = '<code class="bg-light px-2 py-1 rounded">' + displayText + '</code>';
+                            } else {
+                                el.textContent = displayText;
+                            }
+                            showAlert('success', result.message);
+                        } else {
+                            cancel();
+                            showAlert('danger', result.message);
+                        }
+                    })
+                    .catch(function() {
+                        cancel();
+                        showAlert('danger', 'Chyba při ukládání');
+                    });
+                }
+
+                btnSave.addEventListener('click', save);
+                btnCancel.addEventListener('click', cancel);
+                input.addEventListener('keydown', function(e) {
+                    if (e.key === 'Enter') save();
+                    if (e.key === 'Escape') cancel();
+                });
+            });
         });
     });
-    
+
     function deleteOM(button) {
         const omId = button.getAttribute('data-om-id');
         const cisloOM = button.getAttribute('data-om-cislo');
-        
-        if (confirm(`Opravdu chcete smazat odběrné místo ${cisloOM}? Všechny související výpočty budou také smazány.`)) {
+
+        if (confirm('Opravdu chcete smazat odběrné místo ' + cisloOM + '? Všechny související výpočty budou také smazány.')) {
             fetch('{{ url_for("strediska.smazat_odberne_misto", stredisko_id=stredisko.id) }}', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/x-www-form-urlencoded',
-                    },
-                    body: `om_id=${omId}`
-                })
-                .then(response => response.json())
-                .then(data => {
-                    if (data.status === 'success') {
-                        showAlert('success', '✅ ' + data.message);
-                        setTimeout(() => location.reload(), 1500);
-                    } else {
-                        showAlert('danger', '❌ ' + data.message);
-                    }
-                })
-                .catch(error => {
-                    showAlert('danger', '❌ Chyba při mazání');
-                });
-            }
+                method: 'POST',
+                headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                body: 'om_id=' + omId
+            })
+            .then(function(response) { return response.json(); })
+            .then(function(data) {
+                if (data.status === 'success') {
+                    showAlert('success', data.message);
+                    setTimeout(function() { location.reload(); }, 1500);
+                } else {
+                    showAlert('danger', data.message);
+                }
+            })
+            .catch(function() {
+                showAlert('danger', 'Chyba při mazání');
+            });
         }
     }
-    
+
     function showAlert(type, message) {
-        $('.alert').remove();
-        
-        const alertHtml = `
-            <div class="alert alert-${type} alert-dismissible fade show">
-                ${message}
-                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-            </div>
-        `;
-        $('body').prepend(alertHtml);
-        
+        document.querySelectorAll('.alert').forEach(function(a) { a.remove(); });
+
+        const div = document.createElement('div');
+        div.className = 'alert alert-' + type + ' alert-dismissible fade show';
+        div.style.position = 'fixed';
+        div.style.top = '20px';
+        div.style.right = '20px';
+        div.style.zIndex = '9999';
+        div.style.minWidth = '300px';
+        div.innerHTML = message + '<button type="button" class="btn-close" data-bs-dismiss="alert"></button>';
+        document.body.appendChild(div);
+
         setTimeout(function() {
-            $('.alert').fadeOut();
+            div.style.transition = 'opacity 0.5s';
+            div.style.opacity = '0';
+            setTimeout(function() { div.remove(); }, 500);
         }, 5000);
     }
 </script>
