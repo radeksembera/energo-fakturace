@@ -7,6 +7,7 @@ from flask import Blueprint, render_template, session, redirect, url_for, flash,
 from models import db, Stredisko, VypocetOM, OdberneMisto, ObdobiFakturace, SpotrebaHlavnihoJistice, SumarizaceStrediska
 from sqlalchemy import func
 from decimal import Decimal
+from datetime import date
 
 validace_bp = Blueprint('validace', __name__, url_prefix='/validace')
 
@@ -54,14 +55,22 @@ def index():
             .distinct(ObdobiFakturace.rok, ObdobiFakturace.mesic)\
             .all()
 
-    # Vyber období z parametru nebo první dostupné
+    # Vyber období z parametru nebo předchozí měsíc aktuálního data
     vybrane_obdobi = None
     if request.args.get('rok') and request.args.get('mesic'):
         rok = int(request.args.get('rok'))
         mesic = int(request.args.get('mesic'))
         vybrane_obdobi = {'rok': rok, 'mesic': mesic}
     elif obdobi_list:
-        vybrane_obdobi = {'rok': obdobi_list[0].rok, 'mesic': obdobi_list[0].mesic}
+        dnes = date.today()
+        prev_mesic = dnes.month - 1 if dnes.month > 1 else 12
+        prev_rok = dnes.year if dnes.month > 1 else dnes.year - 1
+        # Najdi předchozí měsíc v dostupných obdobích, jinak fallback na první
+        predchozi = next(
+            (o for o in obdobi_list if o.rok == prev_rok and o.mesic == prev_mesic),
+            obdobi_list[0]
+        )
+        vybrane_obdobi = {'rok': predchozi.rok, 'mesic': predchozi.mesic}
 
     # Připrav data pro tabulku hlavních jističů
     data_hlavnich_jisticu = []

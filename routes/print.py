@@ -189,15 +189,9 @@ def get_faktura_data(stredisko_id, rok, mesic):
     if not vypocty:
         return None, ("Nejsou k dispozici výpočty pro vybrané období.", 400)
 
-    # Načti odečty pro výpočet dofakturace/bonus
-    odecty = Odecet.query.filter_by(
-        stredisko_id=stredisko_id, 
-        obdobi_id=obdobi.id
-    ).all()
-
-    # Výpočet dofakturace/bonus z odečtů
-    suma_slevovy_bonus = float(sum(o.slevovy_bonus or 0 for o in odecty))
-    suma_dofakturace = float(sum(o.dofakturace or 0 for o in odecty))
+    # Výpočet dofakturace/bonus z koncových cen (VypocetOM) - zajišťuje konzistenci s tabulkou koncových cen
+    suma_slevovy_bonus = float(sum(v.slevovy_bonus or 0 for v in vypocty))
+    suma_dofakturace = float(sum(v.dofakturace or 0 for v in vypocty))
     dofakturace_bonus = suma_dofakturace - suma_slevovy_bonus
 
     # Zjisti, zda fakturovat jen distribuci nebo ne
