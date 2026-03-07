@@ -949,8 +949,8 @@ def predvyplnit_cislo_faktury(stredisko_id):
 
         dnes = datetime.now().date()
 
-        # Datum vystavení = 15. den aktuálního měsíce
-        datum_vystaveni_date = dnes.replace(day=15)
+        # Datum vystavení = dnes pokud je 1.–14., jinak 15. aktuálního měsíce
+        datum_vystaveni_date = dnes if dnes.day < 15 else dnes.replace(day=15)
         datum_vystaveni = datum_vystaveni_date.strftime('%Y-%m-%d')
 
         # Datum splatnosti = dnes + 14 dní
